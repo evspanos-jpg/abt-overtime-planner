@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ABT Overtime Planner</title>
+
+    <!-- ✅ CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=27">
+    <link rel="stylesheet" href="../static/style.css?v=27">
+
+    <!-- ✅ LIBRARIES -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+
+<div class="app-shell">
+    <header class="app-header">
+        <div>
+            <p class="eyebrow">Weekly schedule</p>
+            <h2>ABT Overtime Planner</h2>
+        </div>
+
+        <div class="earnings-summary">
+            <div class="earnings-card">
+                <span>Daily</span>
+                <strong id="daily">$0</strong>
+            </div>
+            <div class="earnings-card weekly">
+                <span>Weekly</span>
+                <strong id="weekly">$0</strong>
+            </div>
+        </div>
+    </header>
+
+    <section class="toolbar" aria-label="Planner controls">
+        <div id="controls">
+            <div class="tool-group">
+                <button type="button" class="primary" onclick="addBlock()">➕ Add Block</button>
+                <button type="button" class="danger" onclick="resetAll()">🗑 Reset</button>
+            </div>
+
+            <div class="tool-group">
+                <button type="button" class="secondary" onclick="selectAllBlocks()">☑ Select All</button>
+                <button type="button" class="secondary" onclick="clearSelection()">⬚ Clear</button>
+                <button type="button" class="secondary" onclick="copySelectedBlock()">📋 Copy</button>
+                <button type="button" class="secondary" onclick="cutSelectedBlock()">✂️ Cut</button>
+                <button type="button" class="secondary" onclick="pasteBlock()">📌 Paste</button>
+            </div>
+
+            <div class="tool-group calendar-tools">
+                <label class="file-picker">
+                    <span>Calendar file</span>
+                    <input type="file" id="fileInput" accept=".ics,.ical,.ifb,.csv,text/calendar,text/csv" onchange="importICS()">
+                </label>
+
+                <button type="button" class="primary" onclick="importICS()">📥 Import Calendar</button>
+                <button type="button" class="secondary" onclick="exportICS()">📤 Export Calendar</button>
+                <button type="button" class="secondary" onclick="exportPDF()">🧾 PDF</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="timeline-panel" aria-label="Weekly timeline">
+        <div class="timeline-header">
+            <span>Weekly calls</span>
+            <span>10:00 AM - 11:00 PM</span>
+        </div>
+
+        <div id="timeline-container">
+            <div id="timeline"></div>
+        </div>
+    </section>
+</div>
+
+<script>
+const timeline = document.getElementById("timeline")
+
+const HOURS = 13
+const START_HOUR = 10
+const SNAP = 0.25
+const DAILY_REGULAR_HOURS = 3
+const DAILY_OVERTIME_THRESHOLD = 4
+const OT_RATE = 65
+const DAY_ORDER = ["mon","tue","wed","thu","fri","sat","sun"]
+const DAY_LABELS = {
+    mon:"Mon",
+    tue:"Tue",
+    wed:"Wed",
+    thu:"Thu",
+    fri:"Fri",
+    sat:"Sat",
+    sun:"Sun"
+}
+
+let weekData = {mon:[],tue:[],wed:[],thu:[],fri:[],sat:[],sun:[]}
+let currentDay = "mon"
+let draggedBlock = null
+let selectedBlock = null
+let selectedBlocks = new Set()
+let selectionBox = null
+let suppressTimelineClick = false
+let blockClipboard = null
+
+//--------------------------------
+// BUILD TIMELINE
+//--------------------------------
+function buildTimeline(){
+    timeline.innerHTML=""
+    let header=document.createElement("div")
+    header.className="week-grid-header"
+
+    let gutterHead=document.createElement("div")
+    gutterHead.className="time-gutter-heading"
+    header.appendChild(gutterHead)
+
+    DAY_ORDER.forEach(day=>{
+        let btn=document.createElement("button")
+        btn.type="button"
+        btn.className="day-heading"
+        btn.dataset.day=day
+        btn.innerHTML=`<span>${DAY_LABELS[day]}</span><strong id="${day}-total">$0</strong>`
+        btn.onclick=()=>{
+            if(draggedBlock) return
+            currentDay=day
+            updateActiveDay()
+            update()
+        }
+        header.appendChild(btn)
+    })
+
+    let body=document.createElement("div")
+    body.className="week-grid-body"
+
+    let ruler=document.createElement("div")
+    ruler.id="timeRuler"
+
+    let columns=document.createElement("div")
+    columns.id="dayColumns"
+
+    DAY_ORDER.forEach(day=>{
+        let col=document.createElement("div")
+        col.className="day-column"
+        col.dataset.day=day
+        columns.appendChild(col)
+    })
+
+    body.appendChild(ruler)
+    body.appendChild(columns)
+    timeline.appendChild(header)
+    timeline.appendChild(body)
+
+    let steps = HOURS / SNAP
+
+    for(let i=0;i<=steps;i++){
+        let hourOffset = i * SNAP
+        let hour = START_HOUR + Math.floor(hourOffset)
+        let minute = Math.round((hourOffset % 1) * 60)
+        let isHour = minute === 0
+
+        let line=document.createElement("div")
+        line.className=isHour ? "time-line hour" : "time-line quarter"
+        line.style.top=(hourOffset/HOURS*100)+"%"
+        line.innerText=formatTime(hour + (minute / 60))
+        ruler.appendChild(line)
+
+        let gridLine=document.createElement("div")
+        gridLine.className=isHour ? "grid-line hour" : "grid-line quarter"
+        gridLine.style.top=(hourOffset/HOURS*100)+"%"
+        columns.appendChild(gridLine)
+    }
+}
+
+//--------------------------------
+// SNAP
+//--------------------------------
+function snapHours(h){
+    return Math.round(h/SNAP)*SNAP
+}
+
+function hoursToPixels(hours){
+    return (hours/HOURS)*timelineHeight()
+}
+
+function pixelsToSnappedHours(pixels){
+    return snapHours((pixels/timelineHeight())*HOURS)
+}
+
+function timelineHeight(){
+    return document.querySelector(".day-column")?.offsetHeight || 1300
+}
+
+function getDayColumn(day){
+    return document.querySelector(`.day-column[data-day="${day}"]`)
+}
+
+function setBlockPosition(el,y){
+    el.dataset.y=y
+    el.style.transform=`translateY(${y}px)`
+}
+
+function setBlockHeight(el,h){
+    el.style.height=h+"px"
+}
+
+function getBlockData(el){
+    return {
+        y: parseFloat(el.dataset.y) || 0,
+        h: el.offsetHeight,
+        day: el.dataset.day || currentDay,
+        title: el.dataset.title || "Block",
+        location: el.dataset.location || "",
+        description: el.dataset.description || ""
+    }
+}
+
+function getSelectedBlocks(){
+    return [...selectedBlocks].filter(el => el.isConnected)
+}
+
+function clearSelection(){
+    selectedBlocks.forEach(el=>el.classList.remove("selected"))
+    selectedBlocks.clear()
+    selectedBlock = null
+}
+
+function selectBlock(el,mode="replace"){
+    if(!el){
+        clearSelection()
+        return
+    }
+
+    if(mode==="toggle"){
+        if(selectedBlocks.has(el)){
+            selectedBlocks.delete(el)
+            el.classList.remove("selected")
+            selectedBlock = getSelectedBlocks().at(-1) || null
+            return
+        }
+    }else if(mode!=="add"){
+        clearSelection()
+    }
+
+    selectedBlocks.add(el)
+    selectedBlock = el
+    selectedBlock.classList.add("selected")
+}
+
+function rectsIntersect(a,b){
+    return a.left <= b.right &&
+        a.right >= b.left &&
+        a.top <= b.bottom &&
+        a.bottom >= b.top
+}
+
+function updateSelectionFromBox(boxRect,baseSelection,additive){
+    clearSelection()
+
+    if(additive){
+        baseSelection.forEach(el=>{
+            if(el.isConnected) selectBlock(el,"add")
+        })
+    }
+
+    document.querySelectorAll(".event").forEach(el=>{
+        if(rectsIntersect(el.getBoundingClientRect(),boxRect)){
+            selectBlock(el,"add")
+        }
+    })
+}
+
+//--------------------------------
+// CREATE BLOCK
+//--------------------------------
+function createBlock(y,h,details={}){
+
+    let el=document.createElement("div")
+    el.className="event"
+    let day = details.day || currentDay
+
+    el.dataset.y=y
+    el.dataset.day=day
+    el.dataset.title=details.title || "Block"
+    el.dataset.location=details.location || ""
+    el.dataset.description=details.description || ""
+    el.style.height=h+"px"
+    el.style.transform=`translateY(${y}px)`
+
+    ;(getDayColumn(day) || getDayColumn(currentDay)).appendChild(el)
+
+    attachBlockPointerControls(el)
+    el.addEventListener("click", e=>{
+        e.stopPropagation()
+        currentDay = el.dataset.day || currentDay
+        updateActiveDay()
+        if(el.dataset.skipClickSelect){
+            delete el.dataset.skipClickSelect
+            update()
+            return
+        }
+        if(e.ctrlKey || e.metaKey) selectBlock(el,"toggle")
+        else if(e.shiftKey) selectBlock(el,"add")
+        else selectBlock(el)
+        update()
+    })
+
+    return el
+}
+
+function attachBlockPointerControls(el){
+    el.addEventListener("pointerdown", e=>{
+        if(e.button !== 0) return
+
+        e.preventDefault()
+        if(el.setPointerCapture){
+            el.setPointerCapture(e.pointerId)
+        }
+        draggedBlock = el
+        el.dataset.skipClickSelect = "1"
+        currentDay = el.dataset.day || currentDay
+        updateActiveDay()
+
+        if(e.ctrlKey || e.metaKey){
+            selectBlock(el,"toggle")
+        }else if(e.shiftKey){
+            selectBlock(el,"add")
+        }else if(!selectedBlocks.has(el)){
+            selectBlock(el)
+        }
+
+        let rect = el.getBoundingClientRect()
+        let edgeSize = e.pointerType === "touch" ? 24 : 12
+        let mode = "drag"
+
+        if(e.clientY - rect.top <= edgeSize) mode = "resize-top"
+        else if(rect.bottom - e.clientY <= edgeSize) mode = "resize-bottom"
+
+        let startClientY = e.clientY
+        let startY = parseFloat(el.dataset.y) || 0
+        let startHeight = el.offsetHeight
+        let minHeight = Math.max(40,hoursToPixels(SNAP))
+
+        el.classList.add("is-moving")
+        document.body.classList.add("dragging-block")
+
+        function onPointerMove(moveEvent){
+            moveEvent.preventDefault()
+
+            let dy = moveEvent.clientY - startClientY
+            let y = startY
+            let h = startHeight
+
+            if(mode === "drag"){
+                y = startY + dy
+                y = Math.max(0,Math.min(y,timelineHeight()-startHeight))
+                y = hoursToPixels(pixelsToSnappedHours(y))
+            }
+
+            if(mode === "resize-bottom"){
+                h = Math.max(minHeight,startHeight + dy)
+                h = Math.min(h,timelineHeight()-startY)
+                h = hoursToPixels(pixelsToSnappedHours(h))
+            }
+
+            if(mode === "resize-top"){
+                let bottom = startY + startHeight
+                y = Math.max(0,Math.min(startY + dy,bottom-minHeight))
+                y = hoursToPixels(pixelsToSnappedHours(y))
+                h = Math.max(minHeight,bottom-y)
+                h = hoursToPixels(pixelsToSnappedHours(h))
+            }
+
+            setBlockPosition(el,y)
+            setBlockHeight(el,h)
+            updateDayDropTarget(moveEvent.clientX,moveEvent.clientY)
+            update()
+        }
+
+        function onPointerUp(upEvent){
+            if(el.hasPointerCapture && el.hasPointerCapture(upEvent.pointerId)){
+                el.releasePointerCapture(upEvent.pointerId)
+            }
+            el.classList.remove("is-moving")
+            document.body.classList.remove("dragging-block")
+            document.removeEventListener("pointermove",onPointerMove)
+            document.removeEventListener("pointerup",onPointerUp)
+            document.removeEventListener("pointercancel",onPointerUp)
+
+            let dayButton = getDayButtonAtPoint(upEvent.clientX,upEvent.clientY)
+            clearDayDropTargets()
+
+            if(dayButton && dayButton.dataset.day !== currentDay){
+                moveBlockToDay(el,dayButton.dataset.day)
+            }
+
+            draggedBlock = null
+        }
+
+        document.addEventListener("pointermove",onPointerMove)
+        document.addEventListener("pointerup",onPointerUp)
+        document.addEventListener("pointercancel",onPointerUp)
+    })
+}
+
+function getDayButtonAtPoint(x,y){
+    let targets = [...document.querySelectorAll(".day-heading, .day-column")]
+    let directHit = targets.find(target=>{
+            let rect = target.getBoundingClientRect()
+            return x>=rect.left && x<=rect.right && y>=rect.top && y<=rect.bottom
+        })
+
+    if(directHit) return directHit
+
+    return null
+}
+
+function clearDayDropTargets(){
+    document.querySelectorAll(".day-heading, .day-column")
+        .forEach(target=>target.classList.remove("drop-target"))
+}
+
+function updateDayDropTarget(x,y){
+    clearDayDropTargets()
+
+    let btn = getDayButtonAtPoint(x,y)
+    if(btn && btn.dataset.day !== currentDay){
+        btn.classList.add("drop-target")
+    }
+}
+
+function moveBlockToDay(el,targetDay){
+    let movingBlocks = selectedBlocks.has(el) ? getSelectedBlocks() : [el]
+    let blocks = movingBlocks.map(getBlockData)
+
+    movingBlocks.forEach(block=>block.remove())
+    saveDay()
+
+    currentDay = targetDay
+    clearSelection()
+    blocks.forEach(block=>{
+        block.day = targetDay
+        let created = createBlock(block.y,block.h,block)
+        selectBlock(created,"add")
+    })
+    saveDay()
+    update()
+    updateActiveDay()
+}
+
+function copySelectedBlock(){
+    let blocks = getSelectedBlocks()
+    if(blocks.length===0){
+        alert("Select one or more blocks first.")
+        return
+    }
+
+    blockClipboard = blocks.map(getBlockData)
+}
+
+function cutSelectedBlock(){
+    let blocks = getSelectedBlocks()
+    if(blocks.length===0){
+        alert("Select one or more blocks first.")
+        return
+    }
+
+    blockClipboard = blocks.map(getBlockData)
+    blocks.forEach(el=>el.remove())
+    clearSelection()
+    saveDay()
+    update()
+}
+
+function pasteBlock(){
+    if(!blockClipboard){
+        alert("Copy or cut a block first.")
+        return
+    }
+
+    clearSelection()
+
+    blockClipboard.forEach(item=>{
+        let y = Math.min(
+            item.y + hoursToPixels(SNAP),
+            timelineHeight() - item.h
+        )
+        item.day = currentDay
+
+        let block = createBlock(y,item.h,item)
+        selectBlock(block,"add")
+    })
+
+    saveDay()
+    update()
+}
+
+function selectAllBlocks(){
+    clearSelection()
+    document.querySelectorAll(".event").forEach(el=>selectBlock(el,"add"))
+}
+
+//--------------------------------
+// SAVE / LOAD DAY
+//--------------------------------
+function saveDay(){
+    saveAllDays()
+}
+
+function saveAllDays(){
+    DAY_ORDER.forEach(day=>{
+        weekData[day] = getSchedule(day).map(b=>({
+            start:b.start,
+            dur:b.dur,
+            title:b.title,
+            location:b.location,
+            description:b.description
+        }))
+    })
+}
+
+function loadDay(){
+    renderWeek()
+}
+
+function renderWeek(){
+    clearSelection()
+    timeline.querySelectorAll(".event").forEach(e=>e.remove())
+
+    DAY_ORDER.forEach(day=>{
+        weekData[day].forEach(b=>{
+            let y=((b.start-START_HOUR)/HOURS)*timelineHeight()
+            let h=(b.dur/HOURS)*timelineHeight()
+            createBlock(y,h,{...b,day})
+        })
+    })
+
+    update()
+}
+
+//--------------------------------
+// CONTROLS
+//--------------------------------
+function addBlock(){
+    let block = createBlock(0,120,{day:currentDay})
+    selectBlock(block)
+    saveDay()
+    update()
+}
+
+function resetAll(){
+    weekData[currentDay]=[]
+    clearSelection()
+    loadDay()
+}
+
+//--------------------------------
+// GET SCHEDULE
+//--------------------------------
+function getSchedule(dayKey=null){
+    let height=timelineHeight()
+
+    return [...document.querySelectorAll(".event")]
+        .filter(e=>!dayKey || e.dataset.day===dayKey)
+        .map(e=>{
+            let y=parseFloat(e.dataset.y)||0
+            let h=e.offsetHeight
+
+            let start=START_HOUR+(y/height)*HOURS
+            let dur=(h/height)*HOURS
+
+            return {
+                start:Math.round(start*100)/100,
+                dur:Math.round(dur*100)/100,
+                day:e.dataset.day || currentDay,
+                title:e.dataset.title || "Block",
+                location:e.dataset.location || "",
+                description:e.dataset.description || "",
+                el:e
+            }
+        })
+        .sort((a,b)=>a.start-b.start)
+}
+
+function calculateBlockOvertime(block){
+    if(block.dur<=DAILY_OVERTIME_THRESHOLD) return 0
+    return Math.max(block.dur-DAILY_REGULAR_HOURS,0)
+}
+
+function calculateDailyPay(schedule){
+    return schedule.reduce((daily,b)=>{
+        return daily + (calculateBlockOvertime(b)*OT_RATE)
+    },0)
+}
+
+function calculateWeeklyPay(){
+    return DAY_ORDER.reduce((total,day)=>{
+        return total + calculateDailyPay(getSchedule(day))
+    },0)
+}
+
+//--------------------------------
+// OT UPDATE
+//--------------------------------
+function update(){
+    let activeDaily=0
+
+    DAY_ORDER.forEach(day=>{
+        let schedule=getSchedule(day)
+        let daily=calculateDailyPay(schedule)
+
+        schedule.forEach(block=>{
+            renderBlock(block)
+        })
+
+        let dayTotal = document.getElementById(day+"-total")
+        if(dayTotal) dayTotal.innerText="$"+daily.toFixed(0)
+        if(day===currentDay) activeDaily=daily
+    })
+
+    document.getElementById("daily").innerText="$"+activeDaily.toFixed(0)
+    document.getElementById("weekly").innerText="$"+calculateWeeklyPay().toFixed(0)
+    saveAllDays()
+}
+
+//--------------------------------
+// RENDER BLOCK
+//--------------------------------
+function renderBlock(block){
+
+    const el=block.el
+    el.innerHTML=""
+
+    let dur=block.dur
+    let overtime=calculateBlockOvertime(block)
+    let regular=overtime>0 ? DAILY_REGULAR_HOURS : dur
+
+    if(regular>0){
+        let d=document.createElement("div")
+        d.className="segment"
+        d.style.height=(regular/dur*100)+"%"
+        d.style.background="linear-gradient(135deg, #0f766e 0%, #14b8a6 48%, #86efac 100%)"
+        el.appendChild(d)
+    }
+
+    if(overtime>0){
+        let d=document.createElement("div")
+        d.className="segment"
+        d.style.top=(regular/dur*100)+"%"
+        d.style.height=(overtime/dur*100)+"%"
+        d.style.background="linear-gradient(135deg, #be185d 0%, #ec4899 48%, #a78bfa 100%)"
+        el.appendChild(d)
+    }
+
+    let label=document.createElement("div")
+    label.className="label"
+
+    let title=document.createElement("div")
+    title.className="event-title"
+    title.innerText=block.title || "Block"
+    label.appendChild(title)
+
+    let time=document.createElement("div")
+    time.className="event-meta"
+    time.innerText=formatTime(block.start)+" - "+formatTime(block.start+block.dur)+" | $"+(overtime*OT_RATE).toFixed(0)
+    label.appendChild(time)
+
+    if(block.location){
+        let location=document.createElement("div")
+        location.className="event-detail"
+        location.innerText=block.location
+        label.appendChild(location)
+    }
+
+    if(block.description){
+        let description=document.createElement("div")
+        description.className="event-detail"
+        description.innerText=block.description
+        label.appendChild(description)
+    }
+
+    el.title=[
+        block.title || "Block",
+        formatTime(block.start)+" - "+formatTime(block.start+block.dur),
+        block.location,
+        block.description
+    ].filter(Boolean).join("\n")
+
+    el.appendChild(label)
+}
+
+function formatTime(value){
+    let hour=Math.floor(value)
+    let minute=Math.round((value-hour)*60)
+
+    if(minute===60){
+        hour++
+        minute=0
+    }
+
+    let suffix=hour>=12 ? "PM" : "AM"
+    let displayHour=hour%12 || 12
+
+    return displayHour+":"+String(minute).padStart(2,"0")+" "+suffix
+}
+
+//--------------------------------
+timeline.addEventListener("click", e=>{
+    if(suppressTimelineClick){
+        suppressTimelineClick = false
+        return
+    }
+
+    if(!e.target.closest(".event")){
+        selectBlock(null)
+    }
+})
+
+timeline.addEventListener("pointerdown", e=>{
+    if(e.button !== 0 || e.target.closest(".event")) return
+    if(e.pointerType === "touch") return
+
+    e.preventDefault()
+
+    let dayColumn = e.target.closest(".day-column")
+    if(dayColumn){
+        currentDay = dayColumn.dataset.day
+        updateActiveDay()
+        update()
+    }
+
+    let timelineRect = timeline.getBoundingClientRect()
+    let startX = e.clientX - timelineRect.left
+    let startY = e.clientY - timelineRect.top
+    let baseSelection = new Set(getSelectedBlocks())
+    let additive = e.shiftKey || e.ctrlKey || e.metaKey
+    let didDragSelection = false
+
+    if(!additive) clearSelection()
+
+    selectionBox = document.createElement("div")
+    selectionBox.className = "selection-box"
+    selectionBox.style.left = startX+"px"
+    selectionBox.style.top = startY+"px"
+    selectionBox.style.width = "0px"
+    selectionBox.style.height = "0px"
+    timeline.appendChild(selectionBox)
+    document.body.classList.add("selecting-blocks")
+
+    function onPointerMove(moveEvent){
+        moveEvent.preventDefault()
+
+        let currentX = moveEvent.clientX - timelineRect.left
+        let currentY = moveEvent.clientY - timelineRect.top
+        let left = Math.min(startX,currentX)
+        let top = Math.min(startY,currentY)
+        let width = Math.abs(currentX-startX)
+        let height = Math.abs(currentY-startY)
+        didDragSelection = didDragSelection || width > 4 || height > 4
+
+        selectionBox.style.left = left+"px"
+        selectionBox.style.top = top+"px"
+        selectionBox.style.width = width+"px"
+        selectionBox.style.height = height+"px"
+
+        updateSelectionFromBox(selectionBox.getBoundingClientRect(),baseSelection,additive)
+    }
+
+    function onPointerUp(){
+        document.body.classList.remove("selecting-blocks")
+        document.removeEventListener("pointermove",onPointerMove)
+        document.removeEventListener("pointerup",onPointerUp)
+        document.removeEventListener("pointercancel",onPointerUp)
+
+        if(selectionBox){
+            selectionBox.remove()
+            selectionBox = null
+        }
+
+        suppressTimelineClick = didDragSelection
+    }
+
+    document.addEventListener("pointermove",onPointerMove)
+    document.addEventListener("pointerup",onPointerUp)
+    document.addEventListener("pointercancel",onPointerUp)
+})
+
+document.addEventListener("keydown", e=>{
+    let tag = document.activeElement?.tagName
+    if(tag === "INPUT" || tag === "TEXTAREA") return
+
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c"){
+        e.preventDefault()
+        copySelectedBlock()
+    }
+
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "x"){
+        e.preventDefault()
+        cutSelectedBlock()
+    }
+
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v"){
+        e.preventDefault()
+        pasteBlock()
+    }
+
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a"){
+        e.preventDefault()
+        selectAllBlocks()
+    }
+})
+
+//--------------------------------
+// ACTIVE DAY UI
+//--------------------------------
+function updateActiveDay(){
+    document.querySelectorAll(".day-heading, .day-column")
+        .forEach(b=>b.classList.remove("active","drop-target"))
+
+    document.querySelectorAll(`.day-heading[data-day="${currentDay}"], .day-column[data-day="${currentDay}"]`)
+        .forEach(active=>active.classList.add("active"))
+}
+
+//--------------------------------
+// ✅ ICS IMPORT (FIXED)
+//--------------------------------
+function importICS(){
+
+    const file = document.getElementById("fileInput").files[0]
+    if(!file){
+        alert("Select an .ics file first")
+        return
+    }
+
+    const reader = new FileReader()
+
+    reader.onload = function(e){
+
+        let importedWeekData = {mon:[],tue:[],wed:[],thu:[],fri:[],sat:[],sun:[]}
+        let extension = (file.name.split(".").pop() || "").toLowerCase()
+
+        let text = String(e.target.result || "")
+            .replace(/\r\n/g, "\n")
+            .replace(/\r/g, "\n")
+            .replace(/\n[ \t]/g, "")
+
+        const days = ["sun","mon","tue","wed","thu","fri","sat"]
+        let importedCount = 0
+        let firstImportedDay = null
+
+        function getField(eventText, fieldName){
+            let line = eventText
+                .split("\n")
+                .find(l => l.toUpperCase().startsWith(fieldName + ":") ||
+                           l.toUpperCase().startsWith(fieldName + ";"))
+
+            if(!line || !line.includes(":")) return null
+            return unescapeIcsText(line.slice(line.indexOf(":") + 1).trim())
+        }
+
+        function unescapeIcsText(value){
+            return String(value || "")
+                .replace(/\\n/gi, " ")
+                .replace(/\\,/g, ",")
+                .replace(/\\;/g, ";")
+                .replace(/\\\\/g, "\\")
+                .replace(/\s+/g, " ")
+                .trim()
+        }
+
+        function parseIcsDate(value){
+            if(!value) return null
+
+            let match = value.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?)?(Z)?$/)
+            if(!match || !match[4]) return null
+
+            let [, year, month, day, hour, minute, second, isUtc] = match
+
+            if(isUtc){
+                return new Date(Date.UTC(
+                    Number(year),
+                    Number(month) - 1,
+                    Number(day),
+                    Number(hour),
+                    Number(minute),
+                    Number(second || 0)
+                ))
+            }
+
+            return new Date(
+                Number(year),
+                Number(month) - 1,
+                Number(day),
+                Number(hour),
+                Number(minute),
+                Number(second || 0)
+            )
+        }
+
+        function parseRRule(value){
+            if(!value) return null
+
+            return value.split(";").reduce((rule, part)=>{
+                let [key, val] = part.split("=")
+                if(key && val) rule[key.toUpperCase()] = val
+                return rule
+            }, {})
+        }
+
+        function getRecurringWeekdays(rule, startDate){
+            const bydayMap = {
+                SU:"sun",
+                MO:"mon",
+                TU:"tue",
+                WE:"wed",
+                TH:"thu",
+                FR:"fri",
+                SA:"sat"
+            }
+
+            if(!rule || rule.FREQ !== "WEEKLY"){
+                return [days[startDate.getDay()]]
+            }
+
+            if(rule.COUNT && Number(rule.COUNT) < 1){
+                return []
+            }
+
+            if(rule.UNTIL){
+                let untilDate = parseIcsDate(rule.UNTIL)
+                if(untilDate && untilDate < startDate) return []
+            }
+
+            if(!rule.BYDAY){
+                return [days[startDate.getDay()]]
+            }
+
+            return rule.BYDAY
+                .split(",")
+                .map(day => bydayMap[day.replace(/^[+-]?\d+/, "").toUpperCase()])
+                .filter(Boolean)
+        }
+
+        function sameDate(a,b){
+            return a.getFullYear() === b.getFullYear() &&
+                   a.getMonth() === b.getMonth() &&
+                   a.getDate() === b.getDate()
+        }
+
+        function startOfDay(date){
+            return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+        }
+
+        function addImportedEvent(dayKey, start, end, title, location, description){
+            let visibleStart = Math.max(start, START_HOUR)
+            let visibleEnd = Math.min(end, START_HOUR + HOURS)
+            let dur = visibleEnd - visibleStart
+
+            if(dur <= 0) return false
+
+            importedWeekData[dayKey].push({
+                start: Math.round(visibleStart * 100) / 100,
+                dur: Math.round(dur * 100) / 100,
+                title,
+                location,
+                description
+            })
+
+            importedCount++
+            if(!firstImportedDay) firstImportedDay = dayKey
+
+            return true
+        }
+
+        function addImportedEventRange(startDate, endDate, title, location, description){
+            let cursor = startOfDay(startDate)
+            let finalDay = startOfDay(endDate)
+
+            while(cursor <= finalDay){
+                let dayKey = days[cursor.getDay()]
+                let start = sameDate(cursor, startDate)
+                    ? startDate.getHours() + (startDate.getMinutes() / 60)
+                    : 0
+                let end = sameDate(cursor, endDate)
+                    ? endDate.getHours() + (endDate.getMinutes() / 60)
+                    : 24
+
+                if(end === 0 && !sameDate(cursor, startDate)){
+                    cursor.setDate(cursor.getDate() + 1)
+                    continue
+                }
+
+                addImportedEvent(dayKey, start, end, title, location, description)
+                cursor.setDate(cursor.getDate() + 1)
+            }
+        }
+
+        function parseCsv(text){
+            let rows = []
+            let row = []
+            let value = ""
+            let quoted = false
+
+            for(let i=0;i<text.length;i++){
+                let ch = text[i]
+                let next = text[i+1]
+
+                if(ch === '"' && quoted && next === '"'){
+                    value += '"'
+                    i++
+                }else if(ch === '"'){
+                    quoted = !quoted
+                }else if(ch === "," && !quoted){
+                    row.push(value)
+                    value = ""
+                }else if(ch === "\n" && !quoted){
+                    row.push(value)
+                    if(row.some(cell => cell.trim() !== "")) rows.push(row)
+                    row = []
+                    value = ""
+                }else{
+                    value += ch
+                }
+            }
+
+            row.push(value)
+            if(row.some(cell => cell.trim() !== "")) rows.push(row)
+
+            return rows
+        }
+
+        function normalizeHeader(value){
+            return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+        }
+
+        function getCsvCell(row, indexes, names){
+            for(let name of names){
+                let index = indexes[normalizeHeader(name)]
+                if(index !== undefined && row[index] !== undefined) return row[index].trim()
+            }
+
+            return ""
+        }
+
+        function parseCsvDate(value){
+            let raw = String(value || "").trim()
+            if(!raw) return null
+
+            let iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+            if(iso) return {year:Number(iso[1]), month:Number(iso[2]), day:Number(iso[3])}
+
+            let slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
+            if(slash){
+                let year = Number(slash[3])
+                if(year < 100) year += 2000
+                return {year, month:Number(slash[1]), day:Number(slash[2])}
+            }
+
+            let parsed = new Date(raw)
+            if(!Number.isNaN(parsed.getTime())){
+                return {
+                    year: parsed.getFullYear(),
+                    month: parsed.getMonth() + 1,
+                    day: parsed.getDate()
+                }
+            }
+
+            return null
+        }
+
+        function parseCsvTime(value){
+            let raw = String(value || "").trim()
+            if(!raw) return {hour:0, minute:0}
+
+            let match = raw.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i)
+            if(!match) return {hour:0, minute:0}
+
+            let hour = Number(match[1])
+            let minute = Number(match[2] || 0)
+            let suffix = (match[3] || "").toUpperCase()
+
+            if(suffix === "PM" && hour < 12) hour += 12
+            if(suffix === "AM" && hour === 12) hour = 0
+
+            return {hour, minute}
+        }
+
+        function makeCsvDateTime(dateValue, timeValue){
+            let date = parseCsvDate(dateValue)
+            let time = parseCsvTime(timeValue)
+
+            if(!date) return null
+
+            return new Date(date.year, date.month - 1, date.day, time.hour, time.minute)
+        }
+
+        function importCsvEvents(text){
+            let rows = parseCsv(text)
+            if(rows.length < 2) return
+
+            let headers = rows[0]
+            let indexes = headers.reduce((map, header, index)=>{
+                map[normalizeHeader(header)] = index
+                return map
+            }, {})
+
+            rows.slice(1).forEach(row=>{
+                let title = getCsvCell(row, indexes, ["Subject", "Title", "Summary", "Event"])
+                let startDateValue = getCsvCell(row, indexes, ["Start Date", "StartDate", "Start"])
+                let startTimeValue = getCsvCell(row, indexes, ["Start Time", "StartTime"])
+                let endDateValue = getCsvCell(row, indexes, ["End Date", "EndDate", "End"])
+                let endTimeValue = getCsvCell(row, indexes, ["End Time", "EndTime"])
+                let description = getCsvCell(row, indexes, ["Description", "Body", "Notes"])
+                let location = getCsvCell(row, indexes, ["Location", "Where"])
+
+                let startDate = makeCsvDateTime(startDateValue, startTimeValue)
+                let endDate = makeCsvDateTime(endDateValue || startDateValue, endTimeValue)
+
+                if(!title) title = "Imported Event"
+                if(!startDate || !endDate || endDate <= startDate) return
+
+                addImportedEventRange(startDate, endDate, title, location, description)
+            })
+        }
+
+        if(extension === "csv" || (!text.includes("BEGIN:VCALENDAR") && text.includes(","))){
+            importCsvEvents(text)
+
+            if(importedCount === 0){
+                alert("No timed events were found in that CSV file between 10:00 and 23:00.")
+                return
+            }
+
+            weekData = importedWeekData
+            currentDay = firstImportedDay
+            loadDay()
+            updateActiveDay()
+            return
+        }
+
+        const events = text.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g) || []
+
+        events.forEach(ev => {
+            let startDate = parseIcsDate(getField(ev, "DTSTART"))
+            let endDate = parseIcsDate(getField(ev, "DTEND"))
+            let title = getField(ev, "SUMMARY") || "Imported Event"
+            let location = getField(ev, "LOCATION") || ""
+            let description = getField(ev, "DESCRIPTION") || ""
+            let rule = parseRRule(getField(ev, "RRULE"))
+
+            if(!startDate || !endDate || endDate <= startDate) return
+
+            if(rule && rule.FREQ === "WEEKLY"){
+                let start = startDate.getHours() + (startDate.getMinutes() / 60)
+                let end = endDate.getHours() + (endDate.getMinutes() / 60)
+
+                if(endDate > startDate && end <= start && !sameDate(startDate,endDate)){
+                    end = 24
+                }
+
+                getRecurringWeekdays(rule, startDate).forEach(dayKey=>{
+                    addImportedEvent(dayKey, start, end, title, location, description)
+                })
+            }else{
+                addImportedEventRange(startDate, endDate, title, location, description)
+            }
+        })
+
+        if(importedCount === 0){
+            alert("No timed events were found in that .ics file between 10:00 and 23:00.")
+            return
+        }
+
+        weekData = importedWeekData
+        currentDay = firstImportedDay
+        loadDay()
+        updateActiveDay()
+    }
+
+    reader.onerror = function(){
+        alert("Could not read that .ics file.")
+    }
+
+    reader.readAsText(file)
+}
+
+//--------------------------------
+// ICS EXPORT
+//--------------------------------
+function exportICS(){
+
+    saveDay()
+
+    const dayOrder = ["mon","tue","wed","thu","fri","sat","sun"]
+    const baseMonday = new Date(2026,0,5)
+    let dtstamp = formatUtcIcsDate(new Date())
+    let lines=[
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//ABT//Overtime Planner//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:ABT Overtime Planner"
+    ]
+    let eventIndex = 0
+
+    dayOrder.forEach((dayKey,dayIndex)=>{
+        weekData[dayKey].forEach(block=>{
+            let startDate = dateForBlock(baseMonday,dayIndex,block.start)
+            let endDate = dateForBlock(baseMonday,dayIndex,block.start + block.dur)
+
+            lines.push(
+                "BEGIN:VEVENT",
+                "UID:"+Date.now()+"-"+eventIndex+"@abt-overtime-planner",
+                "DTSTAMP:"+dtstamp,
+                "SUMMARY:"+escapeIcsText(block.title || "Block"),
+                "DTSTART:"+formatLocalIcsDate(startDate),
+                "DTEND:"+formatLocalIcsDate(endDate)
+            )
+
+            if(block.location) lines.push("LOCATION:"+escapeIcsText(block.location))
+            if(block.description) lines.push("DESCRIPTION:"+escapeIcsText(block.description))
+
+            lines.push("END:VEVENT")
+            eventIndex++
+        })
+    })
+
+    lines.push("END:VCALENDAR")
+
+    let ics=lines.join("\r\n")+"\r\n"
+
+    let blob=new Blob([ics],{type:"text/calendar"})
+    let link=document.createElement("a")
+    link.href=URL.createObjectURL(blob)
+    link.download="abt-overtime-planner.ics"
+    link.click()
+}
+
+function dateForBlock(baseMonday,dayIndex,hourValue){
+    let dayOffset = dayIndex + Math.floor(hourValue / 24)
+    let hour = Math.floor(hourValue % 24)
+    let minute = Math.round((hourValue - Math.floor(hourValue)) * 60)
+    let date = new Date(baseMonday)
+
+    if(minute === 60){
+        hour++
+        minute = 0
+    }
+
+    date.setDate(baseMonday.getDate() + dayOffset)
+    date.setHours(hour,minute,0,0)
+
+    return date
+}
+
+function formatLocalIcsDate(date){
+    return date.getFullYear()+
+        String(date.getMonth()+1).padStart(2,"0")+
+        String(date.getDate()).padStart(2,"0")+"T"+
+        String(date.getHours()).padStart(2,"0")+
+        String(date.getMinutes()).padStart(2,"0")+
+        "00"
+}
+
+function formatUtcIcsDate(date){
+    return date.getUTCFullYear()+
+        String(date.getUTCMonth()+1).padStart(2,"0")+
+        String(date.getUTCDate()).padStart(2,"0")+"T"+
+        String(date.getUTCHours()).padStart(2,"0")+
+        String(date.getUTCMinutes()).padStart(2,"0")+
+        String(date.getUTCSeconds()).padStart(2,"0")+"Z"
+}
+
+function escapeIcsText(value){
+    return String(value || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/\r?\n/g, "\\n")
+        .replace(/,/g, "\\,")
+        .replace(/;/g, "\\;")
+}
+
+//--------------------------------
+// PDF
+//--------------------------------
+function exportPDF(){
+    const { jsPDF } = window.jspdf
+    const doc=new jsPDF()
+
+    let y=20
+    saveDay()
+
+    DAY_ORDER.forEach(day=>{
+        doc.text(DAY_LABELS[day],10,y)
+        y+=8
+        getSchedule(day).forEach(b=>{
+            doc.text(`${b.title || "Block"} ${formatTime(b.start)} - ${formatTime(b.start+b.dur)}`,14,y)
+            y+=8
+            if(b.location){
+                doc.text(`Location: ${b.location}`,14,y)
+                y+=8
+            }
+        })
+        y+=2
+    })
+
+    doc.text("Daily: "+document.getElementById("daily").innerText,10,y+10)
+    doc.text("Weekly: "+document.getElementById("weekly").innerText,10,y+18)
+    doc.save("planner.pdf")
+}
+
+// INIT
+buildTimeline()
+updateActiveDay()
+</script>
+
+</body>
+</html>

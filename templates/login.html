@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            color-scheme: dark;
+            --bg: #101418;
+            --surface: #171d23;
+            --line: rgba(255, 255, 255, 0.08);
+            --text: #f5f7fa;
+            --muted: #aab4c0;
+            --blue: #2f80ed;
+            --blue-hover: #1f6fd6;
+            --green: #35b779;
+            --danger: #f87171;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 240px),
+                var(--bg);
+            color: var(--text);
+            font-family: Arial, sans-serif;
+        }
+
+        .box {
+            width: min(380px, 100%);
+            padding: 28px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+        }
+
+        .eyebrow {
+            margin: 0 0 6px;
+            color: var(--green);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        h2 {
+            margin: 0 0 18px;
+            font-size: 30px;
+            line-height: 1;
+        }
+
+        input {
+            width: 100%;
+            min-height: 44px;
+            padding: 0 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 7px;
+            outline: none;
+            background: #101820;
+            color: var(--text);
+            font: inherit;
+        }
+
+        input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.2);
+        }
+
+        button {
+            width: 100%;
+            min-height: 44px;
+            margin-top: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 7px;
+            background: var(--blue);
+            color: white;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+        }
+
+        button:hover {
+            background: var(--blue-hover);
+        }
+
+        .error {
+            margin-top: 12px;
+            color: var(--danger);
+            font-size: 14px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+<main class="box">
+    <p class="eyebrow">ABT Planner</p>
+    <h2>Enter Password</h2>
+
+    <form method="POST">
+        <input type="password" name="password" placeholder="Password">
+        <button type="submit">Enter</button>
+    </form>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+</main>
+
+</body>
+</html>
