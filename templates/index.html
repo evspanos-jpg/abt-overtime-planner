@@ -5,8 +5,8 @@
     <title>ABT Overtime Planner</title>
 
     <!-- ✅ CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=27">
-    <link rel="stylesheet" href="../static/style.css?v=27">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=34">
+    <link rel="stylesheet" href="../static/style.css?v=34">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -70,6 +70,37 @@
         <div id="timeline-container">
             <div id="timeline"></div>
         </div>
+    </section>
+
+    <section class="external-assistant-panel" aria-label="External ChatGPT">
+        <div class="external-assistant-header">
+            <div class="external-assistant-title">
+                <span class="chatgpt-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" role="img">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M8.2 8.4c1.1-1.9 3.6-2.5 5.4-1.3l2.1 1.2"></path>
+                        <path d="M15.8 8.4c2.2 0 3.9 1.8 3.8 4l-.1 2.4"></path>
+                        <path d="M17 15.6c-1.1 1.9-3.6 2.5-5.4 1.3l-2.1-1.2"></path>
+                        <path d="M8.2 15.6c-2.2 0-3.9-1.8-3.8-4l.1-2.4"></path>
+                        <path d="M12 6.8v10.4"></path>
+                        <path d="M7.5 9.4l9 5.2"></path>
+                    </svg>
+                </span>
+                <div>
+                <p class="eyebrow">Assistant</p>
+                <h3>Use ChatGPT</h3>
+                </div>
+            </div>
+            <a class="chatgpt-link" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">
+                <span class="chatgpt-link-mark" aria-hidden="true">GPT</span>
+                <span>Open ChatGPT</span>
+            </a>
+        </div>
+
+        <p class="external-assistant-copy">
+            Open ChatGPT in a new tab and sign in with your own ChatGPT account. The planner does not store API keys or connect to your ChatGPT account.
+        </p>
+
     </section>
 </div>
 
