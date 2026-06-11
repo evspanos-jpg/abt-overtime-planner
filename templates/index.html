@@ -6,8 +6,8 @@
     <title>ABT Overtime Planner</title>
 
     <!-- ✅ CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=38">
-    <link rel="stylesheet" href="../static/style.css?v=38">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=39">
+    <link rel="stylesheet" href="../static/style.css?v=39">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -68,6 +68,7 @@
             </div>
 
             <div class="tool-group view-tools">
+                <button type="button" class="secondary" onclick="goToCurrentWeek()">Current Week</button>
                 <button type="button" class="secondary active-view" id="weekViewButton" onclick="setPlannerView('week')">Week View</button>
                 <button type="button" class="secondary" id="monthViewButton" onclick="setPlannerView('month')">Month View</button>
             </div>
@@ -1023,6 +1024,22 @@ function changeMonth(offset){
     renderMonthView()
     if(selectedWeekStartKey) loadWeekFromMonth(selectedWeekStartKey)
     renderMonthView()
+}
+
+function goToCurrentWeek(){
+    saveDay()
+
+    let today = new Date()
+    let weekStart = startOfPlannerWeek(today)
+    selectedWeekStartKey = dateKey(weekStart)
+    monthAnchorDate = new Date(today.getFullYear(),today.getMonth(),1)
+
+    loadWeekFromMonth(selectedWeekStartKey)
+    currentDay = DAY_ORDER[(today.getDay() + 6) % 7]
+    updateActiveDay()
+    update()
+    renderMonthView()
+    setPlannerView("week")
 }
 
 function dateKey(date){
