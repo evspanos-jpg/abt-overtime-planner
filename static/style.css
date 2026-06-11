@@ -915,6 +915,137 @@ body.selecting-blocks * {
 
 }
 
+@media (min-width: 761px) and (max-width: 1180px) {
+    body {
+        padding: 16px;
+    }
+
+    .app-shell {
+        width: 100%;
+    }
+
+    .app-header {
+        align-items: stretch;
+    }
+
+    h2 {
+        font-size: 34px;
+    }
+
+    .earnings-card {
+        min-width: 132px;
+        padding: 11px 14px;
+    }
+
+    .toolbar {
+        padding: 9px;
+    }
+
+    #controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: stretch;
+    }
+
+    .tool-group {
+        align-items: stretch;
+        min-width: 0;
+    }
+
+    .tool-group button {
+        flex: 1 1 128px;
+        min-width: 0;
+    }
+
+    .calendar-tools {
+        grid-column: 1 / -1;
+        flex: none;
+    }
+
+    .calendar-tools .file-picker {
+        flex: 1 1 280px;
+        min-width: 0;
+    }
+
+    .view-tools {
+        justify-content: flex-end;
+    }
+
+    input[type="file"] {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .export-scope {
+        flex: 0 1 180px;
+    }
+
+    .timeline-header {
+        padding: 11px 13px;
+    }
+
+    #timeline-container {
+        height: calc(100vh - 300px);
+        min-height: 560px;
+    }
+
+    #timeline {
+        min-width: 1030px;
+    }
+
+    .week-grid-header {
+        grid-template-columns: 64px repeat(7, minmax(138px, 1fr));
+    }
+
+    .week-grid-body {
+        grid-template-columns: 64px minmax(966px, 1fr);
+    }
+
+    .time-gutter-heading,
+    .day-heading {
+        min-height: 60px;
+    }
+
+    #timeRuler,
+    #dayColumns {
+        height: 1220px;
+    }
+
+    .day-column {
+        min-width: 138px;
+    }
+
+    .event {
+        left: 5px;
+        right: 5px;
+        min-height: 50px;
+    }
+
+    .label {
+        inset: 8px 9px 13px;
+        font-size: 12px;
+    }
+
+    .month-panel {
+        max-height: calc(100vh - 190px);
+    }
+
+    .month-weekdays,
+    .month-grid {
+        grid-template-columns: repeat(7, minmax(150px, 1fr));
+        min-width: 1050px;
+    }
+
+    .month-grid {
+        max-height: calc(100vh - 290px);
+    }
+
+    .month-day {
+        min-height: 132px;
+        padding: 8px;
+    }
+}
+
 @media (pointer: coarse) {
     body {
         padding: 14px;
