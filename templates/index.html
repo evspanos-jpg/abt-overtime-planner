@@ -6,8 +6,8 @@
     <title>ABT Overtime Planner</title>
 
     <!-- ✅ CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=39">
-    <link rel="stylesheet" href="../static/style.css?v=39">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=40">
+    <link rel="stylesheet" href="../static/style.css?v=40">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -38,12 +38,14 @@
         <div id="controls">
             <div class="tool-group">
                 <button type="button" class="primary" onclick="addBlock()">➕ Add Block</button>
+                <button type="button" class="secondary" id="undoButton" onclick="undoLastChange()" disabled>↶ Undo</button>
                 <button type="button" class="danger" onclick="resetAll()">🗑 Reset</button>
             </div>
 
             <div class="tool-group">
                 <button type="button" class="secondary" onclick="selectAllBlocks()">☑ Select All</button>
                 <button type="button" class="secondary" onclick="clearSelection()">⬚ Clear</button>
+                <button type="button" class="secondary" onclick="editSelectedBlock()">✎ Edit</button>
                 <button type="button" class="secondary" onclick="copySelectedBlock()">📋 Copy</button>
                 <button type="button" class="secondary" onclick="cutSelectedBlock()">✂️ Cut</button>
                 <button type="button" class="secondary" onclick="pasteBlock()">📌 Paste</button>
@@ -114,6 +116,74 @@
     </section>
 
     <p class="import-summary is-hidden" id="importSummary"></p>
+
+    <div class="modal-backdrop is-hidden" id="blockEditorBackdrop" role="presentation">
+        <section class="block-editor" role="dialog" aria-modal="true" aria-labelledby="blockEditorTitle">
+            <header class="block-editor-header">
+                <h3 id="blockEditorTitle">Edit Block</h3>
+                <button type="button" class="secondary icon-button" onclick="closeBlockEditor()" aria-label="Close editor">×</button>
+            </header>
+
+            <div class="block-editor-grid">
+                <label>
+                    <span>Title</span>
+                    <input type="text" id="blockTitleInput">
+                </label>
+
+                <label>
+                    <span>Day</span>
+                    <select id="blockDayInput">
+                        <option value="mon">Mon</option>
+                        <option value="tue">Tue</option>
+                        <option value="wed">Wed</option>
+                        <option value="thu">Thu</option>
+                        <option value="fri">Fri</option>
+                        <option value="sat">Sat</option>
+                        <option value="sun">Sun</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Start</span>
+                    <input type="time" id="blockStartInput" min="10:00" max="23:00" step="900">
+                </label>
+
+                <label>
+                    <span>Duration</span>
+                    <select id="blockDurationInput">
+                        <option value="0.5">30 minutes</option>
+                        <option value="1">1 hour</option>
+                        <option value="1.5">1.5 hours</option>
+                        <option value="2">2 hours</option>
+                        <option value="2.5">2.5 hours</option>
+                        <option value="3">3 hours</option>
+                        <option value="3.5">3.5 hours</option>
+                        <option value="4">4 hours</option>
+                        <option value="4.5">4.5 hours</option>
+                        <option value="5">5 hours</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Location</span>
+                    <input type="text" id="blockLocationInput">
+                </label>
+
+                <label class="block-editor-wide">
+                    <span>Notes</span>
+                    <textarea id="blockDescriptionInput" rows="3"></textarea>
+                </label>
+            </div>
+
+            <footer class="block-editor-actions">
+                <button type="button" class="danger" onclick="deleteEditedBlock()">Delete</button>
+                <div>
+                    <button type="button" class="secondary" onclick="closeBlockEditor()">Cancel</button>
+                    <button type="button" class="primary" onclick="saveEditedBlock()">Save</button>
+                </div>
+            </footer>
+        </section>
+    </div>
 
     <section class="external-assistant-panel" aria-label="External ChatGPT">
         <div class="external-assistant-header">
@@ -225,6 +295,8 @@ let importSummaryText = ""
 let importedEventCount = 0
 let skippedNonAbtCount = 0
 let isRestoringState = false
+let undoStack = []
+let editingBlock = null
 
 //--------------------------------
 // BUILD TIMELINE
@@ -400,6 +472,76 @@ function updateSelectionFromBox(boxRect,baseSelection,additive){
     })
 }
 
+function cloneEventsMap(eventsMap){
+    return Object.keys(eventsMap || {}).reduce((copy,key)=>{
+        copy[key] = (eventsMap[key] || []).map(event=>({...event}))
+        return copy
+    },{})
+}
+
+function snapshotWeekFromDom(){
+    return DAY_ORDER.reduce((snapshot,day)=>{
+        snapshot[day] = getSchedule(day).map(block=>({
+            start:block.start,
+            dur:block.dur,
+            title:block.title,
+            location:block.location,
+            description:block.description
+        }))
+        return snapshot
+    }, emptyWeekData())
+}
+
+function pushUndoState(){
+    undoStack.push({
+        weekData:snapshotWeekFromDom(),
+        monthEvents:cloneEventsMap(monthEvents),
+        currentDay,
+        selectedWeekStartKey,
+        monthAnchorDate:dateKey(monthAnchorDate),
+        importSummaryText,
+        importedEventCount,
+        skippedNonAbtCount,
+        plannerView
+    })
+
+    if(undoStack.length > 20) undoStack.shift()
+    updateUndoButton()
+}
+
+function updateUndoButton(){
+    let button = document.getElementById("undoButton")
+    if(button) button.disabled = undoStack.length === 0
+}
+
+function undoLastChange(){
+    let state = undoStack.pop()
+    if(!state){
+        alert("Nothing to undo.")
+        return
+    }
+
+    weekData = state.weekData
+    monthEvents = state.monthEvents
+    currentDay = state.currentDay
+    selectedWeekStartKey = state.selectedWeekStartKey
+    monthAnchorDate = parseDateKey(state.monthAnchorDate)
+    importSummaryText = state.importSummaryText
+    importedEventCount = state.importedEventCount
+    skippedNonAbtCount = state.skippedNonAbtCount
+    plannerView = state.plannerView
+
+    closeBlockEditor()
+    loadDay()
+    updateActiveDay()
+    updateWeekHeader()
+    updateImportSummary()
+    renderMonthView()
+    setPlannerView(plannerView)
+    savePlannerState()
+    updateUndoButton()
+}
+
 //--------------------------------
 // CREATE BLOCK
 //--------------------------------
@@ -438,6 +580,11 @@ function createBlock(y,h,details={}){
         else selectBlock(el)
         update()
     })
+    el.addEventListener("dblclick", e=>{
+        e.stopPropagation()
+        selectBlock(el)
+        openBlockEditor(el)
+    })
 
     return el
 }
@@ -474,6 +621,7 @@ function attachBlockPointerControls(el){
         let startY = parseFloat(el.dataset.y) || 0
         let startHeight = el.offsetHeight
         let minHeight = Math.max(40,hoursToPixels(SNAP))
+        let undoRecorded = false
 
         el.classList.add("is-moving")
         document.body.classList.add("dragging-block")
@@ -484,6 +632,11 @@ function attachBlockPointerControls(el){
             let dy = moveEvent.clientY - startClientY
             let y = startY
             let h = startHeight
+
+            if(!undoRecorded && Math.abs(dy) > 2){
+                pushUndoState()
+                undoRecorded = true
+            }
 
             if(mode === "drag"){
                 y = startY + dy
@@ -567,6 +720,7 @@ function moveBlockToDay(el,targetDay){
     let movingBlocks = selectedBlocks.has(el) ? getSelectedBlocks() : [el]
     let blocks = movingBlocks.map(getBlockData)
 
+    pushUndoState()
     movingBlocks.forEach(block=>block.remove())
     saveDay()
 
@@ -599,6 +753,7 @@ function cutSelectedBlock(){
         return
     }
 
+    pushUndoState()
     blockClipboard = blocks.map(getBlockData)
     blocks.forEach(el=>el.remove())
     clearSelection()
@@ -612,6 +767,7 @@ function pasteBlock(){
         return
     }
 
+    pushUndoState()
     clearSelection()
 
     blockClipboard.forEach(item=>{
@@ -632,6 +788,115 @@ function pasteBlock(){
 function selectAllBlocks(){
     clearSelection()
     document.querySelectorAll(".event").forEach(el=>selectBlock(el,"add"))
+}
+
+function editSelectedBlock(){
+    let block = selectedBlock || getSelectedBlocks()[0]
+    if(!block){
+        alert("Select a block first.")
+        return
+    }
+
+    openBlockEditor(block)
+}
+
+function hoursToTimeValue(hourValue){
+    let hour = Math.floor(hourValue)
+    let minute = Math.round((hourValue - hour) * 60)
+
+    if(minute === 60){
+        hour++
+        minute = 0
+    }
+
+    return String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0")
+}
+
+function timeValueToHours(value){
+    let [hour,minute] = String(value || "").split(":").map(Number)
+    if(!Number.isFinite(hour)) hour = START_HOUR
+    if(!Number.isFinite(minute)) minute = 0
+    return hour + (minute / 60)
+}
+
+function setDurationInputValue(value){
+    let input = document.getElementById("blockDurationInput")
+    let rounded = String(Math.round(value * 100) / 100)
+    if(!input) return
+
+    if(![...input.options].some(option=>option.value === rounded)){
+        let option = document.createElement("option")
+        option.value = rounded
+        option.innerText = value+" hours"
+        input.appendChild(option)
+    }
+
+    input.value = rounded
+}
+
+function openBlockEditor(el){
+    if(!el) return
+
+    let data = getBlockData(el)
+    editingBlock = el
+
+    document.getElementById("blockTitleInput").value = data.title || ""
+    document.getElementById("blockDayInput").value = data.day || currentDay
+    document.getElementById("blockStartInput").value = hoursToTimeValue(data.start ?? START_HOUR)
+    document.getElementById("blockLocationInput").value = data.location || ""
+    document.getElementById("blockDescriptionInput").value = data.description || ""
+    setDurationInputValue(data.dur || SNAP)
+
+    document.getElementById("blockEditorBackdrop")?.classList.remove("is-hidden")
+    document.getElementById("blockTitleInput")?.focus()
+}
+
+function closeBlockEditor(){
+    editingBlock = null
+    document.getElementById("blockEditorBackdrop")?.classList.add("is-hidden")
+}
+
+function saveEditedBlock(){
+    if(!editingBlock || !editingBlock.isConnected) return
+
+    pushUndoState()
+
+    let day = document.getElementById("blockDayInput").value || currentDay
+    let start = Math.max(START_HOUR,Math.min(START_HOUR + HOURS - SNAP,timeValueToHours(document.getElementById("blockStartInput").value)))
+    let dur = Math.max(SNAP,parseFloat(document.getElementById("blockDurationInput").value) || SNAP)
+    dur = Math.min(dur,START_HOUR + HOURS - start)
+
+    editingBlock.dataset.title = document.getElementById("blockTitleInput").value.trim() || "Block"
+    editingBlock.dataset.location = document.getElementById("blockLocationInput").value.trim()
+    editingBlock.dataset.description = document.getElementById("blockDescriptionInput").value.trim()
+    editingBlock.dataset.day = day
+    editingBlock.dataset.start = String(Math.round(start * 100) / 100)
+    editingBlock.dataset.dur = String(Math.round(dur * 100) / 100)
+
+    let y = hoursToPixels(start - START_HOUR)
+    let h = hoursToPixels(dur)
+    editingBlock.dataset.y = y
+    editingBlock.style.transform = `translateY(${y}px)`
+    editingBlock.style.height = h+"px"
+
+    ;(getDayColumn(day) || getDayColumn(currentDay)).appendChild(editingBlock)
+    currentDay = day
+    selectBlock(editingBlock)
+    closeBlockEditor()
+    saveDay()
+    update()
+    updateActiveDay()
+}
+
+function deleteEditedBlock(){
+    if(!editingBlock || !editingBlock.isConnected) return
+
+    pushUndoState()
+    editingBlock.remove()
+    closeBlockEditor()
+    clearSelection()
+    saveDay()
+    update()
 }
 
 //--------------------------------
@@ -679,6 +944,7 @@ function renderWeek(){
 // CONTROLS
 //--------------------------------
 function addBlock(){
+    pushUndoState()
     let block = createBlock(0,120,{day:currentDay})
     selectBlock(block)
     saveDay()
@@ -686,6 +952,7 @@ function addBlock(){
 }
 
 function resetAll(){
+    pushUndoState()
     weekData[currentDay]=[]
     clearSelection()
     loadDay()
@@ -809,6 +1076,7 @@ function renderBlock(block){
 
     const el=block.el
     el.innerHTML=""
+    el.dataset.dateKey = block.dateKey || ""
 
     let dur=block.dur
     let billableDur=block.billableDur || dur
@@ -831,6 +1099,29 @@ function renderBlock(block){
         d.style.background="linear-gradient(135deg, #be185d 0%, #ec4899 48%, #a78bfa 100%)"
         el.appendChild(d)
     }
+
+    let topHandle=document.createElement("div")
+    topHandle.className="resize-handle resize-handle-top"
+    topHandle.setAttribute("aria-hidden","true")
+    el.appendChild(topHandle)
+
+    let bottomHandle=document.createElement("div")
+    bottomHandle.className="resize-handle resize-handle-bottom"
+    bottomHandle.setAttribute("aria-hidden","true")
+    el.appendChild(bottomHandle)
+
+    let editButton=document.createElement("button")
+    editButton.type="button"
+    editButton.className="event-edit-button"
+    editButton.innerText="Edit"
+    editButton.setAttribute("aria-label","Edit block")
+    editButton.addEventListener("pointerdown",event=>event.stopPropagation())
+    editButton.addEventListener("click",event=>{
+        event.stopPropagation()
+        selectBlock(el)
+        openBlockEditor(el)
+    })
+    el.appendChild(editButton)
 
     let label=document.createElement("div")
     label.className="label"
@@ -966,6 +1257,11 @@ timeline.addEventListener("pointerdown", e=>{
 })
 
 document.addEventListener("keydown", e=>{
+    if(e.key === "Escape" && editingBlock){
+        closeBlockEditor()
+        return
+    }
+
     let tag = document.activeElement?.tagName
     if(tag === "INPUT" || tag === "TEXTAREA") return
 
@@ -990,15 +1286,33 @@ document.addEventListener("keydown", e=>{
     }
 })
 
+document.getElementById("blockEditorBackdrop")?.addEventListener("click", event=>{
+    if(event.target.id === "blockEditorBackdrop") closeBlockEditor()
+})
+
 //--------------------------------
 // ACTIVE DAY UI
 //--------------------------------
 function updateActiveDay(){
     document.querySelectorAll(".day-heading, .day-column")
-        .forEach(b=>b.classList.remove("active","drop-target"))
+        .forEach(b=>b.classList.remove("active","drop-target","today","current-week"))
 
     document.querySelectorAll(`.day-heading[data-day="${currentDay}"], .day-column[data-day="${currentDay}"]`)
         .forEach(active=>active.classList.add("active"))
+
+    let today = new Date()
+    let currentWeekKey = dateKey(startOfPlannerWeek(today))
+
+    if(selectedWeekStartKey === currentWeekKey){
+        let todayKey = DAY_ORDER[(today.getDay() + 6) % 7]
+        document.querySelectorAll(`.day-heading[data-day="${todayKey}"], .day-column[data-day="${todayKey}"]`)
+            .forEach(active=>active.classList.add("today"))
+    }
+
+    if(selectedWeekStartKey === currentWeekKey){
+        document.querySelectorAll(".day-heading, .day-column")
+            .forEach(active=>active.classList.add("current-week"))
+    }
 }
 
 //--------------------------------
@@ -1046,6 +1360,12 @@ function dateKey(date){
     return date.getFullYear()+"-"+
         String(date.getMonth()+1).padStart(2,"0")+"-"+
         String(date.getDate()).padStart(2,"0")
+}
+
+function sameDate(a,b){
+    return a.getFullYear() === b.getFullYear() &&
+           a.getMonth() === b.getMonth() &&
+           a.getDate() === b.getDate()
 }
 
 function monthName(date){
@@ -1347,7 +1667,21 @@ function renderMonthView(){
             cell.className = "month-day"
             if(cellDate.getMonth() !== monthAnchorDate.getMonth()) cell.classList.add("outside-month")
             if(events.length) cell.classList.add("has-events")
+            if(sameDate(cellDate,new Date())) cell.classList.add("today")
+            if(dateKey(startOfPlannerWeek(cellDate)) === dateKey(startOfPlannerWeek(new Date()))) cell.classList.add("current-week")
             if(isDateInSelectedWeek(cellDate)) cell.classList.add("selected-week")
+            cell.tabIndex = 0
+            cell.setAttribute("role","button")
+            cell.setAttribute("aria-label","Open week of "+weekRangeLabel(startOfPlannerWeek(cellDate)))
+            cell.addEventListener("click",()=>{
+                selectWeekFromMonth(dateKey(startOfPlannerWeek(cellDate)))
+            })
+            cell.addEventListener("keydown",event=>{
+                if(event.key === "Enter" || event.key === " "){
+                    event.preventDefault()
+                    selectWeekFromMonth(dateKey(startOfPlannerWeek(cellDate)))
+                }
+            })
 
             let head = document.createElement("div")
             head.className = "month-day-head"
@@ -2175,6 +2509,7 @@ updateActiveDay()
 restorePlannerState()
 updateWeekHeader()
 updateImportSummary()
+updateUndoButton()
 </script>
 
 </body>
