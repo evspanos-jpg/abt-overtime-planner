@@ -566,6 +566,11 @@ body.selecting-blocks * {
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38), 0 0 24px rgba(20, 184, 166, 0.16);
 }
 
+.event.overlap {
+    border-color: rgba(248, 113, 113, 0.9);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(248, 113, 113, 0.24);
+}
+
 .event.selected {
     border-color: rgba(134, 239, 172, 0.72);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38), 0 0 0 3px rgba(134, 239, 172, 0.2);
@@ -622,6 +627,19 @@ body.selecting-blocks * {
 .event-detail {
     font-weight: 500;
     opacity: 0.82;
+}
+
+.overlap-warning {
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(248, 113, 113, 0.22);
+    color: #fecaca;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
 }
 
 /* =========================
@@ -926,6 +944,18 @@ body.selecting-blocks * {
     padding-top: 10px;
     resize: vertical;
     line-height: 1.35;
+}
+
+.import-filter-copy {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.45;
+}
+
+.import-filter-editor textarea {
+    min-height: 160px;
 }
 
 .block-editor-wide {

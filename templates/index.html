@@ -6,8 +6,8 @@
     <title>ABT Overtime Planner</title>
 
     <!-- ✅ CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=40">
-    <link rel="stylesheet" href="../static/style.css?v=40">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=41">
+    <link rel="stylesheet" href="../static/style.css?v=41">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -58,6 +58,7 @@
                 </label>
 
                 <button type="button" class="primary" onclick="importICS()">📥 Import Calendar</button>
+                <button type="button" class="secondary" onclick="openImportFilterEditor()">⚙ Filters</button>
                 <label class="export-scope">
                     <span>Export</span>
                     <select id="exportScope" onchange="savePlannerState()">
@@ -185,6 +186,33 @@
         </section>
     </div>
 
+    <div class="modal-backdrop is-hidden" id="importFilterBackdrop" role="presentation">
+        <section class="block-editor import-filter-editor" role="dialog" aria-modal="true" aria-labelledby="importFilterTitle">
+            <header class="block-editor-header">
+                <h3 id="importFilterTitle">Import Filters</h3>
+                <button type="button" class="secondary icon-button" onclick="closeImportFilterEditor()" aria-label="Close filters">×</button>
+            </header>
+
+            <div class="block-editor-grid">
+                <p class="import-filter-copy block-editor-wide">
+                    Add one keyword per line. Calendar events matching these terms will import along with the built-in ABT and ballet filters.
+                </p>
+                <label class="block-editor-wide">
+                    <span>Custom keywords</span>
+                    <textarea id="customImportKeywordsInput" rows="7" placeholder="Studio rehearsal&#10;ABT JKO&#10;Met Opera House"></textarea>
+                </label>
+            </div>
+
+            <footer class="block-editor-actions">
+                <button type="button" class="secondary" onclick="clearImportFilters()">Clear</button>
+                <div>
+                    <button type="button" class="secondary" onclick="closeImportFilterEditor()">Cancel</button>
+                    <button type="button" class="primary" onclick="saveImportFilters()">Save</button>
+                </div>
+            </footer>
+        </section>
+    </div>
+
     <section class="external-assistant-panel" aria-label="External ChatGPT">
         <div class="external-assistant-header">
             <div class="external-assistant-title">
@@ -297,6 +325,8 @@ let skippedNonAbtCount = 0
 let isRestoringState = false
 let undoStack = []
 let editingBlock = null
+let customImportKeywords = []
+let lastTimelinePointerType = "mouse"
 
 //--------------------------------
 // BUILD TIMELINE
@@ -540,6 +570,64 @@ function undoLastChange(){
     setPlannerView(plannerView)
     savePlannerState()
     updateUndoButton()
+}
+
+function normalizeImportKeyword(value){
+    return String(value || "").trim().replace(/\s+/g," ")
+}
+
+function escapeRegExp(value){
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")
+}
+
+function getCustomImportKeywordsFromInput(){
+    let input = document.getElementById("customImportKeywordsInput")
+    if(!input) return []
+
+    let seen = new Set()
+    return input.value
+        .split(/\n+/)
+        .map(normalizeImportKeyword)
+        .filter(Boolean)
+        .filter(keyword=>{
+            let key = keyword.toLowerCase()
+            if(seen.has(key)) return false
+            seen.add(key)
+            return true
+        })
+}
+
+function isImportRelevantEvent(title, location, description){
+    let haystack = [title, location, description].filter(Boolean).join(" ")
+    let matchesDefault = ABT_IMPORT_PATTERNS.some(pattern=>pattern.test(haystack))
+    let matchesCustom = customImportKeywords.some(keyword=>{
+        return new RegExp(escapeRegExp(keyword),"i").test(haystack)
+    })
+
+    return matchesDefault || matchesCustom
+}
+
+function openImportFilterEditor(){
+    let input = document.getElementById("customImportKeywordsInput")
+    if(input) input.value = customImportKeywords.join("\n")
+
+    document.getElementById("importFilterBackdrop")?.classList.remove("is-hidden")
+    input?.focus()
+}
+
+function closeImportFilterEditor(){
+    document.getElementById("importFilterBackdrop")?.classList.add("is-hidden")
+}
+
+function saveImportFilters(){
+    customImportKeywords = getCustomImportKeywordsFromInput()
+    savePlannerState()
+    closeImportFilterEditor()
+}
+
+function clearImportFilters(){
+    let input = document.getElementById("customImportKeywordsInput")
+    if(input) input.value = ""
 }
 
 //--------------------------------
@@ -951,6 +1039,28 @@ function addBlock(){
     update()
 }
 
+function addBlockAtTimelinePoint(event,openEditor=false){
+    let dayColumn = event.target.closest(".day-column")
+    if(!dayColumn) return
+
+    let h = hoursToPixels(1)
+    let y = event.clientY - dayColumn.getBoundingClientRect().top
+    y = hoursToPixels(pixelsToSnappedHours(y))
+    y = Math.max(0,Math.min(y,timelineHeight()-h))
+
+    pushUndoState()
+    currentDay = dayColumn.dataset.day || currentDay
+    clearSelection()
+
+    let block = createBlock(y,h,{day:currentDay})
+    selectBlock(block)
+    saveDay()
+    update()
+    updateActiveDay()
+
+    if(openEditor) openBlockEditor(block)
+}
+
 function resetAll(){
     pushUndoState()
     weekData[currentDay]=[]
@@ -1044,6 +1154,23 @@ function calculateWeeklyPay(){
     },0)
 }
 
+function markScheduleOverlaps(schedule){
+    let latestEndingBlock = null
+
+    schedule.forEach(block=>{
+        block.hasOverlap = false
+
+        if(latestEndingBlock && block.start < latestEndingBlock.start + latestEndingBlock.dur - 0.0001){
+            block.hasOverlap = true
+            latestEndingBlock.hasOverlap = true
+        }
+
+        if(!latestEndingBlock || block.start + block.dur > latestEndingBlock.start + latestEndingBlock.dur){
+            latestEndingBlock = block
+        }
+    })
+}
+
 //--------------------------------
 // OT UPDATE
 //--------------------------------
@@ -1053,6 +1180,7 @@ function update(){
     DAY_ORDER.forEach(day=>{
         let schedule=getSchedule(day)
         applyDailyOvertime(schedule)
+        markScheduleOverlaps(schedule)
         let daily=calculateDailyPay(schedule)
 
         schedule.forEach(block=>{
@@ -1077,6 +1205,7 @@ function renderBlock(block){
     const el=block.el
     el.innerHTML=""
     el.dataset.dateKey = block.dateKey || ""
+    el.classList.toggle("overlap",Boolean(block.hasOverlap))
 
     let dur=block.dur
     let billableDur=block.billableDur || dur
@@ -1136,6 +1265,13 @@ function renderBlock(block){
     time.innerText=formatTime(block.start)+" - "+formatTime(block.start+block.dur)+" | $"+(overtime*OT_RATE).toFixed(0)
     label.appendChild(time)
 
+    if(block.hasOverlap){
+        let warning=document.createElement("div")
+        warning.className="overlap-warning"
+        warning.innerText="Overlaps another block"
+        label.appendChild(warning)
+    }
+
     if(block.location){
         let location=document.createElement("div")
         location.className="event-detail"
@@ -1153,6 +1289,7 @@ function renderBlock(block){
     el.title=[
         block.title || "Block",
         formatTime(block.start)+" - "+formatTime(block.start+block.dur),
+        block.hasOverlap ? "Overlaps another block" : "",
         block.location,
         block.description
     ].filter(Boolean).join("\n")
@@ -1182,12 +1319,19 @@ timeline.addEventListener("click", e=>{
         return
     }
 
+    if(lastTimelinePointerType === "touch" && !e.target.closest(".event") && e.target.closest(".day-column")){
+        addBlockAtTimelinePoint(e,true)
+        return
+    }
+
     if(!e.target.closest(".event")){
         selectBlock(null)
     }
 })
 
 timeline.addEventListener("pointerdown", e=>{
+    lastTimelinePointerType = e.pointerType || "mouse"
+
     if(e.button !== 0 || e.target.closest(".event")) return
     if(e.pointerType === "touch") return
 
@@ -1256,9 +1400,19 @@ timeline.addEventListener("pointerdown", e=>{
     document.addEventListener("pointercancel",onPointerUp)
 })
 
+timeline.addEventListener("dblclick", e=>{
+    if(e.target.closest(".event")) return
+
+    if(e.target.closest(".day-column")){
+        e.preventDefault()
+        addBlockAtTimelinePoint(e,true)
+    }
+})
+
 document.addEventListener("keydown", e=>{
-    if(e.key === "Escape" && editingBlock){
+    if(e.key === "Escape"){
         closeBlockEditor()
+        closeImportFilterEditor()
         return
     }
 
@@ -1288,6 +1442,10 @@ document.addEventListener("keydown", e=>{
 
 document.getElementById("blockEditorBackdrop")?.addEventListener("click", event=>{
     if(event.target.id === "blockEditorBackdrop") closeBlockEditor()
+})
+
+document.getElementById("importFilterBackdrop")?.addEventListener("click", event=>{
+    if(event.target.id === "importFilterBackdrop") closeImportFilterEditor()
 })
 
 //--------------------------------
@@ -1491,6 +1649,7 @@ function savePlannerState(){
             importSummaryText,
             importedEventCount,
             skippedNonAbtCount,
+            customImportKeywords,
             exportScope:getExportScope(),
             monthAnchorDate: dateKey(monthAnchorDate)
         }))
@@ -1521,6 +1680,9 @@ function restorePlannerState(){
         if(state.importSummaryText) importSummaryText = state.importSummaryText
         if(state.importedEventCount) importedEventCount = state.importedEventCount
         if(state.skippedNonAbtCount) skippedNonAbtCount = state.skippedNonAbtCount
+        if(Array.isArray(state.customImportKeywords)){
+            customImportKeywords = state.customImportKeywords.map(normalizeImportKeyword).filter(Boolean)
+        }
         if(state.monthAnchorDate) monthAnchorDate = parseDateKey(state.monthAnchorDate)
         if(state.exportScope && document.getElementById("exportScope")){
             document.getElementById("exportScope").value = state.exportScope
@@ -1802,8 +1964,7 @@ function importICS(){
         }
 
         function isAbtRelevantEvent(title, location, description){
-            let haystack = [title, location, description].filter(Boolean).join(" ")
-            return ABT_IMPORT_PATTERNS.some(pattern=>pattern.test(haystack))
+            return isImportRelevantEvent(title, location, description)
         }
 
         function parseIcsDateInfo(propOrValue){
