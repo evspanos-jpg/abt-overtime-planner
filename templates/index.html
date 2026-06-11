@@ -2,11 +2,12 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ABT Overtime Planner</title>
 
     <!-- ✅ CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=34">
-    <link rel="stylesheet" href="../static/style.css?v=34">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=41">
+    <link rel="stylesheet" href="../static/style.css?v=41">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -37,12 +38,14 @@
         <div id="controls">
             <div class="tool-group">
                 <button type="button" class="primary" onclick="addBlock()">➕ Add Block</button>
+                <button type="button" class="secondary" id="undoButton" onclick="undoLastChange()" disabled>↶ Undo</button>
                 <button type="button" class="danger" onclick="resetAll()">🗑 Reset</button>
             </div>
 
             <div class="tool-group">
                 <button type="button" class="secondary" onclick="selectAllBlocks()">☑ Select All</button>
                 <button type="button" class="secondary" onclick="clearSelection()">⬚ Clear</button>
+                <button type="button" class="secondary" onclick="editSelectedBlock()">✎ Edit</button>
                 <button type="button" class="secondary" onclick="copySelectedBlock()">📋 Copy</button>
                 <button type="button" class="secondary" onclick="cutSelectedBlock()">✂️ Cut</button>
                 <button type="button" class="secondary" onclick="pasteBlock()">📌 Paste</button>
@@ -51,26 +54,164 @@
             <div class="tool-group calendar-tools">
                 <label class="file-picker">
                     <span>Calendar file</span>
-                    <input type="file" id="fileInput" accept=".ics,.ical,.ifb,.csv,text/calendar,text/csv" onchange="importICS()">
+                    <input type="file" id="fileInput" accept=".ics,.ical,.ifb,.cal,.csv,text/calendar,text/csv" onchange="importICS()">
                 </label>
 
                 <button type="button" class="primary" onclick="importICS()">📥 Import Calendar</button>
+                <button type="button" class="secondary" onclick="openImportFilterEditor()">⚙ Filters</button>
+                <label class="export-scope">
+                    <span>Export</span>
+                    <select id="exportScope" onchange="savePlannerState()">
+                        <option value="week">Selected week</option>
+                        <option value="month">Full month</option>
+                    </select>
+                </label>
                 <button type="button" class="secondary" onclick="exportICS()">📤 Export Calendar</button>
                 <button type="button" class="secondary" onclick="exportPDF()">🧾 PDF</button>
+            </div>
+
+            <div class="tool-group view-tools">
+                <button type="button" class="secondary" onclick="goToCurrentWeek()">Current Week</button>
+                <button type="button" class="secondary active-view" id="weekViewButton" onclick="setPlannerView('week')">Week View</button>
+                <button type="button" class="secondary" id="monthViewButton" onclick="setPlannerView('month')">Month View</button>
             </div>
         </div>
     </section>
 
     <section class="timeline-panel" aria-label="Weekly timeline">
         <div class="timeline-header">
-            <span>Weekly calls</span>
-            <span>10:00 AM - 11:00 PM</span>
+            <span id="weekTitle">Weekly calls</span>
+            <span id="weekRangeText">10:00 AM - 11:00 PM</span>
         </div>
 
         <div id="timeline-container">
             <div id="timeline"></div>
         </div>
     </section>
+
+    <section class="month-panel is-hidden" id="monthPanel" aria-label="Monthly calendar">
+        <div class="month-header">
+            <button type="button" class="secondary" onclick="changeMonth(-1)">‹</button>
+            <div>
+                <span>Month view</span>
+                <strong id="monthTitle">No calendar imported</strong>
+                <label class="week-selector">
+                    <span>Week</span>
+                    <select id="weekSelector" onchange="selectWeekFromMonth(this.value)"></select>
+                </label>
+            </div>
+            <button type="button" class="secondary" onclick="changeMonth(1)">›</button>
+        </div>
+
+        <div class="month-weekdays" aria-hidden="true">
+            <span>Sun</span>
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+        </div>
+
+        <div class="month-grid" id="monthGrid"></div>
+    </section>
+
+    <p class="import-summary is-hidden" id="importSummary"></p>
+
+    <div class="modal-backdrop is-hidden" id="blockEditorBackdrop" role="presentation">
+        <section class="block-editor" role="dialog" aria-modal="true" aria-labelledby="blockEditorTitle">
+            <header class="block-editor-header">
+                <h3 id="blockEditorTitle">Edit Block</h3>
+                <button type="button" class="secondary icon-button" onclick="closeBlockEditor()" aria-label="Close editor">×</button>
+            </header>
+
+            <div class="block-editor-grid">
+                <label>
+                    <span>Title</span>
+                    <input type="text" id="blockTitleInput">
+                </label>
+
+                <label>
+                    <span>Day</span>
+                    <select id="blockDayInput">
+                        <option value="mon">Mon</option>
+                        <option value="tue">Tue</option>
+                        <option value="wed">Wed</option>
+                        <option value="thu">Thu</option>
+                        <option value="fri">Fri</option>
+                        <option value="sat">Sat</option>
+                        <option value="sun">Sun</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Start</span>
+                    <input type="time" id="blockStartInput" min="10:00" max="23:00" step="900">
+                </label>
+
+                <label>
+                    <span>Duration</span>
+                    <select id="blockDurationInput">
+                        <option value="0.5">30 minutes</option>
+                        <option value="1">1 hour</option>
+                        <option value="1.5">1.5 hours</option>
+                        <option value="2">2 hours</option>
+                        <option value="2.5">2.5 hours</option>
+                        <option value="3">3 hours</option>
+                        <option value="3.5">3.5 hours</option>
+                        <option value="4">4 hours</option>
+                        <option value="4.5">4.5 hours</option>
+                        <option value="5">5 hours</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Location</span>
+                    <input type="text" id="blockLocationInput">
+                </label>
+
+                <label class="block-editor-wide">
+                    <span>Notes</span>
+                    <textarea id="blockDescriptionInput" rows="3"></textarea>
+                </label>
+            </div>
+
+            <footer class="block-editor-actions">
+                <button type="button" class="danger" onclick="deleteEditedBlock()">Delete</button>
+                <div>
+                    <button type="button" class="secondary" onclick="closeBlockEditor()">Cancel</button>
+                    <button type="button" class="primary" onclick="saveEditedBlock()">Save</button>
+                </div>
+            </footer>
+        </section>
+    </div>
+
+    <div class="modal-backdrop is-hidden" id="importFilterBackdrop" role="presentation">
+        <section class="block-editor import-filter-editor" role="dialog" aria-modal="true" aria-labelledby="importFilterTitle">
+            <header class="block-editor-header">
+                <h3 id="importFilterTitle">Import Filters</h3>
+                <button type="button" class="secondary icon-button" onclick="closeImportFilterEditor()" aria-label="Close filters">×</button>
+            </header>
+
+            <div class="block-editor-grid">
+                <p class="import-filter-copy block-editor-wide">
+                    Add one keyword per line. Calendar events matching these terms will import along with the built-in ABT and ballet filters.
+                </p>
+                <label class="block-editor-wide">
+                    <span>Custom keywords</span>
+                    <textarea id="customImportKeywordsInput" rows="7" placeholder="Studio rehearsal&#10;ABT JKO&#10;Met Opera House"></textarea>
+                </label>
+            </div>
+
+            <footer class="block-editor-actions">
+                <button type="button" class="secondary" onclick="clearImportFilters()">Clear</button>
+                <div>
+                    <button type="button" class="secondary" onclick="closeImportFilterEditor()">Cancel</button>
+                    <button type="button" class="primary" onclick="saveImportFilters()">Save</button>
+                </div>
+            </footer>
+        </section>
+    </div>
 
     <section class="external-assistant-panel" aria-label="External ChatGPT">
         <div class="external-assistant-header">
@@ -113,6 +254,48 @@ const SNAP = 0.25
 const DAILY_REGULAR_HOURS = 3
 const DAILY_OVERTIME_THRESHOLD = 4
 const OT_RATE = 65
+const BILLING_INCREMENT = 0.5
+const WORK_BREAK_LIMIT_HOURS = 5 / 60
+const STORAGE_KEY = "abtOvertimePlannerState"
+const ABT_IMPORT_PATTERNS = [
+    /\bABT\b/i,
+    /(^|[^A-Z0-9])A\s*\.?\s*B\s*\.?\s*T\.?([^A-Z0-9]|$)/i,
+    /\bAmerican Ballet Theat(?:re|er)\b/i,
+    /\bVariations?\b/i,
+    /\bVariation\s+\d+\b/i,
+    /\bPas\s+de\s+Deux\b/i,
+    /\bPDD\b/i,
+    /\bCoda\b/i,
+    /\bSwan\s+Lake\b/i,
+    /\bGiselle\b/i,
+    /\bDon\s+Quixote\b/i,
+    /\bSleeping\s+Beauty\b/i,
+    /\bNutcracker\b/i,
+    /\bRomeo\s+(?:and|&)\s+Juliet\b/i,
+    /\bLa\s+Bayad[eè]re\b/i,
+    /\bLe\s+Corsaire\b/i,
+    /\bRaymonda\b/i,
+    /\bCopp[eé]lia\b/i,
+    /\bPaquita\b/i,
+    /\bEsmeralda\b/i,
+    /\bDiana\s+(?:and|&)\s+Actaeon\b/i,
+    /\bHarlequinade\b/i,
+    /\bFlames\s+of\s+Paris\b/i,
+    /\bTalisman\b/i,
+    /\bSylvia\b/i,
+    /\bCinderella\b/i,
+    /\bManon\b/i,
+    /\bMayerling\b/i,
+    /\bOnegin\b/i,
+    /\bEtudes\b/i,
+    /\bBallet\s+Imperial\b/i,
+    /\bSerenade\b/i,
+    /\bJewels\b/i,
+    /\bApollo\b/i,
+    /\bLa\s+Sylphide\b/i,
+    /\bLa\s+Fille\s+mal\s+gard[eé]e\b/i,
+    /\bThe\s+Dream\b/i
+]
 const DAY_ORDER = ["mon","tue","wed","thu","fri","sat","sun"]
 const DAY_LABELS = {
     mon:"Mon",
@@ -132,12 +315,28 @@ let selectedBlocks = new Set()
 let selectionBox = null
 let suppressTimelineClick = false
 let blockClipboard = null
+let plannerView = "week"
+let monthEvents = {}
+let monthAnchorDate = new Date()
+let selectedWeekStartKey = null
+let importSummaryText = ""
+let importedEventCount = 0
+let skippedNonAbtCount = 0
+let isRestoringState = false
+let undoStack = []
+let editingBlock = null
+let customImportKeywords = []
+let customImportPatterns = []
+let lastTimelinePointerType = "mouse"
+let cachedTimelineHeight = null
+let resizeUpdateTimer = null
 
 //--------------------------------
 // BUILD TIMELINE
 //--------------------------------
 function buildTimeline(){
     timeline.innerHTML=""
+    cachedTimelineHeight = null
     let header=document.createElement("div")
     header.className="week-grid-header"
 
@@ -218,26 +417,47 @@ function pixelsToSnappedHours(pixels){
 }
 
 function timelineHeight(){
-    return document.querySelector(".day-column")?.offsetHeight || 1300
+    if(cachedTimelineHeight === null){
+        cachedTimelineHeight = document.querySelector(".day-column")?.offsetHeight || 1300
+    }
+
+    return cachedTimelineHeight
 }
 
 function getDayColumn(day){
     return document.querySelector(`.day-column[data-day="${day}"]`)
 }
 
+function getDayColumnAtPoint(x,y){
+    let directHit = document.elementFromPoint(x,y)?.closest(".day-column")
+    if(directHit) return directHit
+
+    return [...document.querySelectorAll(".day-column")].find(column=>{
+        let rect = column.getBoundingClientRect()
+        return x>=rect.left && x<=rect.right && y>=rect.top && y<=rect.bottom
+    }) || null
+}
+
 function setBlockPosition(el,y){
     el.dataset.y=y
+    el.dataset.start=String(START_HOUR + pixelsToSnappedHours(y))
     el.style.transform=`translateY(${y}px)`
 }
 
 function setBlockHeight(el,h){
+    el.dataset.dur=String(pixelsToSnappedHours(h))
     el.style.height=h+"px"
 }
 
 function getBlockData(el){
+    let start = parseFloat(el.dataset.start)
+    let dur = parseFloat(el.dataset.dur)
+
     return {
-        y: parseFloat(el.dataset.y) || 0,
-        h: el.offsetHeight,
+        y: Number.isFinite(start) ? hoursToPixels(start - START_HOUR) : (parseFloat(el.dataset.y) || 0),
+        h: Number.isFinite(dur) ? hoursToPixels(dur) : el.offsetHeight,
+        start: Number.isFinite(start) ? start : undefined,
+        dur: Number.isFinite(dur) ? dur : undefined,
         day: el.dataset.day || currentDay,
         title: el.dataset.title || "Block",
         location: el.dataset.location || "",
@@ -300,6 +520,137 @@ function updateSelectionFromBox(boxRect,baseSelection,additive){
     })
 }
 
+function cloneEventsMap(eventsMap){
+    return Object.keys(eventsMap || {}).reduce((copy,key)=>{
+        copy[key] = (eventsMap[key] || []).map(event=>({...event}))
+        return copy
+    },{})
+}
+
+function snapshotWeekFromDom(){
+    return DAY_ORDER.reduce((snapshot,day)=>{
+        snapshot[day] = getSchedule(day).map(block=>({
+            start:block.start,
+            dur:block.dur,
+            title:block.title,
+            location:block.location,
+            description:block.description
+        }))
+        return snapshot
+    }, emptyWeekData())
+}
+
+function pushUndoState(){
+    undoStack.push({
+        weekData:snapshotWeekFromDom(),
+        monthEvents:cloneEventsMap(monthEvents),
+        currentDay,
+        selectedWeekStartKey,
+        monthAnchorDate:dateKey(monthAnchorDate),
+        importSummaryText,
+        importedEventCount,
+        skippedNonAbtCount,
+        plannerView
+    })
+
+    if(undoStack.length > 20) undoStack.shift()
+    updateUndoButton()
+}
+
+function updateUndoButton(){
+    let button = document.getElementById("undoButton")
+    if(button) button.disabled = undoStack.length === 0
+}
+
+function undoLastChange(){
+    let state = undoStack.pop()
+    if(!state){
+        alert("Nothing to undo.")
+        return
+    }
+
+    weekData = state.weekData
+    monthEvents = state.monthEvents
+    currentDay = state.currentDay
+    selectedWeekStartKey = state.selectedWeekStartKey
+    monthAnchorDate = parseDateKey(state.monthAnchorDate)
+    importSummaryText = state.importSummaryText
+    importedEventCount = state.importedEventCount
+    skippedNonAbtCount = state.skippedNonAbtCount
+    plannerView = state.plannerView
+
+    closeBlockEditor()
+    loadDay()
+    updateActiveDay()
+    updateWeekHeader()
+    updateImportSummary()
+    renderMonthView()
+    setPlannerView(plannerView)
+    savePlannerState()
+    updateUndoButton()
+}
+
+function normalizeImportKeyword(value){
+    return String(value || "").trim().replace(/\s+/g," ")
+}
+
+function escapeRegExp(value){
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")
+}
+
+function rebuildCustomImportPatterns(){
+    customImportPatterns = customImportKeywords.map(keyword=>new RegExp(escapeRegExp(keyword),"i"))
+}
+
+function getCustomImportKeywordsFromInput(){
+    let input = document.getElementById("customImportKeywordsInput")
+    if(!input) return []
+
+    let seen = new Set()
+    return input.value
+        .split(/\n+/)
+        .map(normalizeImportKeyword)
+        .filter(Boolean)
+        .filter(keyword=>{
+            let key = keyword.toLowerCase()
+            if(seen.has(key)) return false
+            seen.add(key)
+            return true
+        })
+}
+
+function isImportRelevantEvent(title, location, description){
+    let haystack = [title, location, description].filter(Boolean).join(" ")
+    let matchesDefault = ABT_IMPORT_PATTERNS.some(pattern=>pattern.test(haystack))
+    let matchesCustom = customImportPatterns.some(pattern=>pattern.test(haystack))
+
+    return matchesDefault || matchesCustom
+}
+
+function openImportFilterEditor(){
+    let input = document.getElementById("customImportKeywordsInput")
+    if(input) input.value = customImportKeywords.join("\n")
+
+    document.getElementById("importFilterBackdrop")?.classList.remove("is-hidden")
+    input?.focus()
+}
+
+function closeImportFilterEditor(){
+    document.getElementById("importFilterBackdrop")?.classList.add("is-hidden")
+}
+
+function saveImportFilters(){
+    customImportKeywords = getCustomImportKeywordsFromInput()
+    rebuildCustomImportPatterns()
+    savePlannerState()
+    closeImportFilterEditor()
+}
+
+function clearImportFilters(){
+    let input = document.getElementById("customImportKeywordsInput")
+    if(input) input.value = ""
+}
+
 //--------------------------------
 // CREATE BLOCK
 //--------------------------------
@@ -308,9 +659,13 @@ function createBlock(y,h,details={}){
     let el=document.createElement("div")
     el.className="event"
     let day = details.day || currentDay
+    let start = details.start ?? (START_HOUR + pixelsToSnappedHours(y))
+    let dur = details.dur ?? pixelsToSnappedHours(h)
 
     el.dataset.y=y
     el.dataset.day=day
+    el.dataset.start=String(start)
+    el.dataset.dur=String(dur)
     el.dataset.title=details.title || "Block"
     el.dataset.location=details.location || ""
     el.dataset.description=details.description || ""
@@ -333,6 +688,11 @@ function createBlock(y,h,details={}){
         else if(e.shiftKey) selectBlock(el,"add")
         else selectBlock(el)
         update()
+    })
+    el.addEventListener("dblclick", e=>{
+        e.stopPropagation()
+        selectBlock(el)
+        openBlockEditor(el)
     })
 
     return el
@@ -370,6 +730,7 @@ function attachBlockPointerControls(el){
         let startY = parseFloat(el.dataset.y) || 0
         let startHeight = el.offsetHeight
         let minHeight = Math.max(40,hoursToPixels(SNAP))
+        let undoRecorded = false
 
         el.classList.add("is-moving")
         document.body.classList.add("dragging-block")
@@ -380,6 +741,11 @@ function attachBlockPointerControls(el){
             let dy = moveEvent.clientY - startClientY
             let y = startY
             let h = startHeight
+
+            if(!undoRecorded && Math.abs(dy) > 2){
+                pushUndoState()
+                undoRecorded = true
+            }
 
             if(mode === "drag"){
                 y = startY + dy
@@ -404,7 +770,7 @@ function attachBlockPointerControls(el){
             setBlockPosition(el,y)
             setBlockHeight(el,h)
             updateDayDropTarget(moveEvent.clientX,moveEvent.clientY)
-            update()
+            update({persist:false})
         }
 
         function onPointerUp(upEvent){
@@ -422,6 +788,9 @@ function attachBlockPointerControls(el){
 
             if(dayButton && dayButton.dataset.day !== currentDay){
                 moveBlockToDay(el,dayButton.dataset.day)
+            }else if(undoRecorded){
+                saveDay()
+                update()
             }
 
             draggedBlock = null
@@ -463,6 +832,7 @@ function moveBlockToDay(el,targetDay){
     let movingBlocks = selectedBlocks.has(el) ? getSelectedBlocks() : [el]
     let blocks = movingBlocks.map(getBlockData)
 
+    pushUndoState()
     movingBlocks.forEach(block=>block.remove())
     saveDay()
 
@@ -495,7 +865,19 @@ function cutSelectedBlock(){
         return
     }
 
+    pushUndoState()
     blockClipboard = blocks.map(getBlockData)
+    blocks.forEach(el=>el.remove())
+    clearSelection()
+    saveDay()
+    update()
+}
+
+function deleteSelectedBlocks(){
+    let blocks = getSelectedBlocks()
+    if(blocks.length===0) return
+
+    pushUndoState()
     blocks.forEach(el=>el.remove())
     clearSelection()
     saveDay()
@@ -508,6 +890,7 @@ function pasteBlock(){
         return
     }
 
+    pushUndoState()
     clearSelection()
 
     blockClipboard.forEach(item=>{
@@ -530,6 +913,115 @@ function selectAllBlocks(){
     document.querySelectorAll(".event").forEach(el=>selectBlock(el,"add"))
 }
 
+function editSelectedBlock(){
+    let block = selectedBlock || getSelectedBlocks()[0]
+    if(!block){
+        alert("Select a block first.")
+        return
+    }
+
+    openBlockEditor(block)
+}
+
+function hoursToTimeValue(hourValue){
+    let hour = Math.floor(hourValue)
+    let minute = Math.round((hourValue - hour) * 60)
+
+    if(minute === 60){
+        hour++
+        minute = 0
+    }
+
+    return String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0")
+}
+
+function timeValueToHours(value){
+    let [hour,minute] = String(value || "").split(":").map(Number)
+    if(!Number.isFinite(hour)) hour = START_HOUR
+    if(!Number.isFinite(minute)) minute = 0
+    return hour + (minute / 60)
+}
+
+function setDurationInputValue(value){
+    let input = document.getElementById("blockDurationInput")
+    let rounded = String(Math.round(value * 100) / 100)
+    if(!input) return
+
+    if(![...input.options].some(option=>option.value === rounded)){
+        let option = document.createElement("option")
+        option.value = rounded
+        option.innerText = value+" hours"
+        input.appendChild(option)
+    }
+
+    input.value = rounded
+}
+
+function openBlockEditor(el){
+    if(!el) return
+
+    let data = getBlockData(el)
+    editingBlock = el
+
+    document.getElementById("blockTitleInput").value = data.title || ""
+    document.getElementById("blockDayInput").value = data.day || currentDay
+    document.getElementById("blockStartInput").value = hoursToTimeValue(data.start ?? START_HOUR)
+    document.getElementById("blockLocationInput").value = data.location || ""
+    document.getElementById("blockDescriptionInput").value = data.description || ""
+    setDurationInputValue(data.dur || SNAP)
+
+    document.getElementById("blockEditorBackdrop")?.classList.remove("is-hidden")
+    document.getElementById("blockTitleInput")?.focus()
+}
+
+function closeBlockEditor(){
+    editingBlock = null
+    document.getElementById("blockEditorBackdrop")?.classList.add("is-hidden")
+}
+
+function saveEditedBlock(){
+    if(!editingBlock || !editingBlock.isConnected) return
+
+    pushUndoState()
+
+    let day = document.getElementById("blockDayInput").value || currentDay
+    let start = Math.max(START_HOUR,Math.min(START_HOUR + HOURS - SNAP,timeValueToHours(document.getElementById("blockStartInput").value)))
+    let dur = Math.max(SNAP,parseFloat(document.getElementById("blockDurationInput").value) || SNAP)
+    dur = Math.min(dur,START_HOUR + HOURS - start)
+
+    editingBlock.dataset.title = document.getElementById("blockTitleInput").value.trim() || "Block"
+    editingBlock.dataset.location = document.getElementById("blockLocationInput").value.trim()
+    editingBlock.dataset.description = document.getElementById("blockDescriptionInput").value.trim()
+    editingBlock.dataset.day = day
+    editingBlock.dataset.start = String(Math.round(start * 100) / 100)
+    editingBlock.dataset.dur = String(Math.round(dur * 100) / 100)
+
+    let y = hoursToPixels(start - START_HOUR)
+    let h = hoursToPixels(dur)
+    editingBlock.dataset.y = y
+    editingBlock.style.transform = `translateY(${y}px)`
+    editingBlock.style.height = h+"px"
+
+    ;(getDayColumn(day) || getDayColumn(currentDay)).appendChild(editingBlock)
+    currentDay = day
+    selectBlock(editingBlock)
+    closeBlockEditor()
+    saveDay()
+    update()
+    updateActiveDay()
+}
+
+function deleteEditedBlock(){
+    if(!editingBlock || !editingBlock.isConnected) return
+
+    pushUndoState()
+    editingBlock.remove()
+    closeBlockEditor()
+    clearSelection()
+    saveDay()
+    update()
+}
+
 //--------------------------------
 // SAVE / LOAD DAY
 //--------------------------------
@@ -537,7 +1029,7 @@ function saveDay(){
     saveAllDays()
 }
 
-function saveAllDays(){
+function saveAllDays(options={}){
     DAY_ORDER.forEach(day=>{
         weekData[day] = getSchedule(day).map(b=>({
             start:b.start,
@@ -547,6 +1039,11 @@ function saveAllDays(){
             description:b.description
         }))
     })
+
+    if(options.persist !== false){
+        syncSelectedWeekToMonth()
+        savePlannerState()
+    }
 }
 
 function loadDay(){
@@ -572,13 +1069,37 @@ function renderWeek(){
 // CONTROLS
 //--------------------------------
 function addBlock(){
+    pushUndoState()
     let block = createBlock(0,120,{day:currentDay})
     selectBlock(block)
     saveDay()
     update()
 }
 
+function addBlockAtTimelinePoint(event,openEditor=false){
+    let dayColumn = event.target.closest(".day-column") || getDayColumnAtPoint(event.clientX,event.clientY)
+    if(!dayColumn) return
+
+    let h = hoursToPixels(1)
+    let y = event.clientY - dayColumn.getBoundingClientRect().top
+    y = hoursToPixels(pixelsToSnappedHours(y))
+    y = Math.max(0,Math.min(y,timelineHeight()-h))
+
+    pushUndoState()
+    currentDay = dayColumn.dataset.day || currentDay
+    clearSelection()
+
+    let block = createBlock(y,h,{day:currentDay})
+    selectBlock(block)
+    saveDay()
+    update()
+    updateActiveDay()
+
+    if(openEditor) openBlockEditor(block)
+}
+
 function resetAll(){
+    pushUndoState()
     weekData[currentDay]=[]
     clearSelection()
     loadDay()
@@ -596,8 +1117,12 @@ function getSchedule(dayKey=null){
             let y=parseFloat(e.dataset.y)||0
             let h=e.offsetHeight
 
-            let start=START_HOUR+(y/height)*HOURS
-            let dur=(h/height)*HOURS
+            let start=e.dataset.start !== undefined
+                ? parseFloat(e.dataset.start)
+                : START_HOUR+(y/height)*HOURS
+            let dur=e.dataset.dur !== undefined
+                ? parseFloat(e.dataset.dur)
+                : (h/height)*HOURS
 
             return {
                 start:Math.round(start*100)/100,
@@ -612,12 +1137,49 @@ function getSchedule(dayKey=null){
         .sort((a,b)=>a.start-b.start)
 }
 
+function roundBillableHours(hours){
+    if(hours <= 0) return 0
+    return Math.ceil((hours - 0.0001) / BILLING_INCREMENT) * BILLING_INCREMENT
+}
+
+function getWorkedBreakAfter(schedule,index){
+    let block = schedule[index]
+    let next = schedule[index + 1]
+    if(!next) return 0
+
+    let gap = next.start - (block.start + block.dur)
+    return gap > 0 && gap <= WORK_BREAK_LIMIT_HOURS + 0.0001 ? gap : 0
+}
+
+function applyDailyOvertime(schedule){
+    schedule.forEach((block,index)=>{
+        block.workedBreakAfter = getWorkedBreakAfter(schedule,index)
+        block.billableDur = roundBillableHours(block.dur + block.workedBreakAfter)
+    })
+
+    let totalHours = schedule.reduce((total,block)=>total + block.billableDur,0)
+    let regularRemaining = totalHours > DAILY_OVERTIME_THRESHOLD ? DAILY_REGULAR_HOURS : totalHours
+
+    schedule.forEach(block=>{
+        block.regularHours = Math.min(block.billableDur,regularRemaining)
+        block.overtimeHours = Math.max(block.billableDur - block.regularHours,0)
+        regularRemaining = Math.max(regularRemaining - block.regularHours,0)
+    })
+
+    return schedule
+}
+
 function calculateBlockOvertime(block){
-    if(block.dur<=DAILY_OVERTIME_THRESHOLD) return 0
-    return Math.max(block.dur-DAILY_REGULAR_HOURS,0)
+    return block.overtimeHours ?? (
+        block.dur > DAILY_OVERTIME_THRESHOLD
+            ? Math.max(block.dur-DAILY_REGULAR_HOURS,0)
+            : 0
+    )
 }
 
 function calculateDailyPay(schedule){
+    applyDailyOvertime(schedule)
+
     return schedule.reduce((daily,b)=>{
         return daily + (calculateBlockOvertime(b)*OT_RATE)
     },0)
@@ -629,15 +1191,43 @@ function calculateWeeklyPay(){
     },0)
 }
 
+function markScheduleOverlaps(schedule){
+    let latestEndingBlock = null
+
+    schedule.forEach(block=>{
+        block.hasOverlap = false
+
+        if(latestEndingBlock && block.start < latestEndingBlock.start + latestEndingBlock.dur - 0.0001){
+            block.hasOverlap = true
+            latestEndingBlock.hasOverlap = true
+        }
+
+        if(!latestEndingBlock || block.start + block.dur > latestEndingBlock.start + latestEndingBlock.dur){
+            latestEndingBlock = block
+        }
+    })
+}
+
 //--------------------------------
 // OT UPDATE
 //--------------------------------
-function update(){
+function update(options={}){
     let activeDaily=0
+    let weeklyTotal=0
 
     DAY_ORDER.forEach(day=>{
         let schedule=getSchedule(day)
+        markScheduleOverlaps(schedule)
         let daily=calculateDailyPay(schedule)
+        weeklyTotal += daily
+
+        weekData[day] = schedule.map(b=>({
+            start:b.start,
+            dur:b.dur,
+            title:b.title,
+            location:b.location,
+            description:b.description
+        }))
 
         schedule.forEach(block=>{
             renderBlock(block)
@@ -649,8 +1239,12 @@ function update(){
     })
 
     document.getElementById("daily").innerText="$"+activeDaily.toFixed(0)
-    document.getElementById("weekly").innerText="$"+calculateWeeklyPay().toFixed(0)
-    saveAllDays()
+    document.getElementById("weekly").innerText="$"+weeklyTotal.toFixed(0)
+
+    if(options.persist !== false){
+        syncSelectedWeekToMonth()
+        savePlannerState()
+    }
 }
 
 //--------------------------------
@@ -660,15 +1254,18 @@ function renderBlock(block){
 
     const el=block.el
     el.innerHTML=""
+    el.dataset.dateKey = block.dateKey || ""
+    el.classList.toggle("overlap",Boolean(block.hasOverlap))
 
     let dur=block.dur
+    let billableDur=block.billableDur || dur
     let overtime=calculateBlockOvertime(block)
-    let regular=overtime>0 ? DAILY_REGULAR_HOURS : dur
+    let regular=block.regularHours ?? (overtime>0 ? DAILY_REGULAR_HOURS : dur)
 
     if(regular>0){
         let d=document.createElement("div")
         d.className="segment"
-        d.style.height=(regular/dur*100)+"%"
+        d.style.height=(regular/billableDur*100)+"%"
         d.style.background="linear-gradient(135deg, #0f766e 0%, #14b8a6 48%, #86efac 100%)"
         el.appendChild(d)
     }
@@ -676,11 +1273,34 @@ function renderBlock(block){
     if(overtime>0){
         let d=document.createElement("div")
         d.className="segment"
-        d.style.top=(regular/dur*100)+"%"
-        d.style.height=(overtime/dur*100)+"%"
+        d.style.top=(regular/billableDur*100)+"%"
+        d.style.height=(overtime/billableDur*100)+"%"
         d.style.background="linear-gradient(135deg, #be185d 0%, #ec4899 48%, #a78bfa 100%)"
         el.appendChild(d)
     }
+
+    let topHandle=document.createElement("div")
+    topHandle.className="resize-handle resize-handle-top"
+    topHandle.setAttribute("aria-hidden","true")
+    el.appendChild(topHandle)
+
+    let bottomHandle=document.createElement("div")
+    bottomHandle.className="resize-handle resize-handle-bottom"
+    bottomHandle.setAttribute("aria-hidden","true")
+    el.appendChild(bottomHandle)
+
+    let editButton=document.createElement("button")
+    editButton.type="button"
+    editButton.className="event-edit-button"
+    editButton.innerText="Edit"
+    editButton.setAttribute("aria-label","Edit block")
+    editButton.addEventListener("pointerdown",event=>event.stopPropagation())
+    editButton.addEventListener("click",event=>{
+        event.stopPropagation()
+        selectBlock(el)
+        openBlockEditor(el)
+    })
+    el.appendChild(editButton)
 
     let label=document.createElement("div")
     label.className="label"
@@ -694,6 +1314,13 @@ function renderBlock(block){
     time.className="event-meta"
     time.innerText=formatTime(block.start)+" - "+formatTime(block.start+block.dur)+" | $"+(overtime*OT_RATE).toFixed(0)
     label.appendChild(time)
+
+    if(block.hasOverlap){
+        let warning=document.createElement("div")
+        warning.className="overlap-warning"
+        warning.innerText="Overlaps another block"
+        label.appendChild(warning)
+    }
 
     if(block.location){
         let location=document.createElement("div")
@@ -712,6 +1339,7 @@ function renderBlock(block){
     el.title=[
         block.title || "Block",
         formatTime(block.start)+" - "+formatTime(block.start+block.dur),
+        block.hasOverlap ? "Overlaps another block" : "",
         block.location,
         block.description
     ].filter(Boolean).join("\n")
@@ -741,12 +1369,19 @@ timeline.addEventListener("click", e=>{
         return
     }
 
+    if(!e.target.closest(".event") && getDayColumnAtPoint(e.clientX,e.clientY)){
+        addBlockAtTimelinePoint(e,lastTimelinePointerType === "touch")
+        return
+    }
+
     if(!e.target.closest(".event")){
         selectBlock(null)
     }
 })
 
 timeline.addEventListener("pointerdown", e=>{
+    lastTimelinePointerType = e.pointerType || "mouse"
+
     if(e.button !== 0 || e.target.closest(".event")) return
     if(e.pointerType === "touch") return
 
@@ -815,29 +1450,125 @@ timeline.addEventListener("pointerdown", e=>{
     document.addEventListener("pointercancel",onPointerUp)
 })
 
-document.addEventListener("keydown", e=>{
-    let tag = document.activeElement?.tagName
-    if(tag === "INPUT" || tag === "TEXTAREA") return
+timeline.addEventListener("dblclick", e=>{
+    if(e.target.closest(".event")) return
 
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c"){
+    if(getDayColumnAtPoint(e.clientX,e.clientY)){
         e.preventDefault()
+    }
+})
+
+function isEditableShortcutTarget(target){
+    if(!target) return false
+    if(target.isContentEditable) return true
+    if(target.closest?.("[contenteditable='true'], [contenteditable='plaintext-only']")) return true
+
+    if(target.tagName === "TEXTAREA") return true
+
+    if(target.tagName === "INPUT"){
+        return !["button","checkbox","color","file","radio","range","reset","submit"].includes(String(target.type || "text").toLowerCase())
+    }
+
+    return false
+}
+
+function hasShortcutModifier(event){
+    return event.ctrlKey || event.metaKey || event.getModifierState?.("Control") || event.getModifierState?.("Meta")
+}
+
+function shortcutKey(event){
+    let key = String(event.key || "").toLowerCase()
+    let code = String(event.code || "").toLowerCase()
+    let keyCode = event.keyCode || event.which
+
+    if(key === "z" || code === "keyz" || keyCode === 90) return "z"
+    if(key === "a" || code === "keya" || keyCode === 65) return "a"
+    if(key === "c" || code === "keyc" || keyCode === 67) return "c"
+    if(key === "x" || code === "keyx" || keyCode === 88) return "x"
+    if(key === "v" || code === "keyv" || keyCode === 86) return "v"
+    if(key === "delete" || key === "del" || code === "delete" || keyCode === 46) return "delete"
+    if(key === "backspace" || code === "backspace" || keyCode === 8) return "backspace"
+
+    return key
+}
+
+function handleKeyboardShortcut(event){
+    if(event.defaultPrevented) return
+
+    if(event.key === "Escape"){
+        closeBlockEditor()
+        closeImportFilterEditor()
+        return
+    }
+
+    let target = event.target || document.activeElement
+    if(isEditableShortcutTarget(target)) return
+
+    let key = shortcutKey(event)
+    let shortcut = hasShortcutModifier(event) && !event.altKey
+
+    if(shortcut && key === "z" && !event.shiftKey){
+        event.preventDefault()
+        event.stopPropagation()
+        undoLastChange()
+        return
+    }
+
+    if(shortcut && key === "c"){
+        event.preventDefault()
+        event.stopPropagation()
         copySelectedBlock()
+        return
     }
 
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "x"){
-        e.preventDefault()
+    if(shortcut && key === "x"){
+        event.preventDefault()
+        event.stopPropagation()
         cutSelectedBlock()
+        return
     }
 
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v"){
-        e.preventDefault()
+    if(shortcut && key === "v"){
+        event.preventDefault()
+        event.stopPropagation()
         pasteBlock()
+        return
     }
 
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a"){
-        e.preventDefault()
+    if(shortcut && key === "a"){
+        event.preventDefault()
+        event.stopPropagation()
         selectAllBlocks()
+        return
     }
+
+    if(!hasShortcutModifier(event) && (key === "delete" || key === "backspace")){
+        let blocks = getSelectedBlocks()
+        if(blocks.length){
+            event.preventDefault()
+            event.stopPropagation()
+            deleteSelectedBlocks()
+        }
+    }
+}
+
+window.addEventListener("keydown", handleKeyboardShortcut, true)
+
+document.getElementById("blockEditorBackdrop")?.addEventListener("click", event=>{
+    if(event.target.id === "blockEditorBackdrop") closeBlockEditor()
+})
+
+document.getElementById("importFilterBackdrop")?.addEventListener("click", event=>{
+    if(event.target.id === "importFilterBackdrop") closeImportFilterEditor()
+})
+
+window.addEventListener("resize",()=>{
+    cachedTimelineHeight = null
+    clearTimeout(resizeUpdateTimer)
+    resizeUpdateTimer = setTimeout(()=>{
+        renderWeek()
+        update()
+    },150)
 })
 
 //--------------------------------
@@ -845,10 +1576,437 @@ document.addEventListener("keydown", e=>{
 //--------------------------------
 function updateActiveDay(){
     document.querySelectorAll(".day-heading, .day-column")
-        .forEach(b=>b.classList.remove("active","drop-target"))
+        .forEach(b=>b.classList.remove("active","drop-target","today","current-week"))
 
     document.querySelectorAll(`.day-heading[data-day="${currentDay}"], .day-column[data-day="${currentDay}"]`)
         .forEach(active=>active.classList.add("active"))
+
+    let today = new Date()
+    let currentWeekKey = dateKey(startOfPlannerWeek(today))
+
+    if(selectedWeekStartKey === currentWeekKey){
+        let todayKey = DAY_ORDER[(today.getDay() + 6) % 7]
+        document.querySelectorAll(`.day-heading[data-day="${todayKey}"], .day-column[data-day="${todayKey}"]`)
+            .forEach(active=>active.classList.add("today"))
+    }
+
+    if(selectedWeekStartKey === currentWeekKey){
+        document.querySelectorAll(".day-heading, .day-column")
+            .forEach(active=>active.classList.add("current-week"))
+    }
+}
+
+//--------------------------------
+// MONTH VIEW
+//--------------------------------
+function setPlannerView(view){
+    plannerView = view
+
+    document.querySelector(".timeline-panel")?.classList.toggle("is-hidden",view !== "week")
+    document.getElementById("monthPanel")?.classList.toggle("is-hidden",view !== "month")
+    document.getElementById("weekViewButton")?.classList.toggle("active-view",view === "week")
+    document.getElementById("monthViewButton")?.classList.toggle("active-view",view === "month")
+
+    updateWeekHeader()
+    updateImportSummary()
+    savePlannerState()
+    if(view === "month") renderMonthView()
+}
+
+function changeMonth(offset){
+    monthAnchorDate = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth() + offset,1)
+    selectedWeekStartKey = null
+    renderMonthView()
+    if(selectedWeekStartKey) loadWeekFromMonth(selectedWeekStartKey)
+    renderMonthView()
+}
+
+function goToCurrentWeek(){
+    saveDay()
+
+    let today = new Date()
+    let weekStart = startOfPlannerWeek(today)
+    selectedWeekStartKey = dateKey(weekStart)
+    monthAnchorDate = new Date(today.getFullYear(),today.getMonth(),1)
+
+    loadWeekFromMonth(selectedWeekStartKey)
+    currentDay = DAY_ORDER[(today.getDay() + 6) % 7]
+    updateActiveDay()
+    update()
+    renderMonthView()
+    setPlannerView("week")
+}
+
+function dateKey(date){
+    return date.getFullYear()+"-"+
+        String(date.getMonth()+1).padStart(2,"0")+"-"+
+        String(date.getDate()).padStart(2,"0")
+}
+
+function sameDate(a,b){
+    return a.getFullYear() === b.getFullYear() &&
+           a.getMonth() === b.getMonth() &&
+           a.getDate() === b.getDate()
+}
+
+function monthName(date){
+    return date.toLocaleDateString(undefined,{month:"long",year:"numeric"})
+}
+
+function addDays(date,days){
+    let copy = new Date(date)
+    copy.setDate(copy.getDate() + days)
+    return copy
+}
+
+function startOfPlannerWeek(date){
+    let start = new Date(date.getFullYear(),date.getMonth(),date.getDate())
+    let mondayOffset = (start.getDay() + 6) % 7
+    start.setDate(start.getDate() - mondayOffset)
+    return start
+}
+
+function weekRangeLabel(start){
+    let end = addDays(start,6)
+    let startLabel = start.toLocaleDateString(undefined,{month:"short",day:"numeric"})
+    let endLabel = end.toLocaleDateString(undefined,{month:"short",day:"numeric"})
+    return startLabel+" - "+endLabel
+}
+
+function weekDateLabel(start,index){
+    return addDays(start,index).toLocaleDateString(undefined,{month:"short",day:"numeric"})
+}
+
+function emptyWeekData(){
+    return {mon:[],tue:[],wed:[],thu:[],fri:[],sat:[],sun:[]}
+}
+
+function populateWeekSelector(){
+    let selector = document.getElementById("weekSelector")
+    if(!selector) return
+
+    selector.innerHTML = ""
+
+    let first = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth(),1)
+    let last = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth()+1,0)
+    let cursor = startOfPlannerWeek(first)
+    let lastWeek = startOfPlannerWeek(last)
+    let availableKeys = []
+
+    while(cursor <= lastWeek){
+        let key = dateKey(cursor)
+        availableKeys.push(key)
+
+        let option = document.createElement("option")
+        option.value = key
+        option.innerText = weekRangeLabel(cursor)
+        selector.appendChild(option)
+
+        cursor = addDays(cursor,7)
+    }
+
+    if(!availableKeys.length) return
+
+    if(!selectedWeekStartKey || !availableKeys.includes(selectedWeekStartKey)){
+        selectedWeekStartKey = availableKeys.find(key=>{
+            let weekStart = parseDateKey(key)
+            return DAY_ORDER.some((day,index)=>monthEvents[dateKey(addDays(weekStart,index))]?.length)
+        }) || availableKeys[0]
+    }
+
+    selector.value = selectedWeekStartKey
+}
+
+function parseDateKey(key){
+    let [year,month,day] = key.split("-").map(Number)
+    return new Date(year,month - 1,day)
+}
+
+function updateWeekHeader(){
+    let title = document.getElementById("weekTitle")
+    let range = document.getElementById("weekRangeText")
+    if(!title || !range) return
+
+    title.innerText = selectedWeekStartKey ? "Weekly calls: "+weekRangeLabel(parseDateKey(selectedWeekStartKey)) : "Weekly calls"
+    range.innerText = "10:00 AM - 11:00 PM"
+}
+
+function updateImportSummary(){
+    let summary = document.getElementById("importSummary")
+    if(!summary) return
+
+    summary.innerText = importSummaryText
+    summary.classList.toggle("is-hidden",!importSummaryText)
+}
+
+function syncSelectedWeekToMonth(){
+    if(!selectedWeekStartKey) return
+
+    let start = parseDateKey(selectedWeekStartKey)
+
+    DAY_ORDER.forEach((day,index)=>{
+        let key = dateKey(addDays(start,index))
+        let items = (weekData[day] || []).map(item=>({
+            start:item.start,
+            dur:item.dur,
+            title:item.title,
+            location:item.location,
+            description:item.description
+        }))
+
+        if(items.length) monthEvents[key] = items
+        else delete monthEvents[key]
+    })
+}
+
+function savePlannerState(){
+    if(isRestoringState) return
+
+    try{
+        localStorage.setItem(STORAGE_KEY,JSON.stringify({
+            weekData,
+            monthEvents,
+            currentDay,
+            plannerView,
+            selectedWeekStartKey,
+            importSummaryText,
+            importedEventCount,
+            skippedNonAbtCount,
+            customImportKeywords,
+            exportScope:getExportScope(),
+            monthAnchorDate: dateKey(monthAnchorDate)
+        }))
+    }catch(error){
+        console.warn("Planner state could not be saved.",error)
+    }
+}
+
+function restorePlannerState(){
+    let raw = null
+
+    try{
+        raw = localStorage.getItem(STORAGE_KEY)
+    }catch(error){
+        return
+    }
+
+    if(!raw) return
+
+    try{
+        let state = JSON.parse(raw)
+        isRestoringState = true
+
+        if(state.weekData) weekData = state.weekData
+        if(state.monthEvents) monthEvents = state.monthEvents
+        if(state.currentDay) currentDay = state.currentDay
+        if(state.selectedWeekStartKey) selectedWeekStartKey = state.selectedWeekStartKey
+        if(state.importSummaryText) importSummaryText = state.importSummaryText
+        if(state.importedEventCount) importedEventCount = state.importedEventCount
+        if(state.skippedNonAbtCount) skippedNonAbtCount = state.skippedNonAbtCount
+        if(Array.isArray(state.customImportKeywords)){
+            customImportKeywords = state.customImportKeywords.map(normalizeImportKeyword).filter(Boolean)
+            rebuildCustomImportPatterns()
+        }
+        if(state.monthAnchorDate) monthAnchorDate = parseDateKey(state.monthAnchorDate)
+        if(state.exportScope && document.getElementById("exportScope")){
+            document.getElementById("exportScope").value = state.exportScope
+        }
+
+        loadDay()
+        updateActiveDay()
+        setPlannerView(state.plannerView || "week")
+        updateWeekHeader()
+        updateImportSummary()
+    }catch(error){
+        console.warn("Planner state could not be restored.",error)
+    }finally{
+        isRestoringState = false
+    }
+}
+
+function selectWeekFromMonth(key){
+    if(!key) return
+
+    selectedWeekStartKey = key
+    loadWeekFromMonth(key)
+    renderMonthView()
+    setPlannerView("week")
+}
+
+function loadWeekFromMonth(key){
+    let start = parseDateKey(key)
+    let selectedWeekData = emptyWeekData()
+
+    DAY_ORDER.forEach((day,index)=>{
+        selectedWeekData[day] = (monthEvents[dateKey(addDays(start,index))] || [])
+            .map(event=>({
+                start:event.start,
+                dur:event.dur,
+                title:event.title,
+                location:event.location,
+                description:event.description
+            }))
+    })
+
+    weekData = selectedWeekData
+    currentDay = "mon"
+    loadDay()
+    updateActiveDay()
+    updateWeekHeader()
+    if(importedEventCount) importSummaryText = buildImportSummary(importedEventCount)
+    updateImportSummary()
+    savePlannerState()
+}
+
+function isDateInSelectedWeek(date){
+    if(!selectedWeekStartKey) return false
+
+    let start = parseDateKey(selectedWeekStartKey)
+    let end = addDays(start,6)
+    return date >= start && date <= end
+}
+
+function cloneScheduleForPay(items){
+    return items
+        .map(item=>({
+            start:item.start,
+            dur:item.dur,
+            title:item.title,
+            location:item.location,
+            description:item.description
+        }))
+        .sort((a,b)=>a.start-b.start)
+}
+
+function calculateMonthDayPay(items){
+    return calculateDailyPay(cloneScheduleForPay(items))
+}
+
+function buildImportSummary(importedCount=importedEventCount){
+    let eventDates = Object.keys(monthEvents).sort()
+    let weekKeys = new Set(eventDates.map(key=>dateKey(startOfPlannerWeek(parseDateKey(key)))))
+    let selected = selectedWeekStartKey ? weekRangeLabel(parseDateKey(selectedWeekStartKey)) : "the selected week"
+    let skipped = skippedNonAbtCount
+        ? " Skipped "+skippedNonAbtCount+" non-ABT event"+(skippedNonAbtCount===1 ? "" : "s")+"."
+        : ""
+
+    return "Imported "+importedCount+" timed event"+(importedCount===1 ? "" : "s")+
+        " across "+weekKeys.size+" week"+(weekKeys.size===1 ? "" : "s")+
+        ". Showing "+selected+"."+skipped
+}
+
+function getExportScope(){
+    return document.getElementById("exportScope")?.value || "week"
+}
+
+function getMonthExportBlocks(){
+    return Object.keys(monthEvents)
+        .sort()
+        .flatMap(key=>{
+            let date = parseDateKey(key)
+            return (monthEvents[key] || []).map(block=>({date,...block}))
+        })
+}
+
+function getSelectedWeekExportBlocks(){
+    if(selectedWeekStartKey){
+        let start = parseDateKey(selectedWeekStartKey)
+        return DAY_ORDER.flatMap((day,index)=>{
+            let date = addDays(start,index)
+            return (weekData[day] || []).map(block=>({date,...block}))
+        })
+    }
+
+    const baseMonday = new Date(2026,0,5)
+    return DAY_ORDER.flatMap((day,index)=>{
+        let date = addDays(baseMonday,index)
+        return (weekData[day] || []).map(block=>({date,...block}))
+    })
+}
+
+function renderMonthView(){
+    let grid = document.getElementById("monthGrid")
+    let title = document.getElementById("monthTitle")
+    if(!grid || !title) return
+
+    grid.innerHTML = ""
+    title.innerText = monthName(monthAnchorDate)
+    populateWeekSelector()
+
+    let first = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth(),1)
+    let start = new Date(first)
+    start.setDate(first.getDate() - first.getDay())
+
+    for(let week=0; week<6; week++){
+        let weekTotal = 0
+
+        for(let day=0; day<7; day++){
+            let cellDate = new Date(start)
+            cellDate.setDate(start.getDate() + (week * 7) + day)
+
+            let key = dateKey(cellDate)
+            let events = (monthEvents[key] || []).slice().sort((a,b)=>a.start-b.start)
+            let dailyPay = calculateMonthDayPay(events)
+            weekTotal += dailyPay
+
+            let cell = document.createElement("div")
+            cell.className = "month-day"
+            if(cellDate.getMonth() !== monthAnchorDate.getMonth()) cell.classList.add("outside-month")
+            if(events.length) cell.classList.add("has-events")
+            if(sameDate(cellDate,new Date())) cell.classList.add("today")
+            if(dateKey(startOfPlannerWeek(cellDate)) === dateKey(startOfPlannerWeek(new Date()))) cell.classList.add("current-week")
+            if(isDateInSelectedWeek(cellDate)) cell.classList.add("selected-week")
+            cell.tabIndex = 0
+            cell.setAttribute("role","button")
+            cell.setAttribute("aria-label","Open week of "+weekRangeLabel(startOfPlannerWeek(cellDate)))
+            cell.addEventListener("click",()=>{
+                selectWeekFromMonth(dateKey(startOfPlannerWeek(cellDate)))
+            })
+            cell.addEventListener("keydown",event=>{
+                if(event.key === "Enter" || event.key === " "){
+                    event.preventDefault()
+                    selectWeekFromMonth(dateKey(startOfPlannerWeek(cellDate)))
+                }
+            })
+
+            let head = document.createElement("div")
+            head.className = "month-day-head"
+
+            let dateLabel = document.createElement("span")
+            dateLabel.className = "month-date"
+            dateLabel.innerText = cellDate.getDate()
+            head.appendChild(dateLabel)
+
+            let total = document.createElement("span")
+            total.className = "month-total"
+            total.innerText = "$"+dailyPay.toFixed(0)
+            head.appendChild(total)
+
+            cell.appendChild(head)
+
+            events.forEach(event=>{
+                let eventEl = document.createElement("div")
+                eventEl.className = "month-event"
+
+                let eventTitle = document.createElement("strong")
+                eventTitle.innerText = event.title || "Imported Event"
+                eventEl.appendChild(eventTitle)
+
+                let eventTime = document.createElement("span")
+                eventTime.innerText = formatTime(event.start)+" - "+formatTime(event.start + event.dur)
+                eventEl.appendChild(eventTime)
+
+                cell.appendChild(eventEl)
+            })
+
+            grid.appendChild(cell)
+        }
+
+        let weekTotalEl = document.createElement("div")
+        weekTotalEl.className = "month-week-total"
+        weekTotalEl.innerText = "Week total: $"+weekTotal.toFixed(0)
+        grid.appendChild(weekTotalEl)
+    }
 }
 
 //--------------------------------
@@ -867,6 +2025,7 @@ function importICS(){
     reader.onload = function(e){
 
         let importedWeekData = {mon:[],tue:[],wed:[],thu:[],fri:[],sat:[],sun:[]}
+        let importedMonthEvents = {}
         let extension = (file.name.split(".").pop() || "").toLowerCase()
 
         let text = String(e.target.result || "")
@@ -876,16 +2035,46 @@ function importICS(){
 
         const days = ["sun","mon","tue","wed","thu","fri","sat"]
         let importedCount = 0
+        let skippedNonAbt = 0
         let firstImportedDay = null
+        let firstImportedDate = null
 
-        function getField(eventText, fieldName){
+        function getProperty(eventText, fieldName){
             let line = eventText
                 .split("\n")
                 .find(l => l.toUpperCase().startsWith(fieldName + ":") ||
                            l.toUpperCase().startsWith(fieldName + ";"))
 
             if(!line || !line.includes(":")) return null
-            return unescapeIcsText(line.slice(line.indexOf(":") + 1).trim())
+
+            let head = line.slice(0,line.indexOf(":"))
+            let rawValue = line.slice(line.indexOf(":") + 1).trim()
+            let parts = head.split(";")
+            let params = parts.slice(1).reduce((map,part)=>{
+                let [key,...valueParts] = part.split("=")
+                if(key) map[key.toUpperCase()] = valueParts.join("=").replace(/^"|"$/g,"")
+                return map
+            },{})
+
+            return {
+                name: parts[0].toUpperCase(),
+                params,
+                rawValue,
+                value: unescapeIcsText(rawValue)
+            }
+        }
+
+        function getProperties(eventText, fieldName){
+            return eventText
+                .split("\n")
+                .filter(l => l.toUpperCase().startsWith(fieldName + ":") ||
+                             l.toUpperCase().startsWith(fieldName + ";"))
+                .map(line => getProperty(line, fieldName))
+                .filter(Boolean)
+        }
+
+        function getField(eventText, fieldName){
+            return getProperty(eventText, fieldName)?.value || null
         }
 
         function unescapeIcsText(value){
@@ -898,8 +2087,25 @@ function importICS(){
                 .trim()
         }
 
-        function parseIcsDate(value){
+        function isAbtRelevantEvent(title, location, description){
+            return isImportRelevantEvent(title, location, description)
+        }
+
+        function parseIcsDateInfo(propOrValue){
+            let value = typeof propOrValue === "string" ? propOrValue : propOrValue?.rawValue
+            let params = typeof propOrValue === "string" ? {} : (propOrValue?.params || {})
             if(!value) return null
+
+            let dateOnly = value.match(/^(\d{4})(\d{2})(\d{2})$/)
+            if(dateOnly || params.VALUE === "DATE"){
+                let match = dateOnly || value.match(/^(\d{4})(\d{2})(\d{2})/)
+                if(!match) return null
+
+                return {
+                    date: new Date(Number(match[1]),Number(match[2]) - 1,Number(match[3])),
+                    allDay: true
+                }
+            }
 
             let match = value.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?)?(Z)?$/)
             if(!match || !match[4]) return null
@@ -907,24 +2113,70 @@ function importICS(){
             let [, year, month, day, hour, minute, second, isUtc] = match
 
             if(isUtc){
-                return new Date(Date.UTC(
+                return {
+                    date: new Date(Date.UTC(
+                        Number(year),
+                        Number(month) - 1,
+                        Number(day),
+                        Number(hour),
+                        Number(minute),
+                        Number(second || 0)
+                    )),
+                    allDay: false
+                }
+            }
+
+            return {
+                date: new Date(
                     Number(year),
                     Number(month) - 1,
                     Number(day),
                     Number(hour),
                     Number(minute),
                     Number(second || 0)
-                ))
+                ),
+                allDay: false
             }
+        }
 
-            return new Date(
-                Number(year),
-                Number(month) - 1,
-                Number(day),
-                Number(hour),
-                Number(minute),
-                Number(second || 0)
+        function parseIcsDate(value){
+            return parseIcsDateInfo(value)?.date || null
+        }
+
+        function addIcsDuration(startDate,value){
+            if(!startDate || !value) return null
+
+            let match = String(value).match(/^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i)
+            if(!match) return null
+
+            let [,weeks,days,hours,minutes,seconds] = match
+            let date = new Date(startDate)
+            date.setSeconds(date.getSeconds() +
+                (Number(weeks || 0) * 7 * 24 * 60 * 60) +
+                (Number(days || 0) * 24 * 60 * 60) +
+                (Number(hours || 0) * 60 * 60) +
+                (Number(minutes || 0) * 60) +
+                Number(seconds || 0)
             )
+
+            return date
+        }
+
+        function propertyDateList(properties){
+            return properties.flatMap(prop=>{
+                return prop.rawValue
+                    .split(",")
+                    .map(value=>parseIcsDateInfo({...prop,rawValue:value.trim()}))
+                    .filter(info=>info?.date)
+            })
+        }
+
+        function dateTimeExclusionKey(date){
+            return date.getFullYear()+"-"+
+                String(date.getMonth()+1).padStart(2,"0")+"-"+
+                String(date.getDate()).padStart(2,"0")+"T"+
+                String(date.getHours()).padStart(2,"0")+":"+
+                String(date.getMinutes()).padStart(2,"0")
         }
 
         function parseRRule(value){
@@ -981,12 +2233,34 @@ function importICS(){
             return new Date(date.getFullYear(), date.getMonth(), date.getDate())
         }
 
-        function addImportedEvent(dayKey, start, end, title, location, description){
+        function addMonthEvent(eventDate, start, dur, title, location, description){
+            if(!eventDate) return
+
+            let key = dateKey(eventDate)
+            if(!importedMonthEvents[key]) importedMonthEvents[key] = []
+
+            importedMonthEvents[key].push({
+                start: Math.round(start * 100) / 100,
+                dur: Math.round(dur * 100) / 100,
+                title,
+                location,
+                description
+            })
+
+            if(!firstImportedDate) firstImportedDate = new Date(eventDate.getFullYear(),eventDate.getMonth(),eventDate.getDate())
+        }
+
+        function addImportedEvent(dayKey, start, end, title, location, description, eventDate=null){
             let visibleStart = Math.max(start, START_HOUR)
             let visibleEnd = Math.min(end, START_HOUR + HOURS)
             let dur = visibleEnd - visibleStart
 
             if(dur <= 0) return false
+
+            if(!isAbtRelevantEvent(title, location, description)){
+                skippedNonAbt++
+                return false
+            }
 
             importedWeekData[dayKey].push({
                 start: Math.round(visibleStart * 100) / 100,
@@ -998,6 +2272,7 @@ function importICS(){
 
             importedCount++
             if(!firstImportedDay) firstImportedDay = dayKey
+            addMonthEvent(eventDate,visibleStart,dur,title,location,description)
 
             return true
         }
@@ -1020,7 +2295,7 @@ function importICS(){
                     continue
                 }
 
-                addImportedEvent(dayKey, start, end, title, location, description)
+                addImportedEvent(dayKey, start, end, title, location, description, new Date(cursor))
                 cursor.setDate(cursor.getDate() + 1)
             }
         }
@@ -1157,30 +2432,61 @@ function importICS(){
             importCsvEvents(text)
 
             if(importedCount === 0){
-                alert("No timed events were found in that CSV file between 10:00 and 23:00.")
+                alert("No timed ABT events were found in that CSV file between 10:00 and 23:00.")
                 return
             }
 
             weekData = importedWeekData
-            currentDay = firstImportedDay
-            loadDay()
-            updateActiveDay()
+            monthEvents = importedMonthEvents
+            if(firstImportedDate){
+                monthAnchorDate = new Date(firstImportedDate.getFullYear(),firstImportedDate.getMonth(),1)
+                selectedWeekStartKey = dateKey(startOfPlannerWeek(firstImportedDate))
+                loadWeekFromMonth(selectedWeekStartKey)
+            }else{
+                currentDay = firstImportedDay
+                loadDay()
+                updateActiveDay()
+            }
+            importedEventCount = importedCount
+            skippedNonAbtCount = skippedNonAbt
+            importSummaryText = buildImportSummary()
+            setPlannerView("month")
             return
         }
 
         const events = text.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g) || []
+        const parsedEvents = events
+            .map(ev => {
+                let startInfo = parseIcsDateInfo(getProperty(ev, "DTSTART"))
+                let endInfo = parseIcsDateInfo(getProperty(ev, "DTEND"))
+                let durationValue = getProperty(ev, "DURATION")?.rawValue
+                let endDate = endInfo?.date ||
+                    addIcsDuration(startInfo?.date,durationValue) ||
+                    (startInfo?.allDay ? addDays(startInfo.date,1) : null)
 
-        events.forEach(ev => {
-            let startDate = parseIcsDate(getField(ev, "DTSTART"))
-            let endDate = parseIcsDate(getField(ev, "DTEND"))
-            let title = getField(ev, "SUMMARY") || "Imported Event"
-            let location = getField(ev, "LOCATION") || ""
-            let description = getField(ev, "DESCRIPTION") || ""
-            let rule = parseRRule(getField(ev, "RRULE"))
+                return {
+                    startDate: startInfo?.date || null,
+                    endDate,
+                    allDay: Boolean(startInfo?.allDay || endInfo?.allDay),
+                    title: getField(ev, "SUMMARY") || "Imported Event",
+                    location: getField(ev, "LOCATION") || "",
+                    description: getField(ev, "DESCRIPTION") || "",
+                    rule: parseRRule(getField(ev, "RRULE")),
+                    exdates: propertyDateList(getProperties(ev, "EXDATE")),
+                    rdates: propertyDateList(getProperties(ev, "RDATE"))
+                }
+            })
+            .filter(event => event.startDate && event.endDate && event.endDate > event.startDate && !event.allDay)
 
-            if(!startDate || !endDate || endDate <= startDate) return
+        let importRangeAnchor = parsedEvents.find(event=>!event.rule || event.rule.FREQ !== "WEEKLY")?.startDate ||
+            parsedEvents[0]?.startDate ||
+            null
 
-            if(rule && rule.FREQ === "WEEKLY"){
+        parsedEvents.forEach(event => {
+            let { startDate, endDate, title, location, description, rule, exdates, rdates } = event
+            let excluded = new Set(exdates.map(info=>dateTimeExclusionKey(info.date)))
+
+            if(rule && ["DAILY","WEEKLY","MONTHLY"].includes(rule.FREQ)){
                 let start = startDate.getHours() + (startDate.getMinutes() / 60)
                 let end = endDate.getHours() + (endDate.getMinutes() / 60)
 
@@ -1188,23 +2494,101 @@ function importICS(){
                     end = 24
                 }
 
-                getRecurringWeekdays(rule, startDate).forEach(dayKey=>{
-                    addImportedEvent(dayKey, start, end, title, location, description)
-                })
+                let weekdays = rule.FREQ === "WEEKLY" ? getRecurringWeekdays(rule, startDate) : days
+                let monthDays = rule.BYMONTHDAY
+                    ? rule.BYMONTHDAY.split(",").map(Number).filter(Boolean)
+                    : [startDate.getDate()]
+                let rangeAnchor = importRangeAnchor || startDate
+                let rangeStart = new Date(rangeAnchor.getFullYear(),rangeAnchor.getMonth(),1)
+                let rangeEnd = new Date(rangeAnchor.getFullYear(),rangeAnchor.getMonth()+1,0)
+                let startLimit = startOfDay(startDate)
+                let untilDate = rule.UNTIL ? parseIcsDate(rule.UNTIL) : null
+                let countLimit = rule.COUNT ? Number(rule.COUNT) : null
+                let interval = Math.max(Number(rule.INTERVAL || 1),1)
+                let added = 0
+                let cursor = startOfDay(rangeStart)
+
+                if(untilDate && untilDate < rangeEnd) rangeEnd = untilDate
+
+                function daysBetween(a,b){
+                    return Math.floor((startOfDay(a) - startOfDay(b)) / (1000 * 60 * 60 * 24))
+                }
+
+                function monthsBetween(a,b){
+                    return (a.getFullYear() - b.getFullYear()) * 12 + (a.getMonth() - b.getMonth())
+                }
+
+                function matchesRecurrenceDate(date){
+                    if(date < startLimit) return false
+
+                    if(rule.FREQ === "DAILY"){
+                        return daysBetween(date,startDate) % interval === 0
+                    }
+
+                    if(rule.FREQ === "WEEKLY"){
+                        let weeks = Math.floor(daysBetween(date,startDate) / 7)
+                        return weeks % interval === 0 && weekdays.includes(days[date.getDay()])
+                    }
+
+                    if(rule.FREQ === "MONTHLY"){
+                        return monthsBetween(date,startDate) % interval === 0 && monthDays.includes(date.getDate())
+                    }
+
+                    return false
+                }
+
+                while(cursor <= rangeEnd){
+                    let dayKey = days[cursor.getDay()]
+
+                    if(matchesRecurrenceDate(cursor)){
+                        let occurrenceDate = new Date(cursor)
+                        occurrenceDate.setHours(startDate.getHours(),startDate.getMinutes(),0,0)
+
+                        if(!excluded.has(dateTimeExclusionKey(occurrenceDate))){
+                            addImportedEvent(dayKey, start, end, title, location, description, new Date(cursor))
+                        }
+                        added++
+                        if(countLimit && added >= countLimit) break
+                    }
+
+                    cursor.setDate(cursor.getDate() + 1)
+                }
             }else{
-                addImportedEventRange(startDate, endDate, title, location, description)
+                if(!excluded.has(dateTimeExclusionKey(startDate))){
+                    addImportedEventRange(startDate, endDate, title, location, description)
+                }
             }
+
+            rdates.forEach(info=>{
+                if(info.allDay || excluded.has(dateTimeExclusionKey(info.date))) return
+
+                let duration = (endDate - startDate) / (1000 * 60 * 60)
+                let rdateEnd = new Date(info.date)
+                rdateEnd.setMinutes(rdateEnd.getMinutes() + Math.round(duration * 60))
+                addImportedEventRange(info.date, rdateEnd, title, location, description)
+            })
         })
 
         if(importedCount === 0){
-            alert("No timed events were found in that .ics file between 10:00 and 23:00.")
+            alert("No timed ABT events were found in that calendar file between 10:00 and 23:00.")
             return
         }
 
         weekData = importedWeekData
-        currentDay = firstImportedDay
-        loadDay()
-        updateActiveDay()
+        monthEvents = importedMonthEvents
+        if(firstImportedDate){
+            monthAnchorDate = new Date(firstImportedDate.getFullYear(),firstImportedDate.getMonth(),1)
+            selectedWeekStartKey = dateKey(startOfPlannerWeek(firstImportedDate))
+            loadWeekFromMonth(selectedWeekStartKey)
+        }else{
+            currentDay = firstImportedDay
+            loadDay()
+            updateActiveDay()
+        }
+        importedEventCount = importedCount
+        skippedNonAbtCount = skippedNonAbt
+        importSummaryText = buildImportSummary()
+        setPlannerView("month")
     }
 
     reader.onerror = function(){
@@ -1221,8 +2605,13 @@ function exportICS(){
 
     saveDay()
 
-    const dayOrder = ["mon","tue","wed","thu","fri","sat","sun"]
-    const baseMonday = new Date(2026,0,5)
+    let exportBlocks = getExportScope()==="month" ? getMonthExportBlocks() : getSelectedWeekExportBlocks()
+
+    if(exportBlocks.length===0){
+        alert("There are no events to export.")
+        return
+    }
+
     let dtstamp = formatUtcIcsDate(new Date())
     let lines=[
         "BEGIN:VCALENDAR",
@@ -1234,37 +2623,64 @@ function exportICS(){
     ]
     let eventIndex = 0
 
-    dayOrder.forEach((dayKey,dayIndex)=>{
-        weekData[dayKey].forEach(block=>{
-            let startDate = dateForBlock(baseMonday,dayIndex,block.start)
-            let endDate = dateForBlock(baseMonday,dayIndex,block.start + block.dur)
+    exportBlocks.forEach(block=>{
+        let startDate = dateWithHour(block.date,block.start)
+        let endDate = dateWithHour(block.date,block.start + block.dur)
 
-            lines.push(
-                "BEGIN:VEVENT",
-                "UID:"+Date.now()+"-"+eventIndex+"@abt-overtime-planner",
-                "DTSTAMP:"+dtstamp,
-                "SUMMARY:"+escapeIcsText(block.title || "Block"),
-                "DTSTART:"+formatLocalIcsDate(startDate),
-                "DTEND:"+formatLocalIcsDate(endDate)
-            )
+        lines.push(
+            "BEGIN:VEVENT",
+            "UID:"+Date.now()+"-"+eventIndex+"@abt-overtime-planner",
+            "DTSTAMP:"+dtstamp,
+            "SUMMARY:"+escapeIcsText(block.title || "Block"),
+            "DTSTART:"+formatLocalIcsDate(startDate),
+            "DTEND:"+formatLocalIcsDate(endDate)
+        )
 
-            if(block.location) lines.push("LOCATION:"+escapeIcsText(block.location))
-            if(block.description) lines.push("DESCRIPTION:"+escapeIcsText(block.description))
+        if(block.location) lines.push("LOCATION:"+escapeIcsText(block.location))
+        if(block.description) lines.push("DESCRIPTION:"+escapeIcsText(block.description))
 
-            lines.push("END:VEVENT")
-            eventIndex++
-        })
+        lines.push("END:VEVENT")
+        eventIndex++
     })
 
     lines.push("END:VCALENDAR")
 
-    let ics=lines.join("\r\n")+"\r\n"
+    let ics=lines.map(foldIcsLine).join("\r\n")+"\r\n"
 
     let blob=new Blob([ics],{type:"text/calendar"})
     let link=document.createElement("a")
     link.href=URL.createObjectURL(blob)
-    link.download="abt-overtime-planner.ics"
+    link.download=getExportScope()==="month" ? "abt-overtime-planner-month.ics" : "abt-overtime-planner-week.ics"
     link.click()
+}
+
+function dateWithHour(baseDate,hourValue){
+    let dayOffset = Math.floor(hourValue / 24)
+    let hour = Math.floor(hourValue % 24)
+    let minute = Math.round((hourValue - Math.floor(hourValue)) * 60)
+    let date = new Date(baseDate.getFullYear(),baseDate.getMonth(),baseDate.getDate())
+
+    if(minute === 60){
+        hour++
+        minute = 0
+    }
+
+    date.setDate(date.getDate() + dayOffset)
+    date.setHours(hour,minute,0,0)
+
+    return date
+}
+
+function foldIcsLine(line){
+    let value = String(line || "")
+    let result = ""
+
+    while(value.length > 75){
+        result += value.slice(0,75)+"\r\n "
+        value = value.slice(75)
+    }
+
+    return result + value
 }
 
 function dateForBlock(baseMonday,dayIndex,hourValue){
@@ -1319,6 +2735,39 @@ function exportPDF(){
 
     let y=20
     saveDay()
+    let scope = getExportScope()
+
+    if(scope === "month"){
+        doc.text("ABT Overtime Planner - "+monthName(monthAnchorDate),10,y)
+        y+=10
+
+        Object.keys(monthEvents).sort().forEach(key=>{
+            let date = parseDateKey(key)
+            let events = monthEvents[key] || []
+            if(events.length===0) return
+
+            doc.text(date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}),10,y)
+            y+=8
+
+            events.slice().sort((a,b)=>a.start-b.start).forEach(b=>{
+                doc.text(`${b.title || "Block"} ${formatTime(b.start)} - ${formatTime(b.start+b.dur)}`,14,y)
+                y+=8
+                if(b.location){
+                    doc.text(`Location: ${b.location}`,14,y)
+                    y+=8
+                }
+
+                if(y>270){
+                    doc.addPage()
+                    y=20
+                }
+            })
+            y+=2
+        })
+
+        doc.save("planner-month.pdf")
+        return
+    }
 
     DAY_ORDER.forEach(day=>{
         doc.text(DAY_LABELS[day],10,y)
@@ -1342,6 +2791,10 @@ function exportPDF(){
 // INIT
 buildTimeline()
 updateActiveDay()
+restorePlannerState()
+updateWeekHeader()
+updateImportSummary()
+updateUndoButton()
 </script>
 
 </body>
