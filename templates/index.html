@@ -6,8 +6,8 @@
     <title>ABT Overtime Planner</title>
 
     <!-- ✅ CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=41">
-    <link rel="stylesheet" href="../static/style.css?v=41">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=44">
+    <link rel="stylesheet" href="../static/style.css?v=44">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -68,6 +68,20 @@
                 </label>
                 <button type="button" class="secondary" onclick="exportICS()">📤 Export Calendar</button>
                 <button type="button" class="secondary" onclick="exportPDF()">🧾 PDF</button>
+            </div>
+
+            <div class="tool-group save-tools">
+                <button type="button" class="primary" onclick="saveProject()">Save</button>
+                <button type="button" class="secondary" onclick="saveProjectAs()">Save As</button>
+                <label class="file-picker project-file-picker">
+                    <span>Open</span>
+                    <input type="file" id="projectFileInput" accept=".abt-planner.json,.json,application/json" onchange="openProjectFile()">
+                </label>
+                <button type="button" class="secondary" onclick="importProjectFromCloud('onedrive')">Import OneDrive</button>
+                <button type="button" class="secondary" onclick="importProjectFromCloud('google')">Import Google Drive</button>
+                <button type="button" class="secondary" onclick="uploadProjectToCloud('onedrive')">OneDrive</button>
+                <button type="button" class="secondary" onclick="uploadProjectToCloud('google')">Google Drive</button>
+                <span class="save-status" id="saveStatus">Autosaved locally</span>
             </div>
 
             <div class="tool-group view-tools">
@@ -252,11 +266,16 @@ const HOURS = 13
 const START_HOUR = 10
 const SNAP = 0.25
 const DAILY_REGULAR_HOURS = 3
-const DAILY_OVERTIME_THRESHOLD = 4
+const DAILY_TIER_OT_START = 6
+const DAILY_TIER_OT_END = 8
 const OT_RATE = 65
 const BILLING_INCREMENT = 0.5
 const WORK_BREAK_LIMIT_HOURS = 5 / 60
+const OVERTIME_RESET_BREAK_HOURS = 1
 const STORAGE_KEY = "abtOvertimePlannerState"
+const PROJECT_FILE_VERSION = 1
+const PROJECT_FILE_TYPE = "abt-overtime-planner"
+const PROJECT_FILENAME_KEY = "abtOvertimePlannerProjectName"
 const ABT_IMPORT_PATTERNS = [
     /\bABT\b/i,
     /(^|[^A-Z0-9])A\s*\.?\s*B\s*\.?\s*T\.?([^A-Z0-9]|$)/i,
@@ -330,6 +349,9 @@ let customImportPatterns = []
 let lastTimelinePointerType = "mouse"
 let cachedTimelineHeight = null
 let resizeUpdateTimer = null
+let projectFileHandle = null
+let currentProjectName = "abt-overtime-planner.abt-planner.json"
+let pendingCloudImportProvider = ""
 
 //--------------------------------
 // BUILD TIMELINE
@@ -1158,12 +1180,40 @@ function applyDailyOvertime(schedule){
     })
 
     let totalHours = schedule.reduce((total,block)=>total + block.billableDur,0)
-    let regularRemaining = totalHours > DAILY_OVERTIME_THRESHOLD ? DAILY_REGULAR_HOURS : totalHours
+    let dailyTierOvertime = Math.max(0,Math.min(totalHours,DAILY_TIER_OT_END) - DAILY_TIER_OT_START)
+    let regularRemaining = DAILY_REGULAR_HOURS
+    let previousBlock = null
+    let continuousOvertime = 0
 
     schedule.forEach(block=>{
-        block.regularHours = Math.min(block.billableDur,regularRemaining)
-        block.overtimeHours = Math.max(block.billableDur - block.regularHours,0)
-        regularRemaining = Math.max(regularRemaining - block.regularHours,0)
+        if(previousBlock){
+            let gap = block.start - (previousBlock.start + previousBlock.dur)
+            if(gap >= OVERTIME_RESET_BREAK_HOURS - 0.0001){
+                regularRemaining = DAILY_REGULAR_HOURS
+            }
+        }
+
+        let continuousRegular = Math.min(block.billableDur,regularRemaining)
+        block.continuousOvertimeHours = Math.max(block.billableDur - continuousRegular,0)
+        continuousOvertime += block.continuousOvertimeHours
+        regularRemaining = Math.max(regularRemaining - continuousRegular,0)
+        previousBlock = block
+    })
+
+    let elapsed = 0
+    schedule.forEach(block=>{
+        let blockStart = elapsed
+        let blockEnd = elapsed + block.billableDur
+        let overtimeStart = Math.max(blockStart,DAILY_TIER_OT_START)
+        let overtimeEnd = Math.min(blockEnd,DAILY_TIER_OT_END)
+        block.dailyTierOvertimeHours = Math.max(0,overtimeEnd - overtimeStart)
+        elapsed = blockEnd
+    })
+
+    let useDailyTier = dailyTierOvertime > continuousOvertime
+    schedule.forEach(block=>{
+        block.overtimeHours = useDailyTier ? block.dailyTierOvertimeHours : block.continuousOvertimeHours
+        block.regularHours = Math.max(block.billableDur - block.overtimeHours,0)
     })
 
     return schedule
@@ -1171,7 +1221,7 @@ function applyDailyOvertime(schedule){
 
 function calculateBlockOvertime(block){
     return block.overtimeHours ?? (
-        block.dur > DAILY_OVERTIME_THRESHOLD
+        block.dur > DAILY_REGULAR_HOURS
             ? Math.max(block.dur-DAILY_REGULAR_HOURS,0)
             : 0
     )
@@ -1759,6 +1809,256 @@ function syncSelectedWeekToMonth(){
     })
 }
 
+function setSaveStatus(message){
+    let status = document.getElementById("saveStatus")
+    if(status) status.innerText = message
+}
+
+function plannerStatePayload(){
+    return {
+        fileType: PROJECT_FILE_TYPE,
+        version: PROJECT_FILE_VERSION,
+        savedAt: new Date().toISOString(),
+        projectName: currentProjectName,
+        weekData,
+        monthEvents,
+        currentDay,
+        plannerView,
+        selectedWeekStartKey,
+        importSummaryText,
+        importedEventCount,
+        skippedNonAbtCount,
+        customImportKeywords,
+        exportScope:getExportScope(),
+        monthAnchorDate: dateKey(monthAnchorDate)
+    }
+}
+
+function applyPlannerState(state){
+    if(!state || typeof state !== "object") throw new Error("Invalid planner file.")
+
+    if(state.weekData) weekData = state.weekData
+    if(state.monthEvents) monthEvents = state.monthEvents
+    if(state.currentDay) currentDay = state.currentDay
+    if(state.selectedWeekStartKey) selectedWeekStartKey = state.selectedWeekStartKey
+    importSummaryText = state.importSummaryText || ""
+    importedEventCount = state.importedEventCount || 0
+    skippedNonAbtCount = state.skippedNonAbtCount || 0
+
+    if(Array.isArray(state.customImportKeywords)){
+        customImportKeywords = state.customImportKeywords.map(normalizeImportKeyword).filter(Boolean)
+        rebuildCustomImportPatterns()
+    }
+
+    if(state.monthAnchorDate) monthAnchorDate = parseDateKey(state.monthAnchorDate)
+    if(state.exportScope && document.getElementById("exportScope")){
+        document.getElementById("exportScope").value = state.exportScope
+    }
+
+    loadDay()
+    updateActiveDay()
+    setPlannerView(state.plannerView || "week")
+    updateWeekHeader()
+    updateImportSummary()
+    renderMonthView()
+}
+
+function projectJsonText(){
+    saveAllDays({persist:false})
+    syncSelectedWeekToMonth()
+    return JSON.stringify(plannerStatePayload(),null,2)
+}
+
+function normalizeProjectFileName(name){
+    let clean = String(name || "").trim() || "abt-overtime-planner"
+    clean = clean.replace(/[\\/:*?"<>|]+/g,"-")
+
+    if(!clean.toLowerCase().endsWith(".abt-planner.json")){
+        clean = clean.replace(/\.json$/i,"") + ".abt-planner.json"
+    }
+
+    return clean
+}
+
+function saveProjectName(){
+    try{
+        localStorage.setItem(PROJECT_FILENAME_KEY,currentProjectName)
+    }catch(error){
+        console.warn("Project name could not be saved.",error)
+    }
+}
+
+function loadProjectName(){
+    try{
+        currentProjectName = normalizeProjectFileName(localStorage.getItem(PROJECT_FILENAME_KEY) || currentProjectName)
+    }catch(error){
+        currentProjectName = normalizeProjectFileName(currentProjectName)
+    }
+}
+
+function downloadTextFile(text,fileName,type="application/json"){
+    let blob = new Blob([text],{type})
+    let link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = fileName
+    link.click()
+    setTimeout(()=>URL.revokeObjectURL(link.href),1000)
+}
+
+async function writeProjectFile(handle,text){
+    let writable = await handle.createWritable()
+    await writable.write(text)
+    await writable.close()
+}
+
+async function saveProject(options={}){
+    let saveAs = Boolean(options.saveAs)
+    let text = projectJsonText()
+
+    try{
+        if(window.showSaveFilePicker){
+            if(saveAs || !projectFileHandle){
+                let suggestedName = normalizeProjectFileName(currentProjectName)
+                projectFileHandle = await window.showSaveFilePicker({
+                    suggestedName,
+                    types:[{
+                        description:"ABT Planner Project",
+                        accept:{"application/json":[".json"]}
+                    }]
+                })
+                currentProjectName = normalizeProjectFileName(projectFileHandle.name || suggestedName)
+                saveProjectName()
+            }
+
+            await writeProjectFile(projectFileHandle,text)
+            savePlannerState()
+            setSaveStatus("Saved " + currentProjectName)
+            return
+        }
+
+        if(saveAs){
+            currentProjectName = normalizeProjectFileName(prompt("Save as",currentProjectName) || currentProjectName)
+            saveProjectName()
+        }
+
+        downloadTextFile(text,normalizeProjectFileName(currentProjectName))
+        savePlannerState()
+        setSaveStatus("Downloaded " + currentProjectName)
+    }catch(error){
+        if(error?.name === "AbortError") return
+        console.warn("Project could not be saved.",error)
+        alert("Could not save the planner file.")
+    }
+}
+
+function saveProjectAs(){
+    return saveProject({saveAs:true})
+}
+
+async function importProjectFromCloud(provider){
+    let providerName = provider === "google" ? "Google Drive" : "OneDrive"
+    let providerUrl = provider === "google" ? "https://drive.google.com/drive/my-drive" : "https://onedrive.live.com/"
+    let input = document.getElementById("projectFileInput")
+
+    pendingCloudImportProvider = providerName
+    setSaveStatus("Choose a planner file from " + providerName)
+
+    try{
+        if(window.showOpenFilePicker){
+            let [handle] = await window.showOpenFilePicker({
+                multiple:false,
+                types:[{
+                    description:"ABT Planner Project",
+                    accept:{"application/json":[".json"]}
+                }]
+            })
+
+            if(!handle) return
+
+            let file = await handle.getFile()
+            projectFileHandle = handle
+            try{
+                isRestoringState = true
+                await openProjectBlob(file,providerName)
+            }finally{
+                isRestoringState = false
+                pendingCloudImportProvider = ""
+                savePlannerState()
+            }
+            return
+        }
+    }catch(error){
+        if(error?.name === "AbortError") return
+        console.warn("Cloud file picker failed.",error)
+    }
+
+    if(input){
+        input.click()
+        window.open(providerUrl,"_blank","noopener,noreferrer")
+    }else{
+        window.open(providerUrl,"_blank","noopener,noreferrer")
+    }
+}
+
+async function openProjectBlob(file,sourceName=""){
+    let state = JSON.parse(await file.text())
+    if(state.fileType && state.fileType !== PROJECT_FILE_TYPE){
+        throw new Error("Unsupported project file.")
+    }
+
+    pushUndoState()
+    currentProjectName = normalizeProjectFileName(file.name)
+    applyPlannerState(state)
+    saveProjectName()
+    setSaveStatus("Opened " + currentProjectName + (sourceName ? " from " + sourceName : ""))
+}
+
+async function openProjectFile(){
+    let input = document.getElementById("projectFileInput")
+    let file = input?.files?.[0]
+    if(!file) return
+
+    try{
+        isRestoringState = true
+        projectFileHandle = null
+        await openProjectBlob(file,pendingCloudImportProvider)
+    }catch(error){
+        console.warn("Project file could not be opened.",error)
+        alert("Could not open that planner file.")
+    }finally{
+        isRestoringState = false
+        pendingCloudImportProvider = ""
+        if(input) input.value = ""
+        savePlannerState()
+    }
+}
+
+async function uploadProjectToCloud(provider){
+    let fileName = normalizeProjectFileName(currentProjectName)
+    let file = new File([projectJsonText()],fileName,{type:"application/json"})
+    let providerName = provider === "google" ? "Google Drive" : "OneDrive"
+    let providerUrl = provider === "google" ? "https://drive.google.com/drive/my-drive" : "https://onedrive.live.com/"
+
+    try{
+        if(navigator.canShare && navigator.canShare({files:[file]})){
+            await navigator.share({
+                files:[file],
+                title:"ABT Overtime Planner",
+                text:"Upload this planner file to " + providerName + "."
+            })
+            setSaveStatus("Shared for " + providerName)
+            return
+        }
+    }catch(error){
+        if(error?.name === "AbortError") return
+        console.warn("Cloud share failed.",error)
+    }
+
+    downloadTextFile(await file.text(),fileName)
+    window.open(providerUrl,"_blank","noopener,noreferrer")
+    setSaveStatus("Downloaded for " + providerName)
+}
+
 function savePlannerState(){
     if(isRestoringState) return
 
@@ -1776,8 +2076,10 @@ function savePlannerState(){
             exportScope:getExportScope(),
             monthAnchorDate: dateKey(monthAnchorDate)
         }))
+        setSaveStatus("Autosaved locally")
     }catch(error){
         console.warn("Planner state could not be saved.",error)
+        setSaveStatus("Autosave failed")
     }
 }
 
@@ -2791,9 +3093,11 @@ function exportPDF(){
 // INIT
 buildTimeline()
 updateActiveDay()
+loadProjectName()
 restorePlannerState()
 updateWeekHeader()
 updateImportSummary()
+setSaveStatus("Autosaved locally")
 updateUndoButton()
 </script>
 
