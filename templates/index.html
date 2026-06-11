@@ -157,6 +157,11 @@ const OT_RATE = 65
 const BILLING_INCREMENT = 0.5
 const WORK_BREAK_LIMIT_HOURS = 5 / 60
 const STORAGE_KEY = "abtOvertimePlannerState"
+const ABT_IMPORT_PATTERNS = [
+    /\bABT\b/i,
+    /(^|[^A-Z0-9])A\s*\.?\s*B\s*\.?\s*T\.?([^A-Z0-9]|$)/i,
+    /\bAmerican Ballet Theat(?:re|er)\b/i
+]
 const DAY_ORDER = ["mon","tue","wed","thu","fri","sat","sun"]
 const DAY_LABELS = {
     mon:"Mon",
@@ -182,6 +187,7 @@ let monthAnchorDate = new Date()
 let selectedWeekStartKey = null
 let importSummaryText = ""
 let importedEventCount = 0
+let skippedNonAbtCount = 0
 let isRestoringState = false
 
 //--------------------------------
@@ -1112,6 +1118,7 @@ function savePlannerState(){
             selectedWeekStartKey,
             importSummaryText,
             importedEventCount,
+            skippedNonAbtCount,
             exportScope:getExportScope(),
             monthAnchorDate: dateKey(monthAnchorDate)
         }))
@@ -1141,6 +1148,7 @@ function restorePlannerState(){
         if(state.selectedWeekStartKey) selectedWeekStartKey = state.selectedWeekStartKey
         if(state.importSummaryText) importSummaryText = state.importSummaryText
         if(state.importedEventCount) importedEventCount = state.importedEventCount
+        if(state.skippedNonAbtCount) skippedNonAbtCount = state.skippedNonAbtCount
         if(state.monthAnchorDate) monthAnchorDate = parseDateKey(state.monthAnchorDate)
         if(state.exportScope && document.getElementById("exportScope")){
             document.getElementById("exportScope").value = state.exportScope
@@ -1220,10 +1228,13 @@ function buildImportSummary(importedCount=importedEventCount){
     let eventDates = Object.keys(monthEvents).sort()
     let weekKeys = new Set(eventDates.map(key=>dateKey(startOfPlannerWeek(parseDateKey(key)))))
     let selected = selectedWeekStartKey ? weekRangeLabel(parseDateKey(selectedWeekStartKey)) : "the selected week"
+    let skipped = skippedNonAbtCount
+        ? " Skipped "+skippedNonAbtCount+" non-ABT event"+(skippedNonAbtCount===1 ? "" : "s")+"."
+        : ""
 
     return "Imported "+importedCount+" timed event"+(importedCount===1 ? "" : "s")+
         " across "+weekKeys.size+" week"+(weekKeys.size===1 ? "" : "s")+
-        ". Showing "+selected+"."
+        ". Showing "+selected+"."+skipped
 }
 
 function getExportScope(){
@@ -1352,6 +1363,7 @@ function importICS(){
 
         const days = ["sun","mon","tue","wed","thu","fri","sat"]
         let importedCount = 0
+        let skippedNonAbt = 0
         let firstImportedDay = null
         let firstImportedDate = null
 
@@ -1401,6 +1413,11 @@ function importICS(){
                 .replace(/\\\\/g, "\\")
                 .replace(/\s+/g, " ")
                 .trim()
+        }
+
+        function isAbtRelevantEvent(title, location, description){
+            let haystack = [title, location, description].filter(Boolean).join(" ")
+            return ABT_IMPORT_PATTERNS.some(pattern=>pattern.test(haystack))
         }
 
         function parseIcsDateInfo(propOrValue){
@@ -1568,6 +1585,11 @@ function importICS(){
             let dur = visibleEnd - visibleStart
 
             if(dur <= 0) return false
+
+            if(!isAbtRelevantEvent(title, location, description)){
+                skippedNonAbt++
+                return false
+            }
 
             importedWeekData[dayKey].push({
                 start: Math.round(visibleStart * 100) / 100,
@@ -1739,7 +1761,7 @@ function importICS(){
             importCsvEvents(text)
 
             if(importedCount === 0){
-                alert("No timed events were found in that CSV file between 10:00 and 23:00.")
+                alert("No timed ABT events were found in that CSV file between 10:00 and 23:00.")
                 return
             }
 
@@ -1755,6 +1777,7 @@ function importICS(){
                 updateActiveDay()
             }
             importedEventCount = importedCount
+            skippedNonAbtCount = skippedNonAbt
             importSummaryText = buildImportSummary()
             setPlannerView("month")
             return
@@ -1876,7 +1899,7 @@ function importICS(){
         })
 
         if(importedCount === 0){
-            alert("No timed events were found in that .ics file between 10:00 and 23:00.")
+            alert("No timed ABT events were found in that calendar file between 10:00 and 23:00.")
             return
         }
 
@@ -1892,6 +1915,7 @@ function importICS(){
             updateActiveDay()
         }
         importedEventCount = importedCount
+        skippedNonAbtCount = skippedNonAbt
         importSummaryText = buildImportSummary()
         setPlannerView("month")
     }
