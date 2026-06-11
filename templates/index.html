@@ -326,13 +326,17 @@ let isRestoringState = false
 let undoStack = []
 let editingBlock = null
 let customImportKeywords = []
+let customImportPatterns = []
 let lastTimelinePointerType = "mouse"
+let cachedTimelineHeight = null
+let resizeUpdateTimer = null
 
 //--------------------------------
 // BUILD TIMELINE
 //--------------------------------
 function buildTimeline(){
     timeline.innerHTML=""
+    cachedTimelineHeight = null
     let header=document.createElement("div")
     header.className="week-grid-header"
 
@@ -413,11 +417,25 @@ function pixelsToSnappedHours(pixels){
 }
 
 function timelineHeight(){
-    return document.querySelector(".day-column")?.offsetHeight || 1300
+    if(cachedTimelineHeight === null){
+        cachedTimelineHeight = document.querySelector(".day-column")?.offsetHeight || 1300
+    }
+
+    return cachedTimelineHeight
 }
 
 function getDayColumn(day){
     return document.querySelector(`.day-column[data-day="${day}"]`)
+}
+
+function getDayColumnAtPoint(x,y){
+    let directHit = document.elementFromPoint(x,y)?.closest(".day-column")
+    if(directHit) return directHit
+
+    return [...document.querySelectorAll(".day-column")].find(column=>{
+        let rect = column.getBoundingClientRect()
+        return x>=rect.left && x<=rect.right && y>=rect.top && y<=rect.bottom
+    }) || null
 }
 
 function setBlockPosition(el,y){
@@ -580,6 +598,10 @@ function escapeRegExp(value){
     return String(value).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")
 }
 
+function rebuildCustomImportPatterns(){
+    customImportPatterns = customImportKeywords.map(keyword=>new RegExp(escapeRegExp(keyword),"i"))
+}
+
 function getCustomImportKeywordsFromInput(){
     let input = document.getElementById("customImportKeywordsInput")
     if(!input) return []
@@ -600,9 +622,7 @@ function getCustomImportKeywordsFromInput(){
 function isImportRelevantEvent(title, location, description){
     let haystack = [title, location, description].filter(Boolean).join(" ")
     let matchesDefault = ABT_IMPORT_PATTERNS.some(pattern=>pattern.test(haystack))
-    let matchesCustom = customImportKeywords.some(keyword=>{
-        return new RegExp(escapeRegExp(keyword),"i").test(haystack)
-    })
+    let matchesCustom = customImportPatterns.some(pattern=>pattern.test(haystack))
 
     return matchesDefault || matchesCustom
 }
@@ -621,6 +641,7 @@ function closeImportFilterEditor(){
 
 function saveImportFilters(){
     customImportKeywords = getCustomImportKeywordsFromInput()
+    rebuildCustomImportPatterns()
     savePlannerState()
     closeImportFilterEditor()
 }
@@ -749,7 +770,7 @@ function attachBlockPointerControls(el){
             setBlockPosition(el,y)
             setBlockHeight(el,h)
             updateDayDropTarget(moveEvent.clientX,moveEvent.clientY)
-            update()
+            update({persist:false})
         }
 
         function onPointerUp(upEvent){
@@ -767,6 +788,9 @@ function attachBlockPointerControls(el){
 
             if(dayButton && dayButton.dataset.day !== currentDay){
                 moveBlockToDay(el,dayButton.dataset.day)
+            }else if(undoRecorded){
+                saveDay()
+                update()
             }
 
             draggedBlock = null
@@ -843,6 +867,17 @@ function cutSelectedBlock(){
 
     pushUndoState()
     blockClipboard = blocks.map(getBlockData)
+    blocks.forEach(el=>el.remove())
+    clearSelection()
+    saveDay()
+    update()
+}
+
+function deleteSelectedBlocks(){
+    let blocks = getSelectedBlocks()
+    if(blocks.length===0) return
+
+    pushUndoState()
     blocks.forEach(el=>el.remove())
     clearSelection()
     saveDay()
@@ -994,7 +1029,7 @@ function saveDay(){
     saveAllDays()
 }
 
-function saveAllDays(){
+function saveAllDays(options={}){
     DAY_ORDER.forEach(day=>{
         weekData[day] = getSchedule(day).map(b=>({
             start:b.start,
@@ -1005,8 +1040,10 @@ function saveAllDays(){
         }))
     })
 
-    syncSelectedWeekToMonth()
-    savePlannerState()
+    if(options.persist !== false){
+        syncSelectedWeekToMonth()
+        savePlannerState()
+    }
 }
 
 function loadDay(){
@@ -1040,7 +1077,7 @@ function addBlock(){
 }
 
 function addBlockAtTimelinePoint(event,openEditor=false){
-    let dayColumn = event.target.closest(".day-column")
+    let dayColumn = event.target.closest(".day-column") || getDayColumnAtPoint(event.clientX,event.clientY)
     if(!dayColumn) return
 
     let h = hoursToPixels(1)
@@ -1174,14 +1211,23 @@ function markScheduleOverlaps(schedule){
 //--------------------------------
 // OT UPDATE
 //--------------------------------
-function update(){
+function update(options={}){
     let activeDaily=0
+    let weeklyTotal=0
 
     DAY_ORDER.forEach(day=>{
         let schedule=getSchedule(day)
-        applyDailyOvertime(schedule)
         markScheduleOverlaps(schedule)
         let daily=calculateDailyPay(schedule)
+        weeklyTotal += daily
+
+        weekData[day] = schedule.map(b=>({
+            start:b.start,
+            dur:b.dur,
+            title:b.title,
+            location:b.location,
+            description:b.description
+        }))
 
         schedule.forEach(block=>{
             renderBlock(block)
@@ -1193,8 +1239,12 @@ function update(){
     })
 
     document.getElementById("daily").innerText="$"+activeDaily.toFixed(0)
-    document.getElementById("weekly").innerText="$"+calculateWeeklyPay().toFixed(0)
-    saveAllDays()
+    document.getElementById("weekly").innerText="$"+weeklyTotal.toFixed(0)
+
+    if(options.persist !== false){
+        syncSelectedWeekToMonth()
+        savePlannerState()
+    }
 }
 
 //--------------------------------
@@ -1319,8 +1369,8 @@ timeline.addEventListener("click", e=>{
         return
     }
 
-    if(lastTimelinePointerType === "touch" && !e.target.closest(".event") && e.target.closest(".day-column")){
-        addBlockAtTimelinePoint(e,true)
+    if(!e.target.closest(".event") && getDayColumnAtPoint(e.clientX,e.clientY)){
+        addBlockAtTimelinePoint(e,lastTimelinePointerType === "touch")
         return
     }
 
@@ -1403,42 +1453,106 @@ timeline.addEventListener("pointerdown", e=>{
 timeline.addEventListener("dblclick", e=>{
     if(e.target.closest(".event")) return
 
-    if(e.target.closest(".day-column")){
+    if(getDayColumnAtPoint(e.clientX,e.clientY)){
         e.preventDefault()
-        addBlockAtTimelinePoint(e,true)
     }
 })
 
-document.addEventListener("keydown", e=>{
-    if(e.key === "Escape"){
+function isEditableShortcutTarget(target){
+    if(!target) return false
+    if(target.isContentEditable) return true
+    if(target.closest?.("[contenteditable='true'], [contenteditable='plaintext-only']")) return true
+
+    if(target.tagName === "TEXTAREA") return true
+
+    if(target.tagName === "INPUT"){
+        return !["button","checkbox","color","file","radio","range","reset","submit"].includes(String(target.type || "text").toLowerCase())
+    }
+
+    return false
+}
+
+function hasShortcutModifier(event){
+    return event.ctrlKey || event.metaKey || event.getModifierState?.("Control") || event.getModifierState?.("Meta")
+}
+
+function shortcutKey(event){
+    let key = String(event.key || "").toLowerCase()
+    let code = String(event.code || "").toLowerCase()
+    let keyCode = event.keyCode || event.which
+
+    if(key === "z" || code === "keyz" || keyCode === 90) return "z"
+    if(key === "a" || code === "keya" || keyCode === 65) return "a"
+    if(key === "c" || code === "keyc" || keyCode === 67) return "c"
+    if(key === "x" || code === "keyx" || keyCode === 88) return "x"
+    if(key === "v" || code === "keyv" || keyCode === 86) return "v"
+    if(key === "delete" || key === "del" || code === "delete" || keyCode === 46) return "delete"
+    if(key === "backspace" || code === "backspace" || keyCode === 8) return "backspace"
+
+    return key
+}
+
+function handleKeyboardShortcut(event){
+    if(event.defaultPrevented) return
+
+    if(event.key === "Escape"){
         closeBlockEditor()
         closeImportFilterEditor()
         return
     }
 
-    let tag = document.activeElement?.tagName
-    if(tag === "INPUT" || tag === "TEXTAREA") return
+    let target = event.target || document.activeElement
+    if(isEditableShortcutTarget(target)) return
 
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c"){
-        e.preventDefault()
+    let key = shortcutKey(event)
+    let shortcut = hasShortcutModifier(event) && !event.altKey
+
+    if(shortcut && key === "z" && !event.shiftKey){
+        event.preventDefault()
+        event.stopPropagation()
+        undoLastChange()
+        return
+    }
+
+    if(shortcut && key === "c"){
+        event.preventDefault()
+        event.stopPropagation()
         copySelectedBlock()
+        return
     }
 
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "x"){
-        e.preventDefault()
+    if(shortcut && key === "x"){
+        event.preventDefault()
+        event.stopPropagation()
         cutSelectedBlock()
+        return
     }
 
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v"){
-        e.preventDefault()
+    if(shortcut && key === "v"){
+        event.preventDefault()
+        event.stopPropagation()
         pasteBlock()
+        return
     }
 
-    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a"){
-        e.preventDefault()
+    if(shortcut && key === "a"){
+        event.preventDefault()
+        event.stopPropagation()
         selectAllBlocks()
+        return
     }
-})
+
+    if(!hasShortcutModifier(event) && (key === "delete" || key === "backspace")){
+        let blocks = getSelectedBlocks()
+        if(blocks.length){
+            event.preventDefault()
+            event.stopPropagation()
+            deleteSelectedBlocks()
+        }
+    }
+}
+
+window.addEventListener("keydown", handleKeyboardShortcut, true)
 
 document.getElementById("blockEditorBackdrop")?.addEventListener("click", event=>{
     if(event.target.id === "blockEditorBackdrop") closeBlockEditor()
@@ -1446,6 +1560,15 @@ document.getElementById("blockEditorBackdrop")?.addEventListener("click", event=
 
 document.getElementById("importFilterBackdrop")?.addEventListener("click", event=>{
     if(event.target.id === "importFilterBackdrop") closeImportFilterEditor()
+})
+
+window.addEventListener("resize",()=>{
+    cachedTimelineHeight = null
+    clearTimeout(resizeUpdateTimer)
+    resizeUpdateTimer = setTimeout(()=>{
+        renderWeek()
+        update()
+    },150)
 })
 
 //--------------------------------
@@ -1682,6 +1805,7 @@ function restorePlannerState(){
         if(state.skippedNonAbtCount) skippedNonAbtCount = state.skippedNonAbtCount
         if(Array.isArray(state.customImportKeywords)){
             customImportKeywords = state.customImportKeywords.map(normalizeImportKeyword).filter(Boolean)
+            rebuildCustomImportPatterns()
         }
         if(state.monthAnchorDate) monthAnchorDate = parseDateKey(state.monthAnchorDate)
         if(state.exportScope && document.getElementById("exportScope")){
