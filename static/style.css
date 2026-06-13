@@ -3428,6 +3428,7 @@ body.resizing-workspace {
 
 .mobile-sheet-close,
 .mobile-sheet-backdrop,
+.mobile-calendar-bar,
 .mobile-bottom-nav {
     display: none;
 }
@@ -4334,6 +4335,18 @@ body,
     box-shadow: 0 16px 34px rgba(55, 48, 39, 0.2);
 }
 
+:root[data-theme="light"] .mobile-calendar-bar {
+    border-color: rgba(79, 70, 56, 0.16);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 240, 231, 0.82)),
+        var(--surface);
+    box-shadow: 0 12px 24px rgba(55, 48, 39, 0.16);
+}
+
+:root[data-theme="light"] .mobile-today-chip strong {
+    color: #92570f;
+}
+
 :root[data-theme="light"] .app-toast {
     border-color: rgba(15, 118, 110, 0.26);
     background:
@@ -4403,11 +4416,87 @@ body,
     }
 
     .toolbar {
-        position: static;
-        z-index: 80;
+        display: none;
+    }
+
+    .mobile-calendar-bar {
+        position: sticky;
+        top: max(6px, env(safe-area-inset-top));
+        z-index: 680;
+        display: grid;
+        grid-template-columns: 54px 40px minmax(0, 1fr) 40px 46px;
+        gap: 6px;
+        align-items: center;
         margin: 0 0 8px;
         padding: 7px;
-        border-radius: 8px;
+        border: 1px solid rgba(238, 232, 219, 0.14);
+        border-radius: 14px;
+        background:
+            linear-gradient(180deg, rgba(255, 252, 244, 0.07), rgba(255, 252, 244, 0.018)),
+            rgba(17, 22, 29, 0.96);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(16px) saturate(128%);
+    }
+
+    .mobile-today-chip {
+        display: grid;
+        justify-items: center;
+        gap: 0;
+        min-width: 0;
+        min-height: 46px;
+        padding: 4px;
+        border-radius: 11px;
+        color: var(--text);
+    }
+
+    .mobile-today-chip span {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 840;
+        line-height: 1;
+        text-transform: uppercase;
+    }
+
+    .mobile-today-chip strong {
+        color: #f6d892;
+        font-size: 22px;
+        font-weight: 820;
+        line-height: 1;
+    }
+
+    .mobile-period-button,
+    .mobile-add-button {
+        width: 100%;
+        min-width: 0;
+        min-height: 46px;
+        padding: 0;
+        border-radius: 11px;
+    }
+
+    .mobile-period-title {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .mobile-period-title strong,
+    .mobile-period-title span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mobile-period-title strong {
+        color: var(--text);
+        font-size: 15px;
+        font-weight: 850;
+    }
+
+    .mobile-period-title span {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 740;
     }
 
     #controls.optimized-controls {
@@ -4891,6 +4980,33 @@ body,
     .toolbar {
         margin-bottom: 6px;
         padding: 5px;
+    }
+
+    .mobile-calendar-bar {
+        grid-template-columns: 48px 36px minmax(0, 1fr) 36px 40px;
+        gap: 5px;
+        margin-bottom: 6px;
+        padding: 5px;
+        border-radius: 12px;
+    }
+
+    .mobile-today-chip,
+    .mobile-period-button,
+    .mobile-add-button {
+        min-height: 38px;
+        border-radius: 9px;
+    }
+
+    .mobile-today-chip strong {
+        font-size: 18px;
+    }
+
+    .mobile-period-title strong {
+        font-size: 13px;
+    }
+
+    .mobile-period-title span {
+        font-size: 10px;
     }
 
     #controls.optimized-controls {
