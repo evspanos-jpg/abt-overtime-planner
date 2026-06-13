@@ -2,6 +2,7 @@ def simulate_schedule(schedule):
 
     schedule = sorted(schedule, key=lambda x: x["start"])
 
+    continuous_break_tolerance = 0
     total_hours = 0
     continuous_hours = 0
     last_end = None
@@ -20,7 +21,7 @@ def simulate_schedule(schedule):
         # ✅ Reset if break ≥ 1 hour
         if last_end is not None:
             gap = start - last_end
-            if gap >= 1:
+            if gap > continuous_break_tolerance:
                 continuous_hours = 0
 
         before = continuous_hours
@@ -45,7 +46,7 @@ def simulate_schedule(schedule):
         }
 
     # OT from 6 → 8
-    daily_ot_65 = max(0, min(total_hours, 8) - 6)
+    daily_ot_65 = max(0, min(total_hours, 8) - 4)
 
     # Double OT after 8
     double_ot_90 = max(0, total_hours - 8)

@@ -281,7 +281,7 @@ const DAILY_TIER_OT_END = 8
 const OT_RATE = 65
 const BILLING_INCREMENT = 0.5
 const WORK_BREAK_LIMIT_HOURS = 5 / 60
-const OVERTIME_RESET_BREAK_HOURS = 1
+const CONTINUOUS_BREAK_TOLERANCE_HOURS = WORK_BREAK_LIMIT_HOURS
 const STORAGE_KEY = "abtOvertimePlannerState"
 const PROJECT_FILE_VERSION = 1
 const PROJECT_FILE_TYPE = "abt-overtime-planner"
@@ -1200,7 +1200,7 @@ function applyDailyOvertime(schedule){
         return schedule
     }
 
-    let dailyTierOvertime = Math.max(0,Math.min(totalHours,DAILY_TIER_OT_END) - DAILY_TIER_OT_START)
+    let dailyTierOvertime = Math.max(0,Math.min(totalHours,DAILY_TIER_OT_END) - DAILY_NO_OVERTIME_LIMIT)
     let regularRemaining = DAILY_REGULAR_HOURS
     let previousBlock = null
     let continuousOvertime = 0
@@ -1208,7 +1208,7 @@ function applyDailyOvertime(schedule){
     schedule.forEach(block=>{
         if(previousBlock){
             let gap = block.start - (previousBlock.start + previousBlock.dur)
-            if(gap >= OVERTIME_RESET_BREAK_HOURS - 0.0001){
+            if(gap > CONTINUOUS_BREAK_TOLERANCE_HOURS + 0.0001){
                 regularRemaining = DAILY_REGULAR_HOURS
             }
         }
@@ -1224,7 +1224,7 @@ function applyDailyOvertime(schedule){
     schedule.forEach(block=>{
         let blockStart = elapsed
         let blockEnd = elapsed + block.billableDur
-        let overtimeStart = Math.max(blockStart,DAILY_TIER_OT_START)
+        let overtimeStart = Math.max(blockStart,DAILY_NO_OVERTIME_LIMIT)
         let overtimeEnd = Math.min(blockEnd,DAILY_TIER_OT_END)
         block.dailyTierOvertimeHours = Math.max(0,overtimeEnd - overtimeStart)
         elapsed = blockEnd

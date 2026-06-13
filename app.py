@@ -61,7 +61,7 @@ def simulate():
     schedule = data.get("schedule", [])
 
     total_hours = sum(b["duration"] for b in schedule)
-    ot = max(0, min(total_hours, 8) - 6)
+    ot = max(0, min(total_hours, 8) - 4)
     dbl = max(0, total_hours - 8)
     pay = ot * 65 + dbl * 90
 
