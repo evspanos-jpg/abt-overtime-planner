@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#0d1116">
+    <meta name="theme-color" content="#0d1116" id="themeColorMeta">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="ABT Planner">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
     <title>ABT Overtime Planner</title>
 
     <!-- ✅ CSS -->
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=51">
-    <link rel="stylesheet" href="../static/style.css?v=51">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=61">
+    <link rel="stylesheet" href="../static/style.css?v=69">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -101,45 +102,139 @@
         </div>
     </section>
 
-    <section class="timeline-panel" aria-label="Weekly timeline">
-        <div class="timeline-header">
-            <span id="weekTitle">Weekly calls</span>
-            <span id="weekRangeText">10:00 AM - 11:00 PM</span>
-        </div>
-
-        <div id="timeline-container">
-            <div id="timeline"></div>
-        </div>
-    </section>
-
-    <section class="month-panel is-hidden" id="monthPanel" aria-label="Monthly calendar">
-        <div class="month-header">
-            <button type="button" class="secondary month-nav-button nav-previous" onclick="changeMonth(-1)" aria-label="Previous month" title="Previous month"><span aria-hidden="true"></span></button>
-            <div>
-                <span>Month view</span>
-                <strong id="monthTitle">No calendar imported</strong>
-                <label class="week-selector">
-                    <span>Week</span>
-                    <select id="weekSelector" onchange="selectWeekFromMonth(this.value)"></select>
-                </label>
+    <section class="calendar-workspace" aria-label="Calendar workspace">
+        <aside class="calendar-rail" aria-label="Calendar navigation">
+            <div class="rail-date-card">
+                <span id="railMonthLabel">Month</span>
+                <strong id="railDateLabel">--</strong>
+                <small id="railDayLabel">Today</small>
             </div>
-            <button type="button" class="secondary month-nav-button nav-next" onclick="changeMonth(1)" aria-label="Next month" title="Next month"><span aria-hidden="true"></span></button>
-        </div>
 
-        <div class="month-weekdays" aria-hidden="true">
-            <span>Sun</span>
-            <span>Mon</span>
-            <span>Tue</span>
-            <span>Wed</span>
-            <span>Thu</span>
-            <span>Fri</span>
-            <span>Sat</span>
-        </div>
+            <div class="rail-actions" aria-label="Calendar quick actions">
+                <button type="button" class="secondary rail-action-button" onclick="goToCurrentWeek()">Today</button>
+                <button type="button" class="secondary rail-action-button" onclick="setPlannerView('workweek')">Work Week</button>
+                <button type="button" class="secondary rail-action-button" onclick="setPlannerView('week')">Week</button>
+                <button type="button" class="secondary rail-action-button" onclick="setPlannerView('month')">Month</button>
+            </div>
 
-        <div class="month-grid" id="monthGrid"></div>
+            <div class="mini-month" aria-label="Mini month calendar">
+                <div class="mini-month-header">
+                    <button type="button" class="secondary icon-button" onclick="changeMiniMonth(-1)" aria-label="Previous mini month">‹</button>
+                    <strong id="miniMonthTitle">Month</strong>
+                    <button type="button" class="secondary icon-button" onclick="changeMiniMonth(1)" aria-label="Next mini month">›</button>
+                </div>
+                <div class="mini-month-weekdays" aria-hidden="true">
+                    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                </div>
+                <div class="mini-month-grid" id="miniMonthGrid"></div>
+            </div>
+
+            <div class="rail-meta">
+                <span>Selected week</span>
+                <strong id="railWeekLabel">No week selected</strong>
+            </div>
+
+            <div class="rail-meta">
+                <span>Calendar</span>
+                <strong id="railImportLabel">No imports</strong>
+            </div>
+        </aside>
+
+        <div class="workspace-resizer workspace-resizer-left" data-resize-pane="rail" role="separator" aria-orientation="vertical" aria-label="Resize navigation pane"></div>
+
+        <main class="calendar-main" aria-label="Planner calendar">
+            <section class="timeline-panel" aria-label="Weekly timeline">
+                <div class="timeline-header">
+                    <div class="timeline-header-copy">
+                        <span id="weekTitle">Weekly calls</span>
+                        <span id="weekRangeText">10:00 AM - 11:00 PM</span>
+                    </div>
+                    <div class="timeline-header-actions" role="group" aria-label="Timeline width">
+                        <button type="button" class="secondary" id="timelineFitButton" onclick="setTimelineLayoutMode('fit')">Fit</button>
+                        <button type="button" class="secondary" id="timelineComfortButton" onclick="setTimelineLayoutMode('comfort')">Comfort</button>
+                    </div>
+                </div>
+
+                <div id="timeline-container">
+                    <div id="timeline"></div>
+                </div>
+            </section>
+
+            <section class="month-panel is-hidden" id="monthPanel" aria-label="Monthly calendar">
+                <div class="month-header">
+                    <button type="button" class="secondary month-nav-button nav-previous" onclick="changeMonth(-1)" aria-label="Previous month" title="Previous month"><span aria-hidden="true"></span></button>
+                    <div>
+                        <span>Month view</span>
+                        <strong id="monthTitle">No calendar imported</strong>
+                        <label class="week-selector">
+                            <span>Week</span>
+                            <select id="weekSelector" onchange="selectWeekFromMonth(this.value)"></select>
+                        </label>
+                    </div>
+                    <button type="button" class="secondary month-nav-button nav-next" onclick="changeMonth(1)" aria-label="Next month" title="Next month"><span aria-hidden="true"></span></button>
+                </div>
+
+                <div class="month-weekdays" aria-hidden="true">
+                    <span>Sun</span>
+                    <span>Mon</span>
+                    <span>Tue</span>
+                    <span>Wed</span>
+                    <span>Thu</span>
+                    <span>Fri</span>
+                    <span>Sat</span>
+                </div>
+
+                <div class="month-grid" id="monthGrid"></div>
+            </section>
+        </main>
+
+        <div class="workspace-resizer workspace-resizer-right" data-resize-pane="agenda" role="separator" aria-orientation="vertical" aria-label="Resize agenda pane"></div>
+
+        <aside class="agenda-pane" aria-label="Agenda">
+            <header class="agenda-header">
+                <span>Agenda</span>
+                <strong id="agendaRangeLabel">Selected week</strong>
+                <button type="button" class="secondary icon-button mobile-sheet-close" onclick="closeMobileSheet()" aria-label="Close agenda">&times;</button>
+            </header>
+            <label class="agenda-search">
+                <span>Search agenda</span>
+                <input type="search" id="agendaSearchInput" placeholder="Search title, time, or location" oninput="updateOutlookPanels()">
+            </label>
+            <div class="agenda-list" id="agendaList"></div>
+        </aside>
     </section>
+
+    <div class="mobile-sheet-backdrop" id="mobileSheetBackdrop" role="presentation" onclick="closeMobileSheet()"></div>
+
+    <nav class="mobile-bottom-nav" aria-label="Mobile calendar navigation">
+        <button type="button" class="mobile-nav-button" data-mobile-nav="today" onclick="goToCurrentWeek(); closeMobileSheet()">
+            <span class="mobile-nav-icon icon-current-week" aria-hidden="true"></span>
+            <span>Today</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="week" onclick="setPlannerView('week'); closeMobileSheet()">
+            <span class="mobile-nav-icon icon-week-view" aria-hidden="true"></span>
+            <span>Week</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="month" onclick="setPlannerView('month'); closeMobileSheet()">
+            <span class="mobile-nav-icon icon-month-view" aria-hidden="true"></span>
+            <span>Month</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="agenda" onclick="openMobileSheet('agenda')">
+            <span class="mobile-nav-icon icon-calendar" aria-hidden="true"></span>
+            <span>Agenda</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="search" onclick="openFullSearch()">
+            <span class="mobile-nav-icon icon-search" aria-hidden="true"></span>
+            <span>Search</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="settings" onclick="openSettings()">
+            <span class="mobile-nav-icon icon-settings" aria-hidden="true"></span>
+            <span>Settings</span>
+        </button>
+    </nav>
 
     <p class="import-summary is-hidden" id="importSummary"></p>
+    <div class="app-toast is-hidden" id="appToast" role="status" aria-live="polite"></div>
 
     <div class="modal-backdrop is-hidden" id="blockEditorBackdrop" role="presentation">
         <section class="block-editor" role="dialog" aria-modal="true" aria-labelledby="blockEditorTitle">
@@ -236,36 +331,110 @@
         </section>
     </div>
 
-    <section class="external-assistant-panel" aria-label="External ChatGPT">
-        <div class="external-assistant-header">
-            <div class="external-assistant-title">
-                <span class="chatgpt-mark" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" role="img">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="M8.2 8.4c1.1-1.9 3.6-2.5 5.4-1.3l2.1 1.2"></path>
-                        <path d="M15.8 8.4c2.2 0 3.9 1.8 3.8 4l-.1 2.4"></path>
-                        <path d="M17 15.6c-1.1 1.9-3.6 2.5-5.4 1.3l-2.1-1.2"></path>
-                        <path d="M8.2 15.6c-2.2 0-3.9-1.8-3.8-4l.1-2.4"></path>
-                        <path d="M12 6.8v10.4"></path>
-                        <path d="M7.5 9.4l9 5.2"></path>
-                    </svg>
-                </span>
+    <div class="modal-backdrop is-hidden" id="toolbarCustomizeBackdrop" role="presentation">
+        <section class="block-editor toolbar-customizer" role="dialog" aria-modal="true" aria-labelledby="toolbarCustomizeTitle">
+            <header class="block-editor-header">
+                <h3 id="toolbarCustomizeTitle">Customize Toolbar</h3>
+                <button type="button" class="secondary icon-button" onclick="closeToolbarCustomizer()" aria-label="Close toolbar customizer">&times;</button>
+            </header>
+
+            <div class="toolbar-customizer-list" id="toolbarCustomizerList"></div>
+
+            <footer class="block-editor-actions">
+                <button type="button" class="secondary" onclick="resetToolbarCustomization()">Reset</button>
                 <div>
-                <p class="eyebrow">Assistant</p>
-                <h3>Use ChatGPT</h3>
+                    <button type="button" class="secondary" onclick="closeToolbarCustomizer()">Cancel</button>
+                    <button type="button" class="primary" onclick="saveToolbarCustomization()">Save</button>
                 </div>
+            </footer>
+        </section>
+    </div>
+
+    <div class="modal-backdrop is-hidden" id="fullSearchBackdrop" role="presentation">
+        <section class="block-editor full-search-dialog" role="dialog" aria-modal="true" aria-labelledby="fullSearchTitle">
+            <header class="block-editor-header">
+                <h3 id="fullSearchTitle">Full Search</h3>
+                <button type="button" class="secondary icon-button" onclick="closeFullSearch()" aria-label="Close full search">&times;</button>
+            </header>
+
+            <div class="full-search-body">
+                <label class="full-search-field block-editor-wide">
+                    <span>Search all calendar data</span>
+                    <input type="search" id="fullSearchInput" placeholder="Search title, notes, location, date, or time" oninput="renderFullSearchResults()">
+                </label>
+
+                <div class="full-search-summary" id="fullSearchSummary">Search saved blocks and imported calendar events.</div>
+                <div class="full-search-results" id="fullSearchResults"></div>
             </div>
-            <a class="chatgpt-link" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">
-                <span class="chatgpt-link-mark" aria-hidden="true">GPT</span>
-                <span>Open ChatGPT</span>
-            </a>
-        </div>
+        </section>
+    </div>
 
-        <p class="external-assistant-copy">
-            Open ChatGPT in a new tab and sign in with your own ChatGPT account. The planner does not store API keys or connect to your ChatGPT account.
-        </p>
+    <div class="modal-backdrop is-hidden" id="settingsBackdrop" role="presentation">
+        <section class="block-editor settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+            <header class="block-editor-header">
+                <h3 id="settingsTitle">Settings</h3>
+                <button type="button" class="secondary icon-button" onclick="closeSettings()" aria-label="Close settings">&times;</button>
+            </header>
 
-    </section>
+            <div class="settings-grid">
+                <section class="settings-card">
+                    <h4>Appearance</h4>
+                    <div class="segmented-control" role="group" aria-label="Theme">
+                        <button type="button" class="secondary" id="settingsDarkButton" onclick="setThemeMode('dark')">Dark</button>
+                        <button type="button" class="secondary" id="settingsLightButton" onclick="setThemeMode('light')">Light</button>
+                    </div>
+                </section>
+
+                <section class="settings-card">
+                    <h4>Timeline</h4>
+                    <div class="segmented-control" role="group" aria-label="Timeline width">
+                        <button type="button" class="secondary" id="settingsFitButton" onclick="setTimelineLayoutMode('fit')">Fit 7 Days</button>
+                        <button type="button" class="secondary" id="settingsComfortButton" onclick="setTimelineLayoutMode('comfort')">Comfort Scroll</button>
+                    </div>
+                    <div class="settings-stepper">
+                        <button type="button" class="secondary icon-button" onclick="zoomOutTimeline()" aria-label="Zoom out"><span class="button-icon icon-zoom-out" aria-hidden="true"></span></button>
+                        <strong id="settingsZoomLabel">100%</strong>
+                        <button type="button" class="secondary icon-button" onclick="zoomInTimeline()" aria-label="Zoom in"><span class="button-icon icon-zoom-in" aria-hidden="true"></span></button>
+                    </div>
+                </section>
+
+                <section class="settings-card">
+                    <h4>Planner</h4>
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="settingsAutosaveInput" onchange="setAutosaveEnabled(this.checked)">
+                        <span>Autosave locally</span>
+                    </label>
+                    <label class="settings-field">
+                        <span>Default view</span>
+                        <select id="settingsDefaultViewInput" onchange="setDefaultPlannerView(this.value)">
+                            <option value="week">Week</option>
+                            <option value="workweek">Work Week</option>
+                            <option value="month">Month</option>
+                        </select>
+                    </label>
+                    <button type="button" class="secondary" onclick="resetLayoutPreferences()">Reset Layout</button>
+                </section>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal-backdrop is-hidden" id="conflictReviewBackdrop" role="presentation">
+        <section class="block-editor conflict-review-dialog" role="dialog" aria-modal="true" aria-labelledby="conflictReviewTitle">
+            <header class="block-editor-header">
+                <h3 id="conflictReviewTitle">Conflict Review</h3>
+                <button type="button" class="secondary icon-button" onclick="closeConflictReview()" aria-label="Close conflict review">&times;</button>
+            </header>
+
+            <div class="conflict-review-summary" id="conflictReviewSummary">No conflicts found.</div>
+            <div class="conflict-review-list" id="conflictReviewList"></div>
+
+            <footer class="block-editor-actions">
+                <button type="button" class="secondary" onclick="closeConflictReview()">Close</button>
+                <button type="button" class="primary" onclick="openConflictReviewFromImport()">Refresh</button>
+            </footer>
+        </section>
+    </div>
+
 </div>
 
 <script>
@@ -286,6 +455,15 @@ const DAILY_RESET_BREAK_HOURS = 1
 const CONTINUOUS_RESET_BREAK_HOURS = DAILY_RESET_BREAK_HOURS
 const STORAGE_KEY = "abtOvertimePlannerState"
 const AUTOSAVE_ENABLED_KEY = "abtOvertimePlannerAutosaveEnabled"
+const TOOLBAR_SETTINGS_KEY = "abtOvertimePlannerToolbarSettings"
+const THEME_MODE_KEY = "abtOvertimePlannerThemeMode"
+const WORKSPACE_LAYOUT_KEY = "abtOvertimePlannerWorkspaceLayout"
+const TIMELINE_ZOOM_KEY = "abtOvertimePlannerTimelineZoom"
+const TIMELINE_LAYOUT_MODE_KEY = "abtOvertimePlannerTimelineLayoutMode"
+const DEFAULT_VIEW_KEY = "abtOvertimePlannerDefaultView"
+const TIMELINE_ZOOM_MIN = 0.75
+const TIMELINE_ZOOM_MAX = 1.5
+const TIMELINE_ZOOM_STEP = 0.125
 const PROJECT_FILE_VERSION = 1
 const PROJECT_FILE_TYPE = "abt-overtime-planner"
 const PROJECT_FILENAME_KEY = "abtOvertimePlannerProjectName"
@@ -329,6 +507,15 @@ const ABT_IMPORT_PATTERNS = [
     /\bThe\s+Dream\b/i
 ]
 const DAY_ORDER = ["mon","tue","wed","thu","fri","sat","sun"]
+const TOOLBAR_DEFAULTS = [
+    {key:"file", label:"File", visible:true},
+    {key:"blocks", label:"Blocks", visible:true},
+    {key:"selection", label:"Selection", visible:true},
+    {key:"calendar", label:"Calendar", visible:true},
+    {key:"view", label:"View", visible:true},
+    {key:"zoom", label:"Zoom", visible:true},
+    {key:"theme", label:"Theme", visible:true}
+]
 const DAY_LABELS = {
     mon:"Mon",
     tue:"Tue",
@@ -356,17 +543,25 @@ let importedEventCount = 0
 let skippedNonAbtCount = 0
 let isRestoringState = false
 let undoStack = []
+let redoStack = []
 let editingBlock = null
 let customImportKeywords = []
 let customImportPatterns = []
 let lastTimelinePointerType = "mouse"
 let cachedTimelineHeight = null
 let resizeUpdateTimer = null
+let viewportUpdateTimer = null
 let projectFileHandle = null
 let currentProjectName = "abt-overtime-planner.abt-planner.json"
 let pendingCloudImportProvider = ""
 let selectedMonthEvents = new Set()
 let autosaveEnabled = true
+let toolbarSettings = cloneToolbarDefaults()
+let themeMode = "dark"
+let timelineZoom = 1
+let timelineLayoutMode = "fit"
+let defaultPlannerView = "week"
+let toastTimer = null
 
 //--------------------------------
 // BUILD TIMELINE
@@ -451,6 +646,111 @@ function hoursToPixels(hours){
 
 function pixelsToSnappedHours(pixels){
     return snapHours((pixels/timelineHeight())*HOURS)
+}
+
+function clampTimelineZoom(value){
+    return Math.min(Math.max(Number(value) || 1,TIMELINE_ZOOM_MIN),TIMELINE_ZOOM_MAX)
+}
+
+function timelineBaseHeight(){
+    return window.matchMedia("(max-width: 760px), (max-width: 1180px) and (pointer: coarse)").matches ? 1180 : 1300
+}
+
+function timelineZoomPercent(){
+    return Math.round(timelineZoom * 100)
+}
+
+function updateTimelineZoomControls(){
+    let status = document.getElementById("zoomStatus")
+    if(status) status.textContent = timelineZoomPercent()+"%"
+    let settingsZoom = document.getElementById("settingsZoomLabel")
+    if(settingsZoom) settingsZoom.textContent = timelineZoomPercent()+"%"
+    document.getElementById("zoomMenuButton")?.querySelector?.(".button-label")?.replaceChildren(document.createTextNode("Zoom "+timelineZoomPercent()+"%"))
+    document.getElementById("zoomInButton")?.toggleAttribute("disabled",timelineZoom >= TIMELINE_ZOOM_MAX - 0.001)
+    document.getElementById("zoomOutButton")?.toggleAttribute("disabled",timelineZoom <= TIMELINE_ZOOM_MIN + 0.001)
+    document.getElementById("resetZoomButton")?.classList.toggle("active-view",Math.abs(timelineZoom - 1) < 0.001)
+}
+
+function applyTimelineZoom(){
+    timelineZoom = clampTimelineZoom(timelineZoom)
+    let height = Math.round(timelineBaseHeight() * timelineZoom)
+    document.documentElement.style.setProperty("--timeline-zoom",String(timelineZoom))
+    document.documentElement.style.setProperty("--timeline-height",height+"px")
+    ;[document.getElementById("timeRuler"),document.getElementById("dayColumns")].forEach(node=>{
+        if(node) node.style.height = height+"px"
+    })
+    cachedTimelineHeight = null
+    updateTimelineZoomControls()
+    renderWeek()
+    update({persist:false})
+}
+
+function saveTimelineZoom(){
+    try{
+        localStorage.setItem(TIMELINE_ZOOM_KEY,String(timelineZoom))
+    }catch(error){
+        console.warn("Timeline zoom could not be saved.",error)
+    }
+}
+
+function setTimelineZoom(value){
+    let previous = timelineZoom
+    timelineZoom = clampTimelineZoom(value)
+    applyTimelineZoom()
+    if(Math.abs(previous - timelineZoom) > 0.001){
+        saveTimelineZoom()
+        showAppToast("Timeline zoom "+timelineZoomPercent()+"%")
+    }
+}
+
+function zoomInTimeline(){
+    setTimelineZoom(timelineZoom + TIMELINE_ZOOM_STEP)
+}
+
+function zoomOutTimeline(){
+    setTimelineZoom(timelineZoom - TIMELINE_ZOOM_STEP)
+}
+
+function resetTimelineZoom(){
+    setTimelineZoom(1)
+}
+
+function loadTimelineZoom(){
+    try{
+        timelineZoom = clampTimelineZoom(localStorage.getItem(TIMELINE_ZOOM_KEY) || 1)
+    }catch(error){
+        timelineZoom = 1
+    }
+}
+
+function applyTimelineLayoutMode(){
+    timelineLayoutMode = timelineLayoutMode === "comfort" ? "comfort" : "fit"
+    document.body.classList.toggle("timeline-comfort-scroll",timelineLayoutMode === "comfort")
+    document.getElementById("settingsFitButton")?.classList.toggle("active-view",timelineLayoutMode === "fit")
+    document.getElementById("settingsComfortButton")?.classList.toggle("active-view",timelineLayoutMode === "comfort")
+    document.getElementById("timelineFitButton")?.classList.toggle("active-view",timelineLayoutMode === "fit")
+    document.getElementById("timelineComfortButton")?.classList.toggle("active-view",timelineLayoutMode === "comfort")
+}
+
+function setTimelineLayoutMode(mode){
+    let previous = timelineLayoutMode
+    timelineLayoutMode = mode === "comfort" ? "comfort" : "fit"
+    applyTimelineLayoutMode()
+    try{
+        localStorage.setItem(TIMELINE_LAYOUT_MODE_KEY,timelineLayoutMode)
+    }catch(error){
+        console.warn("Timeline layout mode could not be saved.",error)
+    }
+    if(previous !== timelineLayoutMode) showAppToast(timelineLayoutMode === "comfort" ? "Comfort scroll enabled" : "Fit 7 days enabled")
+}
+
+function loadTimelineLayoutMode(){
+    try{
+        timelineLayoutMode = localStorage.getItem(TIMELINE_LAYOUT_MODE_KEY) === "comfort" ? "comfort" : "fit"
+    }catch(error){
+        timelineLayoutMode = "fit"
+    }
+    applyTimelineLayoutMode()
 }
 
 function timelineHeight(){
@@ -646,8 +946,8 @@ function snapshotWeekFromDom(){
     }, emptyWeekData())
 }
 
-function pushUndoState(){
-    undoStack.push({
+function snapshotPlannerState(){
+    return {
         weekData:snapshotWeekFromDom(),
         monthEvents:cloneEventsMap(monthEvents),
         currentDay,
@@ -657,24 +957,28 @@ function pushUndoState(){
         importedEventCount,
         skippedNonAbtCount,
         plannerView
-    })
+    }
+}
 
+function pushUndoState(){
+    undoStack.push(snapshotPlannerState())
+    redoStack = []
     if(undoStack.length > 20) undoStack.shift()
-    updateUndoButton()
+    updateHistoryButtons()
+}
+
+function updateHistoryButtons(){
+    let undoButton = document.getElementById("undoButton")
+    let redoButton = document.getElementById("redoButton")
+    if(undoButton) undoButton.disabled = undoStack.length === 0
+    if(redoButton) redoButton.disabled = redoStack.length === 0
 }
 
 function updateUndoButton(){
-    let button = document.getElementById("undoButton")
-    if(button) button.disabled = undoStack.length === 0
+    updateHistoryButtons()
 }
 
-function undoLastChange(){
-    let state = undoStack.pop()
-    if(!state){
-        alert("Nothing to undo.")
-        return
-    }
-
+function restorePlannerSnapshot(state){
     weekData = state.weekData
     monthEvents = state.monthEvents
     currentDay = state.currentDay
@@ -693,7 +997,31 @@ function undoLastChange(){
     renderMonthView()
     setPlannerView(plannerView)
     savePlannerState()
-    updateUndoButton()
+    updateHistoryButtons()
+}
+
+function undoLastChange(){
+    let state = undoStack.pop()
+    if(!state){
+        alert("Nothing to undo.")
+        return
+    }
+
+    redoStack.push(snapshotPlannerState())
+    if(redoStack.length > 20) redoStack.shift()
+    restorePlannerSnapshot(state)
+}
+
+function redoLastChange(){
+    let state = redoStack.pop()
+    if(!state){
+        alert("Nothing to redo.")
+        return
+    }
+
+    undoStack.push(snapshotPlannerState())
+    if(undoStack.length > 20) undoStack.shift()
+    restorePlannerSnapshot(state)
 }
 
 function normalizeImportKeyword(value){
@@ -1242,6 +1570,8 @@ function saveAllDays(options={}){
         syncSelectedWeekToMonth()
         savePlannerState()
     }
+
+    updateOutlookPanels()
 }
 
 function loadDay(){
@@ -1374,6 +1704,247 @@ function ensureSelectAllCalendarButton(){
     group.appendChild(button)
 }
 
+function cloneToolbarDefaults(){
+    return TOOLBAR_DEFAULTS.map(item=>({...item}))
+}
+
+function normalizeToolbarSettings(value){
+    const saved = Array.isArray(value) ? value : []
+    const savedByKey = new Map(saved.map(item=>[item?.key,item]))
+    const validKeys = new Set(TOOLBAR_DEFAULTS.map(item=>item.key))
+    const ordered = []
+
+    saved.forEach(item=>{
+        if(!validKeys.has(item?.key) || ordered.some(existing=>existing.key === item.key)) return
+        const fallback = TOOLBAR_DEFAULTS.find(defaultItem=>defaultItem.key === item.key)
+        ordered.push({
+            key:item.key,
+            label:String(item.label || fallback.label).trim() || fallback.label,
+            visible:item.visible !== false
+        })
+    })
+
+    TOOLBAR_DEFAULTS.forEach(defaultItem=>{
+        if(ordered.some(item=>item.key === defaultItem.key)) return
+        const savedItem = savedByKey.get(defaultItem.key)
+        ordered.push({
+            ...defaultItem,
+            label:String(savedItem?.label || defaultItem.label).trim() || defaultItem.label,
+            visible:savedItem?.visible === false ? false : defaultItem.visible
+        })
+    })
+
+    if(!ordered.some(item=>item.visible)) ordered[0].visible = true
+    return ordered
+}
+
+function loadToolbarCustomization(){
+    try{
+        toolbarSettings = normalizeToolbarSettings(JSON.parse(localStorage.getItem(TOOLBAR_SETTINGS_KEY) || "null"))
+    }catch(error){
+        toolbarSettings = cloneToolbarDefaults()
+    }
+}
+
+function persistToolbarCustomization(){
+    try{
+        localStorage.setItem(TOOLBAR_SETTINGS_KEY,JSON.stringify(toolbarSettings))
+    }catch(error){
+        console.warn("Toolbar customization could not be saved.",error)
+    }
+}
+
+function toolbarLabel(key){
+    return toolbarSettings.find(item=>item.key === key)?.label || TOOLBAR_DEFAULTS.find(item=>item.key === key)?.label || key
+}
+
+function openToolbarCustomizer(){
+    renderToolbarCustomizer()
+    document.getElementById("toolbarCustomizeBackdrop")?.classList.remove("is-hidden")
+}
+
+function closeToolbarCustomizer(){
+    document.getElementById("toolbarCustomizeBackdrop")?.classList.add("is-hidden")
+}
+
+function renderToolbarCustomizer(){
+    const list = document.getElementById("toolbarCustomizerList")
+    if(!list) return
+
+    list.innerHTML = ""
+    toolbarSettings.forEach((item,index)=>{
+        const row = document.createElement("div")
+        row.className = "toolbar-customizer-row"
+        row.dataset.key = item.key
+
+        const visibleLabel = document.createElement("label")
+        visibleLabel.className = "toolbar-customizer-toggle"
+        const checkbox = document.createElement("input")
+        checkbox.type = "checkbox"
+        checkbox.checked = item.visible
+        checkbox.dataset.toolbarVisible = item.key
+        visibleLabel.appendChild(checkbox)
+        const toggleText = document.createElement("span")
+        toggleText.textContent = "Show"
+        visibleLabel.appendChild(toggleText)
+        row.appendChild(visibleLabel)
+
+        const nameLabel = document.createElement("label")
+        nameLabel.className = "toolbar-customizer-name"
+        const nameText = document.createElement("span")
+        nameText.textContent = TOOLBAR_DEFAULTS.find(defaultItem=>defaultItem.key === item.key)?.label || item.key
+        nameLabel.appendChild(nameText)
+        const nameInput = document.createElement("input")
+        nameInput.type = "text"
+        nameInput.value = item.label
+        nameInput.dataset.toolbarLabel = item.key
+        nameInput.maxLength = 18
+        nameLabel.appendChild(nameInput)
+        row.appendChild(nameLabel)
+
+        const moves = document.createElement("div")
+        moves.className = "toolbar-customizer-moves"
+        const up = document.createElement("button")
+        up.type = "button"
+        up.className = "secondary icon-button"
+        up.textContent = "↑"
+        up.disabled = index === 0
+        up.setAttribute("aria-label","Move "+item.label+" left")
+        up.addEventListener("click",()=>moveToolbarCustomizerItem(index,-1))
+        moves.appendChild(up)
+
+        const down = document.createElement("button")
+        down.type = "button"
+        down.className = "secondary icon-button"
+        down.textContent = "↓"
+        down.disabled = index === toolbarSettings.length - 1
+        down.setAttribute("aria-label","Move "+item.label+" right")
+        down.addEventListener("click",()=>moveToolbarCustomizerItem(index,1))
+        moves.appendChild(down)
+        row.appendChild(moves)
+
+        list.appendChild(row)
+    })
+}
+
+function moveToolbarCustomizerItem(index,offset){
+    const nextIndex = index + offset
+    if(nextIndex < 0 || nextIndex >= toolbarSettings.length) return
+    const next = [...toolbarSettings]
+    const [item] = next.splice(index,1)
+    next.splice(nextIndex,0,item)
+    toolbarSettings = next
+    renderToolbarCustomizer()
+}
+
+function saveToolbarCustomization(){
+    const next = toolbarSettings.map(item=>{
+        const labelInput = document.querySelector(`[data-toolbar-label="${item.key}"]`)
+        const visibleInput = document.querySelector(`[data-toolbar-visible="${item.key}"]`)
+        const fallback = TOOLBAR_DEFAULTS.find(defaultItem=>defaultItem.key === item.key)?.label || item.label
+        return {
+            key:item.key,
+            label:String(labelInput?.value || fallback).trim() || fallback,
+            visible:visibleInput?.checked !== false
+        }
+    })
+
+    toolbarSettings = normalizeToolbarSettings(next)
+    persistToolbarCustomization()
+    closeToolbarCustomizer()
+    rebuildToolbar()
+}
+
+function resetToolbarCustomization(){
+    toolbarSettings = cloneToolbarDefaults()
+    persistToolbarCustomization()
+    renderToolbarCustomizer()
+    rebuildToolbar()
+}
+
+function applyThemeMode(mode){
+    themeMode = mode === "light" ? "light" : "dark"
+    document.documentElement.dataset.theme = themeMode
+    document.getElementById("themeColorMeta")?.setAttribute("content",themeMode === "light" ? "#f6f4ee" : "#0d1116")
+    updateThemeButtons()
+}
+
+function loadThemeMode(){
+    try{
+        applyThemeMode(localStorage.getItem(THEME_MODE_KEY) || "dark")
+    }catch(error){
+        applyThemeMode("dark")
+    }
+}
+
+function setThemeMode(mode){
+    applyThemeMode(mode)
+    try{
+        localStorage.setItem(THEME_MODE_KEY,themeMode)
+    }catch(error){
+        console.warn("Theme preference could not be saved.",error)
+    }
+}
+
+function toggleThemeMode(){
+    setThemeMode(themeMode === "light" ? "dark" : "light")
+}
+
+function updateThemeButtons(){
+    document.querySelectorAll("[data-theme-mode]").forEach(button=>{
+        button.classList.toggle("active-view",button.dataset.themeMode === themeMode)
+    })
+
+    const toggle = document.getElementById("themeToggleButton")
+    const label = toggle?.querySelector?.(".button-label")
+    if(label) label.textContent = themeMode === "light" ? "Light Mode" : "Dark Mode"
+    document.getElementById("settingsDarkButton")?.classList.toggle("active-view",themeMode === "dark")
+    document.getElementById("settingsLightButton")?.classList.toggle("active-view",themeMode === "light")
+}
+
+function loadDefaultPlannerView(){
+    try{
+        let value = localStorage.getItem(DEFAULT_VIEW_KEY)
+        defaultPlannerView = ["week","workweek","month"].includes(value) ? value : "week"
+    }catch(error){
+        defaultPlannerView = "week"
+    }
+}
+
+function setDefaultPlannerView(view){
+    defaultPlannerView = ["week","workweek","month"].includes(view) ? view : "week"
+    try{
+        localStorage.setItem(DEFAULT_VIEW_KEY,defaultPlannerView)
+    }catch(error){
+        console.warn("Default view could not be saved.",error)
+    }
+    syncSettingsControls()
+}
+
+function syncSettingsControls(){
+    updateThemeButtons()
+    updateTimelineZoomControls()
+    applyTimelineLayoutMode()
+    let autosave = document.getElementById("settingsAutosaveInput")
+    if(autosave) autosave.checked = autosaveEnabled
+    let defaultView = document.getElementById("settingsDefaultViewInput")
+    if(defaultView) defaultView.value = defaultPlannerView
+}
+
+function openSettings(){
+    closeOpenFileMenus()
+    closeMobileSheet()
+    closeFullSearch()
+    syncSettingsControls()
+    document.getElementById("settingsBackdrop")?.classList.remove("is-hidden")
+    document.querySelectorAll("[data-mobile-nav]").forEach(button=>button.classList.toggle("active-view",button.dataset.mobileNav === "settings"))
+}
+
+function closeSettings(){
+    document.getElementById("settingsBackdrop")?.classList.add("is-hidden")
+    updateMobileNav()
+}
+
 function triggerProjectOpen(){
     document.getElementById("projectFileInput")?.click()
 }
@@ -1383,8 +1954,41 @@ function triggerCalendarFilePicker(){
 }
 
 function closeOpenFileMenus(){
-    document.querySelector(".file-menu-wrap")?.classList.remove("is-open")
-    document.getElementById("fileMenuButton")?.setAttribute("aria-expanded","false")
+    document.querySelectorAll(".toolbar-menu-wrap.is-open, .file-menu-wrap.is-open").forEach(menu=>{
+        menu.classList.remove("is-open")
+        menu.querySelector("[aria-expanded]")?.setAttribute("aria-expanded","false")
+    })
+}
+
+function closeMobileSheet(){
+    document.body.classList.remove("mobile-agenda-open")
+    document.querySelectorAll("[data-mobile-nav]").forEach(button=>{
+        if(button.dataset.mobileNav === "agenda") button.classList.remove("active-view")
+    })
+}
+
+function openMobileSheet(sheet){
+    if(sheet !== "agenda") return
+    closeOpenFileMenus()
+    closeFullSearch()
+    document.body.classList.add("mobile-agenda-open")
+    updateMobileNav()
+    setTimeout(()=>document.getElementById("agendaSearchInput")?.focus({preventScroll:true}),80)
+}
+
+function updateMobileNav(){
+    let today = new Date()
+    let settingsOpen = !document.getElementById("settingsBackdrop")?.classList.contains("is-hidden")
+    document.querySelectorAll("[data-mobile-nav]").forEach(button=>{
+        let nav = button.dataset.mobileNav
+        button.classList.toggle("active-view",
+            (nav === "today" && isDateInSelectedWeek(today)) ||
+            (nav === "week" && ["week","workweek"].includes(plannerView) && !document.body.classList.contains("mobile-agenda-open")) ||
+            (nav === "month" && plannerView === "month") ||
+            (nav === "agenda" && document.body.classList.contains("mobile-agenda-open")) ||
+            (nav === "settings" && settingsOpen)
+        )
+    })
 }
 
 function rebuildToolbar(){
@@ -1423,7 +2027,10 @@ function rebuildToolbar(){
         node.setAttribute("aria-label",options.ariaLabel || label)
         if(options.title) node.title = options.title
         if(id) node.id = id
-        node.addEventListener("click",handler)
+        node.addEventListener("click",event=>{
+            handler(event)
+            if(parent.closest?.(".toolbar-menu")) closeFileMenu()
+        })
         parent.appendChild(node)
         return node
     }
@@ -1447,12 +2054,30 @@ function rebuildToolbar(){
         return picker
     }
 
-    function menuItem(parent,label,handler,id=""){
+    function addGlyph(node,iconClass,label){
+        if(iconClass){
+            node.classList.add("icon-text-button")
+            const icon = document.createElement("span")
+            icon.className = "button-icon " + iconClass
+            icon.setAttribute("aria-hidden","true")
+            node.appendChild(icon)
+
+            const text = document.createElement("span")
+            text.className = "button-label"
+            text.textContent = label
+            node.appendChild(text)
+        }else{
+            node.textContent = label
+        }
+    }
+
+    function menuItem(parent,label,handler,id="",options={}){
         const node = document.createElement("button")
         node.type = "button"
         node.className = "file-menu-item"
-        node.textContent = label
+        addGlyph(node,options.iconClass,label)
         if(id) node.id = id
+        if(options.className) node.classList.add(...options.className.split(" ").filter(Boolean))
         node.addEventListener("click",event=>{
             event.stopPropagation()
             handler()
@@ -1471,117 +2096,181 @@ function rebuildToolbar(){
     }
 
     function closeFileMenu(){
-        document.querySelector(".file-menu-wrap")?.classList.remove("is-open")
-        document.getElementById("fileMenuButton")?.setAttribute("aria-expanded","false")
+        closeOpenFileMenus()
     }
 
-    const fileGroup = group("file-tools")
-    const fileWrap = document.createElement("div")
-    fileWrap.className = "file-menu-wrap"
-    fileGroup.appendChild(fileWrap)
+    function menuButton(parent,label,id="",iconClass=""){
+        const wrap = document.createElement("div")
+        wrap.className = "toolbar-menu-wrap file-menu-wrap"
+        parent.appendChild(wrap)
 
-    const fileButton = document.createElement("button")
-    fileButton.type = "button"
-    fileButton.id = "fileMenuButton"
-    fileButton.className = "secondary file-menu-button"
-    fileButton.textContent = "File menu"
-    fileButton.setAttribute("aria-haspopup","true")
-    fileButton.setAttribute("aria-expanded","false")
-    fileButton.addEventListener("click",event=>{
-        event.stopPropagation()
-        let isOpen = fileWrap.classList.toggle("is-open")
-        fileButton.setAttribute("aria-expanded",String(isOpen))
-    })
-    fileWrap.appendChild(fileButton)
+        const trigger = document.createElement("button")
+        trigger.type = "button"
+        if(id) trigger.id = id
+        trigger.className = "secondary file-menu-button toolbar-menu-button"
+        addGlyph(trigger,iconClass,label)
+        trigger.setAttribute("aria-haspopup","true")
+        trigger.setAttribute("aria-expanded","false")
+        trigger.addEventListener("click",event=>{
+            event.stopPropagation()
+            const wasOpen = wrap.classList.contains("is-open")
+            closeOpenFileMenus()
+            wrap.classList.toggle("is-open",!wasOpen)
+            trigger.setAttribute("aria-expanded",String(!wasOpen))
+        })
+        wrap.appendChild(trigger)
 
-    const fileMenu = document.createElement("div")
-    fileMenu.className = "file-menu"
-    fileMenu.setAttribute("role","menu")
-    fileMenu.addEventListener("click",event=>event.stopPropagation())
-    fileWrap.appendChild(fileMenu)
+        const menu = document.createElement("div")
+        menu.className = "file-menu toolbar-menu"
+        menu.setAttribute("role","menu")
+        menu.addEventListener("click",event=>event.stopPropagation())
+        wrap.appendChild(menu)
 
-    menuSection(fileMenu,"Project")
-    menuItem(fileMenu,"Save",saveProject)
-    menuItem(fileMenu,"Save As",saveProjectAs)
-    menuItem(fileMenu,"Set Save Location",chooseSaveLocation)
-    menuItem(fileMenu,autosaveEnabled ? "Autosave On" : "Autosave Off",toggleAutosave,"autosaveMenuButton")
-    menuItem(fileMenu,"Open Project",triggerProjectOpen)
+        return menu
+    }
 
-    filePicker(fileMenu,"Calendar File","fileInput",".ics,.ical,.ifb,.cal,.csv,text/calendar,text/csv",importICS)
-    filePicker(fileMenu,"Project File","projectFileInput",".abt-planner.json,.json,application/json",openProjectFile)
+    function appendExportScope(parent){
+        const exportScope = document.createElement("label")
+        exportScope.className = "export-scope file-menu-scope"
+        const exportLabel = document.createElement("span")
+        exportLabel.textContent = "Export"
+        exportScope.appendChild(exportLabel)
+        const exportSelect = document.createElement("select")
+        exportSelect.id = "exportScope"
+        ;[
+            ["week","Selected week"],
+            ["month","Full month"]
+        ].forEach(([value,label])=>{
+            const option = document.createElement("option")
+            option.value = value
+            option.textContent = label
+            exportSelect.appendChild(option)
+        })
+        exportSelect.value = exportScopeValue
+        exportSelect.addEventListener("change",savePlannerState)
+        exportScope.appendChild(exportSelect)
+        parent.appendChild(exportScope)
+    }
 
-    menuSection(fileMenu,"Calendar")
-    menuItem(fileMenu,"Import Calendar",triggerCalendarFilePicker)
-    menuItem(fileMenu,"Export Calendar",exportICS)
-    menuItem(fileMenu,"Export PDF",exportPDF)
+    const builders = {
+        file(item){
+            const fileGroup = group("file-tools")
+            const fileMenu = menuButton(fileGroup,item.label,"fileMenuButton","icon-file-menu")
 
-    const exportScope = document.createElement("label")
-    exportScope.className = "export-scope file-menu-scope"
-    const exportLabel = document.createElement("span")
-    exportLabel.textContent = "Export"
-    exportScope.appendChild(exportLabel)
-    const exportSelect = document.createElement("select")
-    exportSelect.id = "exportScope"
-    ;[
-        ["week","Selected week"],
-        ["month","Full month"]
-    ].forEach(([value,label])=>{
-        const option = document.createElement("option")
-        option.value = value
-        option.textContent = label
-        exportSelect.appendChild(option)
-    })
-    exportSelect.value = exportScopeValue
-    exportSelect.addEventListener("change",savePlannerState)
-    exportScope.appendChild(exportSelect)
-    fileMenu.appendChild(exportScope)
+            menuSection(fileMenu,"Project")
+            menuItem(fileMenu,"Save",saveProject,"",{iconClass:"icon-save"})
+            menuItem(fileMenu,"Save As",saveProjectAs,"",{iconClass:"icon-save-as"})
+            menuItem(fileMenu,"Set Save Location",chooseSaveLocation,"",{iconClass:"icon-folder"})
+            menuItem(fileMenu,autosaveEnabled ? "Autosave On" : "Autosave Off",toggleAutosave,"autosaveMenuButton",{iconClass:"icon-autosave"})
+            menuItem(fileMenu,"Open Project",triggerProjectOpen,"",{iconClass:"icon-open"})
 
-    menuSection(fileMenu,"Cloud")
-    menuItem(fileMenu,"Import OneDrive",()=>importProjectFromCloud("onedrive"))
-    menuItem(fileMenu,"Import Google",()=>importProjectFromCloud("google"))
-    menuItem(fileMenu,"Upload OneDrive",()=>uploadProjectToCloud("onedrive"))
-    menuItem(fileMenu,"Upload Google",()=>uploadProjectToCloud("google"))
+            filePicker(fileMenu,"Calendar File","fileInput",".ics,.ical,.ifb,.cal,.csv,text/calendar,text/csv",importICS)
+            filePicker(fileMenu,"Project File","projectFileInput",".abt-planner.json,.json,application/json",openProjectFile)
 
-    const saveStatus = document.createElement("span")
-    saveStatus.className = "save-status file-menu-status"
-    saveStatus.id = "saveStatus"
-    saveStatus.textContent = "Autosaved locally"
-    fileMenu.appendChild(saveStatus)
+            menuSection(fileMenu,"Calendar")
+            menuItem(fileMenu,"Import Calendar",triggerCalendarFilePicker,"",{iconClass:"icon-import"})
+            menuItem(fileMenu,"Export Calendar",exportICS,"",{iconClass:"icon-export"})
+            menuItem(fileMenu,"Export PDF",exportPDF,"",{iconClass:"icon-pdf"})
+            appendExportScope(fileMenu)
 
-    const createGroup = group("create-tools")
-    button(createGroup,"Add Block","primary",addBlock)
-    button(createGroup,"Edit","secondary",editSelectedBlock)
-    button(createGroup,"Undo","secondary",undoLastChange,"undoButton")
-    button(createGroup,"Delete Selected","danger",deleteSelectedBlocks)
-    button(createGroup,"Delete All","danger",deleteAllBlocks)
+            menuSection(fileMenu,"Cloud")
+            menuItem(fileMenu,"Import OneDrive",()=>importProjectFromCloud("onedrive"),"",{iconClass:"icon-cloud-download"})
+            menuItem(fileMenu,"Import Google",()=>importProjectFromCloud("google"),"",{iconClass:"icon-cloud-download"})
+            menuItem(fileMenu,"Upload OneDrive",()=>uploadProjectToCloud("onedrive"),"",{iconClass:"icon-cloud-upload"})
+            menuItem(fileMenu,"Upload Google",()=>uploadProjectToCloud("google"),"",{iconClass:"icon-cloud-upload"})
 
-    const selectionGroup = group("selection-tools")
-    button(selectionGroup,"Select All","secondary",selectAllBlocks)
-    button(selectionGroup,"All Calendar","secondary",selectAllCalendarEvents)
-    button(selectionGroup,"Clear","secondary",clearSelection)
-    button(selectionGroup,"Copy","secondary",copySelectedBlock)
-    button(selectionGroup,"Cut","secondary",cutSelectedBlock)
-    button(selectionGroup,"Paste","secondary",pasteBlock)
-    const selectionStatus = document.createElement("span")
-    selectionStatus.className = "selection-status"
-    selectionStatus.id = "selectionStatus"
-    selectionStatus.textContent = "No selection"
-    selectionGroup.appendChild(selectionStatus)
+            const saveStatus = document.createElement("span")
+            saveStatus.className = "save-status file-menu-status"
+            saveStatus.id = "saveStatus"
+            saveStatus.textContent = "Autosaved locally"
+            fileMenu.appendChild(saveStatus)
+        },
+        blocks(item){
+            const createGroup = group("create-tools")
+            const createMenu = menuButton(createGroup,item.label,"","icon-blocks")
+            menuItem(createMenu,"Add Block",addBlock,"",{iconClass:"icon-add"})
+            menuItem(createMenu,"Edit Selected",editSelectedBlock,"",{iconClass:"icon-edit"})
+            menuItem(createMenu,"Undo",undoLastChange,"undoButton",{iconClass:"icon-undo"})
+            menuItem(createMenu,"Redo",redoLastChange,"redoButton",{iconClass:"icon-redo"})
+            menuItem(createMenu,"Delete Selected",deleteSelectedBlocks,"",{iconClass:"icon-trash",className:"danger"})
+            menuItem(createMenu,"Delete All",deleteAllBlocks,"",{iconClass:"icon-trash",className:"danger"})
+        },
+        selection(item){
+            const selectionGroup = group("selection-tools")
+            const selectionMenu = menuButton(selectionGroup,item.label,"","icon-selection")
+            menuItem(selectionMenu,"Select All",selectAllBlocks,"",{iconClass:"icon-select-all"})
+            menuItem(selectionMenu,"All Calendar",selectAllCalendarEvents,"",{iconClass:"icon-calendar-check"})
+            menuItem(selectionMenu,"Clear Selection",clearSelection,"",{iconClass:"icon-clear"})
+            menuSection(selectionMenu,"Clipboard")
+            menuItem(selectionMenu,"Copy",copySelectedBlock,"",{iconClass:"icon-copy"})
+            menuItem(selectionMenu,"Cut",cutSelectedBlock,"",{iconClass:"icon-cut"})
+            menuItem(selectionMenu,"Paste",pasteBlock,"",{iconClass:"icon-paste"})
+            const selectionStatus = document.createElement("span")
+            selectionStatus.className = "selection-status"
+            selectionStatus.id = "selectionStatus"
+            selectionStatus.textContent = "No selection"
+            selectionGroup.appendChild(selectionStatus)
+        },
+        calendar(item){
+            const calendarGroup = group("calendar-tools")
+            const calendarMenu = menuButton(calendarGroup,item.label,"","icon-calendar")
+            menuItem(calendarMenu,"Import Calendar",triggerCalendarFilePicker,"",{iconClass:"icon-import"})
+            menuItem(calendarMenu,"Filters",openImportFilterEditor,"",{iconClass:"icon-filter"})
+            menuItem(calendarMenu,"Review Conflicts",openConflictReviewFromImport,"",{iconClass:"icon-calendar-check"})
+            menuItem(calendarMenu,"Export Calendar",exportICS,"",{iconClass:"icon-export"})
+            menuItem(calendarMenu,"Export PDF",exportPDF,"",{iconClass:"icon-pdf"})
+            appendExportScope(calendarMenu)
+        },
+        view(item){
+            const viewGroup = group("view-tools")
+            const viewMenu = menuButton(viewGroup,item.label,"","icon-view")
+            button(viewMenu,"Current Week","secondary file-menu-item",goToCurrentWeek,"",{iconClass:"icon-current-week",title:"Jump to current week"})
+            button(viewMenu,"Previous","secondary file-menu-item",()=>changeMonth(-1),"",{iconClass:"icon-prev",ariaLabel:"Previous month",title:"Previous month"})
+            button(viewMenu,"Next","secondary file-menu-item",()=>changeMonth(1),"",{iconClass:"icon-next",ariaLabel:"Next month",title:"Next month"})
+            button(viewMenu,"Work Week","secondary file-menu-item",()=>setPlannerView("workweek"),"workWeekViewButton",{iconClass:"icon-week-view",ariaLabel:"Work week view",title:"Work week view"})
+            button(viewMenu,"Week","secondary file-menu-item",()=>setPlannerView("week"),"weekViewButton",{iconClass:"icon-week-view",ariaLabel:"Week view",title:"Week view"})
+            button(viewMenu,"Month","secondary file-menu-item",()=>setPlannerView("month"),"monthViewButton",{iconClass:"icon-month-view",ariaLabel:"Month view",title:"Month view"})
+        },
+        zoom(item){
+            const zoomGroup = group("zoom-tools")
+            const zoomMenu = menuButton(zoomGroup,item.label,"zoomMenuButton","icon-zoom")
+            menuItem(zoomMenu,"Zoom In",zoomInTimeline,"zoomInButton",{iconClass:"icon-zoom-in"})
+            menuItem(zoomMenu,"Zoom Out",zoomOutTimeline,"zoomOutButton",{iconClass:"icon-zoom-out"})
+            menuItem(zoomMenu,"Reset Zoom",resetTimelineZoom,"resetZoomButton",{iconClass:"icon-zoom-reset"})
+            const zoomStatus = document.createElement("span")
+            zoomStatus.className = "zoom-status"
+            zoomStatus.id = "zoomStatus"
+            zoomStatus.textContent = "100%"
+            zoomGroup.appendChild(zoomStatus)
+        },
+        theme(item){
+            const themeGroup = group("theme-tools")
+            const themeMenu = menuButton(themeGroup,item.label,"themeToggleButton","icon-theme")
+            const darkButton = menuItem(themeMenu,"Dark Mode",()=>setThemeMode("dark"),"",{iconClass:"icon-moon"})
+            darkButton.dataset.themeMode = "dark"
+            const lightButton = menuItem(themeMenu,"Light Mode",()=>setThemeMode("light"),"",{iconClass:"icon-sun"})
+            lightButton.dataset.themeMode = "light"
+            menuSection(themeMenu,"Quick switch")
+            menuItem(themeMenu,"Toggle Theme",toggleThemeMode,"",{iconClass:"icon-theme"})
+        }
+    }
 
-    const calendarGroup = group("calendar-tools")
-    button(calendarGroup,"Filters","secondary",openImportFilterEditor)
+    toolbarSettings
+        .filter(item=>item.visible && builders[item.key])
+        .forEach(item=>builders[item.key](item))
 
-    const viewGroup = group("view-tools")
-    button(viewGroup,"Current Week","secondary",goToCurrentWeek,"",{iconClass:"icon-current-week",title:"Jump to current week"})
-    button(viewGroup,"Previous","secondary",()=>changeMonth(-1),"",{iconClass:"icon-prev",ariaLabel:"Previous month",title:"Previous month"})
-    button(viewGroup,"Next","secondary",()=>changeMonth(1),"",{iconClass:"icon-next",ariaLabel:"Next month",title:"Next month"})
-    button(viewGroup,"Week","secondary",()=>setPlannerView("week"),"weekViewButton",{iconClass:"icon-week-view",ariaLabel:"Week view",title:"Week view"})
-    button(viewGroup,"Month","secondary",()=>setPlannerView("month"),"monthViewButton",{iconClass:"icon-month-view",ariaLabel:"Month view",title:"Month view"})
+    const searchGroup = group("search-tools")
+    button(searchGroup,"Search","secondary toolbar-menu-button",openFullSearch,"fullSearchButton",{iconClass:"icon-search",title:"Full search"})
 
-    updateUndoButton()
+    const customizeGroup = group("customize-tools")
+    button(customizeGroup,"Settings","secondary toolbar-menu-button",openSettings,"settingsButton",{iconClass:"icon-settings",title:"Settings"})
+    button(customizeGroup,"Customize","secondary toolbar-menu-button",openToolbarCustomizer,"toolbarCustomizeButton",{iconClass:"icon-settings",title:"Customize toolbar"})
+
+    updateHistoryButtons()
     document.getElementById("weekViewButton")?.classList.toggle("active-view",plannerView === "week")
     document.getElementById("monthViewButton")?.classList.toggle("active-view",plannerView === "month")
     updateAutosaveButton()
+    updateThemeButtons()
     updateSelectionStatus()
 }
 
@@ -2019,6 +2708,9 @@ function shortcutKey(event){
     if(key === "c" || code === "keyc" || keyCode === 67) return "c"
     if(key === "x" || code === "keyx" || keyCode === 88) return "x"
     if(key === "v" || code === "keyv" || keyCode === 86) return "v"
+    if(key === "+" || key === "=" || code === "equal" || code === "numpadadd" || keyCode === 187 || keyCode === 107) return "+"
+    if(key === "-" || key === "_" || code === "minus" || code === "numpadsubtract" || keyCode === 189 || keyCode === 109) return "-"
+    if(key === "0" || code === "digit0" || code === "numpad0" || keyCode === 48 || keyCode === 96) return "0"
     if(key === "delete" || key === "del" || code === "delete" || keyCode === 46) return "delete"
     if(key === "backspace" || code === "backspace" || keyCode === 8) return "backspace"
 
@@ -2032,6 +2724,11 @@ function handleKeyboardShortcut(event){
         closeOpenFileMenus()
         closeBlockEditor()
         closeImportFilterEditor()
+        closeToolbarCustomizer()
+        closeFullSearch()
+        closeSettings()
+        closeConflictReview()
+        closeMobileSheet()
         return
     }
 
@@ -2045,6 +2742,13 @@ function handleKeyboardShortcut(event){
         event.preventDefault()
         event.stopPropagation()
         undoLastChange()
+        return
+    }
+
+    if((shortcut && key === "z" && event.shiftKey) || (shortcut && key === "y")){
+        event.preventDefault()
+        event.stopPropagation()
+        redoLastChange()
         return
     }
 
@@ -2076,6 +2780,27 @@ function handleKeyboardShortcut(event){
         return
     }
 
+    if(shortcut && key === "+"){
+        event.preventDefault()
+        event.stopPropagation()
+        zoomInTimeline()
+        return
+    }
+
+    if(shortcut && key === "-"){
+        event.preventDefault()
+        event.stopPropagation()
+        zoomOutTimeline()
+        return
+    }
+
+    if(shortcut && key === "0"){
+        event.preventDefault()
+        event.stopPropagation()
+        resetTimelineZoom()
+        return
+    }
+
     if(!hasShortcutModifier(event) && (key === "delete" || key === "backspace")){
         let blocks = getSelectedBlocks()
         if(blocks.length || getSelectedMonthEvents().length){
@@ -2100,14 +2825,37 @@ document.getElementById("importFilterBackdrop")?.addEventListener("click", event
     if(event.target.id === "importFilterBackdrop") closeImportFilterEditor()
 })
 
+document.getElementById("toolbarCustomizeBackdrop")?.addEventListener("click", event=>{
+    if(event.target.id === "toolbarCustomizeBackdrop") closeToolbarCustomizer()
+})
+
+document.getElementById("fullSearchBackdrop")?.addEventListener("click", event=>{
+    if(event.target.id === "fullSearchBackdrop") closeFullSearch()
+})
+
+document.getElementById("settingsBackdrop")?.addEventListener("click", event=>{
+    if(event.target.id === "settingsBackdrop") closeSettings()
+})
+
+document.getElementById("conflictReviewBackdrop")?.addEventListener("click", event=>{
+    if(event.target.id === "conflictReviewBackdrop") closeConflictReview()
+})
+
 window.addEventListener("resize",()=>{
+    scheduleViewportMetricUpdate()
     cachedTimelineHeight = null
     clearTimeout(resizeUpdateTimer)
     resizeUpdateTimer = setTimeout(()=>{
+        applyTimelineZoom()
+        if(!window.matchMedia("(max-width: 760px), (max-width: 1180px) and (pointer: coarse)").matches) closeMobileSheet()
         renderWeek()
         update()
     },150)
 })
+
+window.addEventListener("orientationchange",scheduleViewportMetricUpdate)
+window.visualViewport?.addEventListener("resize",scheduleViewportMetricUpdate)
+window.visualViewport?.addEventListener("scroll",scheduleViewportMetricUpdate)
 
 //--------------------------------
 // ACTIVE DAY UI
@@ -2140,16 +2888,21 @@ function updateActiveDay(){
 function setPlannerView(view){
     if(plannerView !== view) clearSelection()
     plannerView = view
+    closeMobileSheet()
 
-    document.querySelector(".timeline-panel")?.classList.toggle("is-hidden",view !== "week")
+    document.body.classList.toggle("workweek-mode",view === "workweek")
+    document.querySelector(".timeline-panel")?.classList.toggle("is-hidden",!["week","workweek"].includes(view))
     document.getElementById("monthPanel")?.classList.toggle("is-hidden",view !== "month")
-    document.getElementById("weekViewButton")?.classList.toggle("active-view",view === "week")
+    document.getElementById("weekViewButton")?.classList.toggle("active-view",view === "week" || view === "workweek")
+    document.getElementById("workWeekViewButton")?.classList.toggle("active-view",view === "workweek")
     document.getElementById("monthViewButton")?.classList.toggle("active-view",view === "month")
 
     updateWeekHeader()
     updateImportSummary()
     savePlannerState()
     if(view === "month") renderMonthView()
+    updateOutlookPanels()
+    updateMobileNav()
 }
 
 function changeMonth(offset){
@@ -2303,6 +3056,15 @@ function setSaveStatus(message){
     if(status) status.innerText = message
 }
 
+function showAppToast(message){
+    let toast = document.getElementById("appToast")
+    if(!toast || !message) return
+    toast.textContent = message
+    toast.classList.remove("is-hidden")
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(()=>toast.classList.add("is-hidden"),3200)
+}
+
 function plannerStatusLabel(prefix){
     let name = currentProjectName || "planner"
     return prefix + " - " + name
@@ -2311,14 +3073,21 @@ function plannerStatusLabel(prefix){
 function updateAutosaveButton(){
     let button = document.getElementById("autosaveToggleButton")
     let menuButton = document.getElementById("autosaveMenuButton")
+    const label = autosaveEnabled ? "Autosave On" : "Autosave Off"
+
+    function setButtonLabel(node){
+        const text = node?.querySelector?.(".button-label")
+        if(text) text.textContent = label
+        else if(node) node.textContent = label
+    }
 
     if(button){
-        button.textContent = autosaveEnabled ? "Autosave On" : "Autosave Off"
+        setButtonLabel(button)
         button.classList.toggle("active-view",autosaveEnabled)
     }
 
     if(menuButton){
-        menuButton.textContent = autosaveEnabled ? "Autosave On" : "Autosave Off"
+        setButtonLabel(menuButton)
         menuButton.classList.toggle("active-view",autosaveEnabled)
     }
 }
@@ -2342,12 +3111,30 @@ function setAutosaveEnabled(enabled){
     }
 
     updateAutosaveButton()
+    syncSettingsControls()
     setSaveStatus(plannerStatusLabel(autosaveEnabled ? "Autosave enabled" : "Autosave disabled"))
+    showAppToast(autosaveEnabled ? "Autosave enabled" : "Autosave disabled")
     if(autosaveEnabled) savePlannerState()
 }
 
 function toggleAutosave(){
     setAutosaveEnabled(!autosaveEnabled)
+}
+
+function resetLayoutPreferences(){
+    timelineZoom = 1
+    saveTimelineZoom()
+    timelineLayoutMode = "fit"
+    try{
+        localStorage.setItem(TIMELINE_LAYOUT_MODE_KEY,timelineLayoutMode)
+    }catch(error){
+        console.warn("Timeline layout mode could not be saved.",error)
+    }
+    saveWorkspaceLayout({rail:220,agenda:270})
+    applyTimelineLayoutMode()
+    applyTimelineZoom()
+    syncSettingsControls()
+    showAppToast("Layout reset")
 }
 
 function plannerStatePayload(){
@@ -2741,6 +3528,443 @@ function buildImportSummary(importedCount=importedEventCount){
         ". Showing "+selected+"."+skipped
 }
 
+function selectedWeekStartDate(){
+    if(selectedWeekStartKey) return parseDateKey(selectedWeekStartKey)
+    return startOfPlannerWeek(new Date())
+}
+
+function selectedWeekAgendaBlocks(){
+    let start = selectedWeekStartDate()
+    return DAY_ORDER.flatMap((day,index)=>{
+        let date = addDays(start,index)
+        return (weekData[day] || []).map(block=>({
+            ...block,
+            day,
+            date,
+            dateKey:dateKey(date)
+        }))
+    }).sort((a,b)=>a.date-b.date || a.start-b.start)
+}
+
+function monthAgendaBlocks(){
+    return Object.keys(monthEvents)
+        .sort()
+        .flatMap(key=>{
+            let date = parseDateKey(key)
+            if(date.getMonth() !== monthAnchorDate.getMonth()) return []
+            let day = DAY_ORDER[(date.getDay() + 6) % 7]
+            return (monthEvents[key] || []).map(block=>({
+                ...block,
+                day,
+                date,
+                dateKey:key
+            }))
+        })
+        .sort((a,b)=>a.date-b.date || a.start-b.start)
+}
+
+function agendaScopeBlocks(){
+    return plannerView === "month" ? monthAgendaBlocks() : selectedWeekAgendaBlocks()
+}
+
+function searchableBlockValues(block){
+    return [
+        block.title,
+        block.location,
+        block.description,
+        DAY_LABELS[block.day],
+        block.dateKey,
+        block.date ? block.date.toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric", year:"numeric"}) : "",
+        formatTime(block.start),
+        formatTime(block.start + block.dur),
+        block.source
+    ]
+}
+
+function matchesSearchQuery(block,query){
+    if(!query) return true
+    return searchableBlockValues(block).some(value=>String(value || "").toLowerCase().includes(query))
+}
+
+function visibleAgendaBlocks(){
+    let query = String(document.getElementById("agendaSearchInput")?.value || "").trim().toLowerCase()
+    return agendaScopeBlocks()
+        .filter(block=>plannerView !== "workweek" || block.day !== "sun")
+        .filter(block=>matchesSearchQuery(block,query))
+}
+
+function allSearchBlocks(){
+    let seen = new Set()
+    let blocks = []
+    selectedWeekAgendaBlocks().forEach(block=>{
+        blocks.push({...block, source:"Selected week"})
+    })
+
+    Object.keys(monthEvents)
+        .sort()
+        .forEach(key=>{
+            let date = parseDateKey(key)
+            let day = DAY_ORDER[(date.getDay() + 6) % 7]
+            ;(monthEvents[key] || []).forEach(block=>{
+                let signature = [
+                    key,
+                    day,
+                    block.start,
+                    block.dur,
+                    block.title || "",
+                    block.location || "",
+                    block.description || ""
+                ].join("|")
+                if(seen.has(signature)) return
+                seen.add(signature)
+                blocks.push({
+                    ...block,
+                    day,
+                    date,
+                    dateKey:key,
+                    source:"Imported calendar"
+                })
+            })
+        })
+
+    return blocks.sort((a,b)=>a.date-b.date || a.start-b.start || String(a.title || "").localeCompare(String(b.title || "")))
+}
+
+function openFullSearch(){
+    closeOpenFileMenus()
+    closeMobileSheet()
+    document.getElementById("fullSearchBackdrop")?.classList.remove("is-hidden")
+    renderFullSearchResults()
+    document.querySelectorAll("[data-mobile-nav]").forEach(button=>button.classList.toggle("active-view",button.dataset.mobileNav === "search"))
+    setTimeout(()=>document.getElementById("fullSearchInput")?.focus(),40)
+}
+
+function closeFullSearch(){
+    document.getElementById("fullSearchBackdrop")?.classList.add("is-hidden")
+    updateMobileNav()
+}
+
+function closeConflictReview(){
+    document.getElementById("conflictReviewBackdrop")?.classList.add("is-hidden")
+}
+
+function conflictReviewBlocks(){
+    let blocks = []
+    let source = plannerView === "month" ? monthAgendaBlocks() : selectedWeekAgendaBlocks()
+    let grouped = source.reduce((map,block)=>{
+        let key = block.dateKey || block.day
+        if(!map[key]) map[key] = []
+        map[key].push(block)
+        return map
+    },{})
+
+    Object.keys(grouped).forEach(key=>{
+        let sorted = grouped[key].slice().sort((a,b)=>a.start-b.start || b.dur-a.dur)
+        let latest = null
+        sorted.forEach(block=>{
+            if(latest && block.start < latest.start + latest.dur - 0.0001){
+                blocks.push({...latest, conflictWith:block})
+            }
+            if(!latest || block.start + block.dur > latest.start + latest.dur) latest = block
+        })
+    })
+
+    return blocks
+}
+
+function openConflictReviewFromImport(){
+    closeOpenFileMenus()
+    let list = document.getElementById("conflictReviewList")
+    let summary = document.getElementById("conflictReviewSummary")
+    if(!list || !summary) return
+
+    let conflicts = conflictReviewBlocks()
+    list.innerHTML = ""
+    summary.textContent = conflicts.length
+        ? conflicts.length+" conflict"+(conflicts.length===1 ? "" : "s")+" found in the current "+(plannerView === "month" ? "month" : "week")+"."
+        : "No overlapping blocks found in the current "+(plannerView === "month" ? "month" : "week")+"."
+    showAppToast(conflicts.length ? conflicts.length+" conflict"+(conflicts.length===1 ? "" : "s")+" found" : "No conflicts found")
+
+    if(!conflicts.length){
+        let empty = document.createElement("p")
+        empty.className = "conflict-empty"
+        empty.textContent = "Imported events and planned blocks do not overlap in this view."
+        list.appendChild(empty)
+    }
+
+    conflicts.forEach(pair=>{
+        let item = document.createElement("button")
+        item.type = "button"
+        item.className = "conflict-review-item"
+        item.addEventListener("click",()=>{
+            closeConflictReview()
+            openAgendaBlock(pair.conflictWith)
+        })
+
+        let title = document.createElement("strong")
+        title.textContent = (pair.title || "Block")+" overlaps "+(pair.conflictWith.title || "Block")
+        item.appendChild(title)
+
+        let meta = document.createElement("span")
+        meta.textContent = [
+            pair.date ? pair.date.toLocaleDateString(undefined,{weekday:"short", month:"short", day:"numeric"}) : DAY_LABELS[pair.day],
+            formatTime(pair.start)+" - "+formatTime(pair.start + pair.dur),
+            formatTime(pair.conflictWith.start)+" - "+formatTime(pair.conflictWith.start + pair.conflictWith.dur)
+        ].filter(Boolean).join(" | ")
+        item.appendChild(meta)
+        list.appendChild(item)
+    })
+
+    document.getElementById("conflictReviewBackdrop")?.classList.remove("is-hidden")
+}
+
+function openFullSearchBlock(block){
+    if(block.dateKey){
+        selectedWeekStartKey = dateKey(startOfPlannerWeek(block.date))
+        loadWeekFromMonth(selectedWeekStartKey)
+        monthAnchorDate = new Date(block.date.getFullYear(),block.date.getMonth(),1)
+    }
+    currentDay = block.day
+    closeFullSearch()
+    setPlannerView("week")
+    updateActiveDay()
+    updateOutlookPanels()
+    savePlannerState()
+}
+
+function renderFullSearchResults(){
+    let input = document.getElementById("fullSearchInput")
+    let summary = document.getElementById("fullSearchSummary")
+    let results = document.getElementById("fullSearchResults")
+    if(!results) return
+
+    let query = String(input?.value || "").trim().toLowerCase()
+    let matches = allSearchBlocks().filter(block=>matchesSearchQuery(block,query))
+    let displayMatches = query ? matches.slice(0,100) : matches.slice(0,30)
+    results.innerHTML = ""
+
+    if(summary){
+        if(!query){
+            summary.textContent = displayMatches.length
+                ? "Showing available searchable items. Type to search across titles, notes, locations, dates, and times."
+                : "No searchable calendar data is available yet."
+        }else{
+            summary.textContent = matches.length+" result"+(matches.length===1 ? "" : "s")+" for \""+String(input?.value || "").trim()+"\""
+        }
+    }
+
+    if(!displayMatches.length){
+        let empty = document.createElement("p")
+        empty.className = "full-search-empty"
+        empty.textContent = query ? "No calendar items match this search." : "Import a calendar or add blocks to search."
+        results.appendChild(empty)
+        return
+    }
+
+    displayMatches.forEach(block=>{
+        let item = document.createElement("button")
+        item.type = "button"
+        item.className = "full-search-result"
+        item.addEventListener("click",()=>openFullSearchBlock(block))
+
+        let title = document.createElement("strong")
+        title.textContent = block.title || "Block"
+        item.appendChild(title)
+
+        let time = document.createElement("span")
+        time.className = "full-search-time"
+        time.textContent = block.date.toLocaleDateString(undefined,{weekday:"short", month:"short", day:"numeric"})+" - "+formatTime(block.start)+" to "+formatTime(block.start + block.dur)
+        item.appendChild(time)
+
+        let meta = document.createElement("span")
+        meta.className = "full-search-meta"
+        meta.textContent = [block.source, block.location, block.description].filter(Boolean).join(" - ")
+        item.appendChild(meta)
+
+        results.appendChild(item)
+    })
+
+    if(matches.length > displayMatches.length){
+        let capped = document.createElement("p")
+        capped.className = "full-search-empty"
+        capped.textContent = "Showing first "+displayMatches.length+" results. Refine the search to narrow the list."
+        results.appendChild(capped)
+    }
+}
+
+function agendaGroupLabel(block){
+    if(plannerView !== "month") return DAY_LABELS[block.day]
+    return block.date.toLocaleDateString(undefined,{weekday:"short", month:"short", day:"numeric"})
+}
+
+function openAgendaBlock(block){
+    currentDay = block.day
+    if(block.dateKey) selectedWeekStartKey = dateKey(startOfPlannerWeek(block.date))
+
+    if(plannerView === "month" && block.dateKey){
+        loadWeekFromMonth(selectedWeekStartKey)
+    }
+
+    setPlannerView("week")
+    updateActiveDay()
+}
+
+function changeMiniMonth(offset){
+    monthAnchorDate = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth() + offset,1)
+    renderMiniMonth()
+    if(plannerView === "month") renderMonthView()
+    updateOutlookPanels()
+}
+
+function selectMiniMonthDate(key){
+    selectedWeekStartKey = dateKey(startOfPlannerWeek(parseDateKey(key)))
+    monthAnchorDate = new Date(parseDateKey(key).getFullYear(),parseDateKey(key).getMonth(),1)
+
+    let hasWeekEvents = DAY_ORDER.some((day,index)=>{
+        let date = addDays(parseDateKey(selectedWeekStartKey),index)
+        return (monthEvents[dateKey(date)] || []).length
+    })
+
+    if(hasWeekEvents){
+        loadWeekFromMonth(selectedWeekStartKey)
+        setPlannerView(plannerView === "month" ? "month" : plannerView)
+        renderMonthView()
+        updateOutlookPanels()
+    }else{
+        setPlannerView(plannerView === "month" ? "month" : plannerView)
+        updateWeekHeader()
+        renderMonthView()
+        updateOutlookPanels()
+        savePlannerState()
+    }
+}
+
+function renderMiniMonth(){
+    let grid = document.getElementById("miniMonthGrid")
+    let title = document.getElementById("miniMonthTitle")
+    if(!grid || !title) return
+
+    grid.innerHTML = ""
+    title.textContent = monthName(monthAnchorDate)
+
+    let first = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth(),1)
+    let start = new Date(first)
+    start.setDate(first.getDate() - first.getDay())
+
+    for(let index=0; index<42; index++){
+        let cellDate = addDays(start,index)
+        let key = dateKey(cellDate)
+        let button = document.createElement("button")
+        button.type = "button"
+        button.className = "mini-month-day"
+        button.textContent = String(cellDate.getDate())
+        button.classList.toggle("outside-month",cellDate.getMonth() !== monthAnchorDate.getMonth())
+        button.classList.toggle("today",sameDate(cellDate,new Date()))
+        button.classList.toggle("selected-week",isDateInSelectedWeek(cellDate))
+        button.classList.toggle("has-events",Boolean((monthEvents[key] || []).length))
+        button.setAttribute("aria-label","Open week of "+weekRangeLabel(startOfPlannerWeek(cellDate)))
+        button.addEventListener("click",()=>selectMiniMonthDate(key))
+        grid.appendChild(button)
+    }
+}
+
+function updateOutlookPanels(){
+    let today = new Date()
+    let railMonth = document.getElementById("railMonthLabel")
+    let railDate = document.getElementById("railDateLabel")
+    let railDay = document.getElementById("railDayLabel")
+    let railWeek = document.getElementById("railWeekLabel")
+    let railImport = document.getElementById("railImportLabel")
+    let agendaRange = document.getElementById("agendaRangeLabel")
+    let agendaList = document.getElementById("agendaList")
+
+    if(railMonth) railMonth.textContent = today.toLocaleDateString(undefined,{month:"long"})
+    if(railDate) railDate.textContent = String(today.getDate())
+    if(railDay) railDay.textContent = today.toLocaleDateString(undefined,{weekday:"long"})
+
+    let weekStart = selectedWeekStartDate()
+    let weekLabel = weekRangeLabel(weekStart)
+    if(railWeek) railWeek.textContent = weekLabel
+    if(agendaRange){
+        agendaRange.textContent = plannerView === "month"
+            ? monthName(monthAnchorDate)
+            : plannerView === "workweek"
+                ? weekLabel+" · Mon-Sat"
+                : weekLabel
+    }
+
+    renderMiniMonth()
+
+    let eventCount = agendaScopeBlocks().length
+    if(railImport){
+        railImport.textContent = importedEventCount
+            ? importedEventCount+" imported event"+(importedEventCount===1 ? "" : "s")
+            : eventCount+" planned block"+(eventCount===1 ? "" : "s")
+    }
+
+    document.querySelectorAll(".rail-action-button").forEach(button=>{
+        let label = button.textContent.trim().toLowerCase().replace(/\s+/g,"")
+        button.classList.toggle("active-view",
+            label === plannerView ||
+            (label === "workweek" && plannerView === "workweek") ||
+            (label === "today" && isDateInSelectedWeek(today))
+        )
+    })
+    updateMobileNav()
+
+    if(!agendaList) return
+    agendaList.innerHTML = ""
+
+    let blocks = visibleAgendaBlocks()
+    if(!blocks.length){
+        let empty = document.createElement("p")
+        empty.className = "agenda-empty"
+        empty.textContent = document.getElementById("agendaSearchInput")?.value
+            ? "No agenda items match the search."
+            : plannerView === "month"
+                ? "No scheduled events in this month."
+                : "No scheduled blocks in the selected week."
+        agendaList.appendChild(empty)
+        return
+    }
+
+    let activeGroup = ""
+    blocks.forEach(block=>{
+        let groupKey = plannerView === "month" ? block.dateKey : block.day
+        if(groupKey !== activeGroup){
+            activeGroup = groupKey
+            let group = document.createElement("div")
+            group.className = "agenda-day-group"
+            let count = blocks.filter(item=>(plannerView === "month" ? item.dateKey : item.day) === activeGroup).length
+            group.innerHTML = `<span>${agendaGroupLabel(block)}</span><strong>${count} item${count===1 ? "" : "s"}</strong>`
+            agendaList.appendChild(group)
+        }
+
+        let item = document.createElement("button")
+        item.type = "button"
+        item.className = "agenda-item"
+        item.dataset.day = block.day
+        item.addEventListener("click",()=>openAgendaBlock(block))
+
+        let time = document.createElement("span")
+        time.className = "agenda-time"
+        time.textContent = formatTime(block.start)+" - "+formatTime(block.start + block.dur)
+        item.appendChild(time)
+
+        let title = document.createElement("strong")
+        title.textContent = block.title || "Block"
+        item.appendChild(title)
+
+        let meta = document.createElement("span")
+        meta.className = "agenda-meta"
+        meta.textContent = DAY_LABELS[block.day]+" - "+block.dur+" hr"+(block.dur===1 ? "" : "s")
+        if(block.location) meta.textContent += " - "+block.location
+        item.appendChild(meta)
+
+        agendaList.appendChild(item)
+    })
+}
+
 function getExportScope(){
     return document.getElementById("exportScope")?.value || "week"
 }
@@ -2874,6 +4098,8 @@ function renderMonthView(){
         weekTotalEl.innerText = "Week total: $"+weekTotal.toFixed(0)
         grid.appendChild(weekTotalEl)
     }
+
+    updateOutlookPanels()
 }
 
 //--------------------------------
@@ -3317,6 +4543,7 @@ function importICS(){
             importedEventCount = importedCount
             skippedNonAbtCount = skippedNonAbt
             importSummaryText = buildImportSummary()
+            showAppToast(importedCount+" calendar event"+(importedCount===1 ? "" : "s")+" imported")
             setPlannerView("month")
             return
         }
@@ -3455,6 +4682,7 @@ function importICS(){
         importedEventCount = importedCount
         skippedNonAbtCount = skippedNonAbt
         importSummaryText = buildImportSummary()
+        showAppToast(importedCount+" calendar event"+(importedCount===1 ? "" : "s")+" imported")
         setPlannerView("month")
     }
 
@@ -3678,18 +4906,121 @@ function polishControlLabels(){
     })
 }
 
+function updateAppViewportMetrics(){
+    let height = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight
+    document.documentElement.style.setProperty("--app-vh",(height * 0.01)+"px")
+}
+
+function scheduleViewportMetricUpdate(){
+    clearTimeout(viewportUpdateTimer)
+    viewportUpdateTimer = setTimeout(()=>{
+        updateAppViewportMetrics()
+        applyTimelineZoom()
+    },80)
+}
+
+function isDesktopWorkspaceLayout(){
+    return window.matchMedia("(min-width: 1181px) and (pointer: fine)").matches
+}
+
+function clampWorkspaceLayout(layout){
+    return {
+        rail:Math.min(Math.max(Number(layout?.rail) || 220,170),360),
+        agenda:Math.min(Math.max(Number(layout?.agenda) || 270,210),430)
+    }
+}
+
+function applyWorkspaceLayout(layout){
+    let next = clampWorkspaceLayout(layout)
+    document.documentElement.style.setProperty("--workspace-rail-width",next.rail+"px")
+    document.documentElement.style.setProperty("--workspace-agenda-width",next.agenda+"px")
+}
+
+function loadWorkspaceLayout(){
+    try{
+        applyWorkspaceLayout(JSON.parse(localStorage.getItem(WORKSPACE_LAYOUT_KEY) || "null"))
+    }catch(error){
+        applyWorkspaceLayout({})
+    }
+}
+
+function saveWorkspaceLayout(layout){
+    let next = clampWorkspaceLayout(layout)
+    try{
+        localStorage.setItem(WORKSPACE_LAYOUT_KEY,JSON.stringify(next))
+    }catch(error){
+        console.warn("Workspace layout could not be saved.",error)
+    }
+    applyWorkspaceLayout(next)
+}
+
+function currentWorkspaceLayout(){
+    let styles = getComputedStyle(document.documentElement)
+    return clampWorkspaceLayout({
+        rail:parseFloat(styles.getPropertyValue("--workspace-rail-width")),
+        agenda:parseFloat(styles.getPropertyValue("--workspace-agenda-width"))
+    })
+}
+
+function initWorkspaceResizers(){
+    document.querySelectorAll(".workspace-resizer").forEach(handle=>{
+        handle.addEventListener("pointerdown",event=>{
+            if(!isDesktopWorkspaceLayout()) return
+            event.preventDefault()
+            handle.setPointerCapture?.(event.pointerId)
+            document.body.classList.add("resizing-workspace")
+
+            let startX = event.clientX
+            let start = currentWorkspaceLayout()
+            let pane = handle.dataset.resizePane
+
+            function onMove(moveEvent){
+                let dx = moveEvent.clientX - startX
+                let next = {...start}
+                if(pane === "rail") next.rail = start.rail + dx
+                if(pane === "agenda") next.agenda = start.agenda - dx
+                applyWorkspaceLayout(next)
+            }
+
+            function onUp(){
+                document.body.classList.remove("resizing-workspace")
+                document.removeEventListener("pointermove",onMove)
+                document.removeEventListener("pointerup",onUp)
+                document.removeEventListener("pointercancel",onUp)
+                saveWorkspaceLayout(currentWorkspaceLayout())
+                cachedTimelineHeight = null
+            }
+
+            document.addEventListener("pointermove",onMove)
+            document.addEventListener("pointerup",onUp)
+            document.addEventListener("pointercancel",onUp)
+        })
+    })
+}
+
 // INIT
+updateAppViewportMetrics()
+loadWorkspaceLayout()
+loadThemeMode()
+loadTimelineZoom()
+loadTimelineLayoutMode()
+loadDefaultPlannerView()
 loadAutosavePreference()
+loadToolbarCustomization()
 rebuildToolbar()
 polishControlLabels()
 buildTimeline()
+applyTimelineZoom()
 updateActiveDay()
 loadProjectName()
 restorePlannerState()
+if(!selectedWeekStartKey && defaultPlannerView !== plannerView) setPlannerView(defaultPlannerView)
 updateWeekHeader()
 updateImportSummary()
 setSaveStatus(autosaveEnabled ? "Autosaved locally" : "Autosave disabled")
 updateUndoButton()
+updateOutlookPanels()
+initWorkspaceResizers()
 </script>
 
 </body>
