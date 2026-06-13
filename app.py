@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
@@ -34,6 +34,16 @@ def index():
     if not is_logged_in():
         return redirect(url_for("login"))
     return render_template("index.html")
+
+
+@app.route("/manifest.webmanifest")
+def webmanifest():
+    return send_from_directory("static", "manifest.webmanifest", mimetype="application/manifest+json")
+
+
+@app.route("/service-worker.js")
+def service_worker():
+    return send_from_directory("static", "service-worker.js", mimetype="application/javascript")
 
 
 @app.route("/logout")

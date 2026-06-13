@@ -36,6 +36,14 @@ def simulate_schedule(schedule):
 
     # ✅ STEP 2 — DAILY TIERS (STACKING)
 
+    if total_hours <= 4:
+        return {
+            "type": "SAFE",
+            "hours": 0,
+            "rate": 0,
+            "pay": 0
+        }
+
     # OT from 6 → 8
     daily_ot_65 = max(0, min(total_hours, 8) - 6)
 

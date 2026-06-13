@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ABT Overtime Planner">
+  <rect width="512" height="512" rx="108" fill="#0d1116"/>
+  <rect x="72" y="92" width="368" height="328" rx="34" fill="#171c22" stroke="#3a4552" stroke-width="12"/>
+  <path fill="#37c58b" d="M118 160h276v44H118z"/>
+  <path fill="#20262e" d="M118 232h276v42H118zm0 68h276v42H118z"/>
+  <path fill="#3c82e6" d="M118 232h142v42H118z"/>
+  <path fill="#f4b04a" d="M118 300h214v42H118z"/>
+  <text x="256" y="386" fill="#f7f9fc" font-family="Arial, sans-serif" font-size="68" font-weight="800" text-anchor="middle">ABT</text>
+</svg>
