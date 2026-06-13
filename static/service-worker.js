@@ -1,7 +1,7 @@
-const CACHE_NAME = "abt-planner-v2"
+const CACHE_NAME = "abt-planner-v3"
 const APP_SHELL = [
     "/manifest.webmanifest",
-    "/static/style.css?v=50",
+    "/static/style.css?v=51",
     "/static/pwa.js?v=1",
     "/static/icon.svg",
     "/static/icon-192.png",

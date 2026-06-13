@@ -14,8 +14,8 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=50">
-    <link rel="stylesheet" href="../static/style.css?v=50">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=51">
+    <link rel="stylesheet" href="../static/style.css?v=51">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -114,7 +114,7 @@
 
     <section class="month-panel is-hidden" id="monthPanel" aria-label="Monthly calendar">
         <div class="month-header">
-            <button type="button" class="secondary" onclick="changeMonth(-1)">‹</button>
+            <button type="button" class="secondary month-nav-button nav-previous" onclick="changeMonth(-1)" aria-label="Previous month" title="Previous month"><span aria-hidden="true"></span></button>
             <div>
                 <span>Month view</span>
                 <strong id="monthTitle">No calendar imported</strong>
@@ -123,7 +123,7 @@
                     <select id="weekSelector" onchange="selectWeekFromMonth(this.value)"></select>
                 </label>
             </div>
-            <button type="button" class="secondary" onclick="changeMonth(1)">›</button>
+            <button type="button" class="secondary month-nav-button nav-next" onclick="changeMonth(1)" aria-label="Next month" title="Next month"><span aria-hidden="true"></span></button>
         </div>
 
         <div class="month-weekdays" aria-hidden="true">
@@ -1402,11 +1402,26 @@ function rebuildToolbar(){
         return node
     }
 
-    function button(parent,label,className,handler,id=""){
+    function button(parent,label,className,handler,id="",options={}){
         const node = document.createElement("button")
         node.type = "button"
         node.className = className
-        node.textContent = label
+        if(options.iconClass){
+            node.classList.add("icon-text-button")
+            const icon = document.createElement("span")
+            icon.className = "button-icon " + options.iconClass
+            icon.setAttribute("aria-hidden","true")
+            node.appendChild(icon)
+
+            const text = document.createElement("span")
+            text.className = "button-label"
+            text.textContent = label
+            node.appendChild(text)
+        }else{
+            node.textContent = label
+        }
+        node.setAttribute("aria-label",options.ariaLabel || label)
+        if(options.title) node.title = options.title
         if(id) node.id = id
         node.addEventListener("click",handler)
         parent.appendChild(node)
@@ -1557,11 +1572,11 @@ function rebuildToolbar(){
     button(calendarGroup,"Filters","secondary",openImportFilterEditor)
 
     const viewGroup = group("view-tools")
-    button(viewGroup,"Current Week","secondary",goToCurrentWeek)
-    button(viewGroup,"Prev Month","secondary",()=>changeMonth(-1))
-    button(viewGroup,"Next Month","secondary",()=>changeMonth(1))
-    button(viewGroup,"Week View","secondary",()=>setPlannerView("week"),"weekViewButton")
-    button(viewGroup,"Month View","secondary",()=>setPlannerView("month"),"monthViewButton")
+    button(viewGroup,"Current Week","secondary",goToCurrentWeek,"",{iconClass:"icon-current-week",title:"Jump to current week"})
+    button(viewGroup,"Previous","secondary",()=>changeMonth(-1),"",{iconClass:"icon-prev",ariaLabel:"Previous month",title:"Previous month"})
+    button(viewGroup,"Next","secondary",()=>changeMonth(1),"",{iconClass:"icon-next",ariaLabel:"Next month",title:"Next month"})
+    button(viewGroup,"Week","secondary",()=>setPlannerView("week"),"weekViewButton",{iconClass:"icon-week-view",ariaLabel:"Week view",title:"Week view"})
+    button(viewGroup,"Month","secondary",()=>setPlannerView("month"),"monthViewButton",{iconClass:"icon-month-view",ariaLabel:"Month view",title:"Month view"})
 
     updateUndoButton()
     document.getElementById("weekViewButton")?.classList.toggle("active-view",plannerView === "week")

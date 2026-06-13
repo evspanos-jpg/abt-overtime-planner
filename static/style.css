@@ -443,6 +443,97 @@ input[type="file"] {
     white-space: nowrap;
 }
 
+.icon-text-button {
+    gap: 8px;
+}
+
+.icon-text-button .button-label {
+    min-width: 0;
+}
+
+.button-icon,
+.month-nav-button span {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    display: inline-block;
+}
+
+.icon-prev::before,
+.icon-next::before,
+.month-nav-button span::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    width: 8px;
+    height: 8px;
+    border-top: 2px solid currentColor;
+    border-left: 2px solid currentColor;
+}
+
+.icon-prev::before,
+.nav-previous span::before {
+    left: 6px;
+    transform: rotate(-45deg);
+}
+
+.icon-next::before,
+.nav-next span::before {
+    right: 6px;
+    transform: rotate(135deg);
+}
+
+.icon-current-week::before,
+.icon-week-view::before,
+.icon-month-view::before {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border: 2px solid currentColor;
+    border-radius: 4px;
+}
+
+.icon-current-week::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    top: 8px;
+    height: 2px;
+    background: currentColor;
+    box-shadow: 0 4px 0 currentColor;
+}
+
+.icon-week-view::after {
+    content: "";
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    left: 8px;
+    width: 2px;
+    background: currentColor;
+    box-shadow: 4px 0 0 currentColor;
+}
+
+.icon-month-view::after {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    background:
+        linear-gradient(currentColor, currentColor) left top / 100% 2px no-repeat,
+        linear-gradient(currentColor, currentColor) left bottom / 100% 2px no-repeat,
+        linear-gradient(currentColor, currentColor) left top / 2px 100% no-repeat,
+        linear-gradient(currentColor, currentColor) right top / 2px 100% no-repeat;
+    opacity: 0.9;
+}
+
+.month-nav-button {
+    width: 44px;
+    min-width: 44px;
+    padding-inline: 0;
+}
+
 /* =========================
    Timeline
 ========================= */
