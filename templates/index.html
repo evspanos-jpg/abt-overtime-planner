@@ -15,7 +15,7 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=71">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=72">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -483,6 +483,7 @@ const DEFAULT_VIEW_KEY = "abtOvertimePlannerDefaultView"
 const TIMELINE_ZOOM_MIN = 0.75
 const TIMELINE_ZOOM_MAX = 1.5
 const TIMELINE_ZOOM_STEP = 0.125
+const MOBILE_LAYOUT_QUERY = "(max-width: 760px), (max-width: 1180px) and (pointer: coarse)"
 const PROJECT_FILE_VERSION = 1
 const PROJECT_FILE_TYPE = "abt-overtime-planner"
 const PROJECT_FILENAME_KEY = "abtOvertimePlannerProjectName"
@@ -671,8 +672,12 @@ function clampTimelineZoom(value){
     return Math.min(Math.max(Number(value) || 1,TIMELINE_ZOOM_MIN),TIMELINE_ZOOM_MAX)
 }
 
+function isMobileLayout(){
+    return window.matchMedia(MOBILE_LAYOUT_QUERY).matches
+}
+
 function timelineBaseHeight(){
-    return window.matchMedia("(max-width: 760px), (max-width: 1180px) and (pointer: coarse)").matches ? 1180 : 1300
+    return isMobileLayout() ? 1180 : 1300
 }
 
 function timelineZoomPercent(){
@@ -690,7 +695,7 @@ function updateTimelineZoomControls(){
     document.getElementById("resetZoomButton")?.classList.toggle("active-view",Math.abs(timelineZoom - 1) < 0.001)
 }
 
-function applyTimelineZoom(){
+function applyTimelineZoom(options={}){
     timelineZoom = clampTimelineZoom(timelineZoom)
     let height = Math.round(timelineBaseHeight() * timelineZoom)
     document.documentElement.style.setProperty("--timeline-zoom",String(timelineZoom))
@@ -700,8 +705,10 @@ function applyTimelineZoom(){
     })
     cachedTimelineHeight = null
     updateTimelineZoomControls()
-    renderWeek()
-    update({persist:false})
+    if(options.render !== false){
+        renderWeek()
+        update({persist:false})
+    }
 }
 
 function saveTimelineZoom(){
@@ -1991,6 +1998,7 @@ function openMobileSheet(sheet){
     closeOpenFileMenus()
     closeFullSearch()
     document.body.classList.add("mobile-agenda-open")
+    updateOutlookPanels({forceAgenda:true})
     updateMobileNav()
     setTimeout(()=>document.getElementById("agendaSearchInput")?.focus({preventScroll:true}),80)
 }
@@ -2865,16 +2873,15 @@ window.addEventListener("resize",()=>{
     cachedTimelineHeight = null
     clearTimeout(resizeUpdateTimer)
     resizeUpdateTimer = setTimeout(()=>{
-        applyTimelineZoom()
-        if(!window.matchMedia("(max-width: 760px), (max-width: 1180px) and (pointer: coarse)").matches) closeMobileSheet()
+        applyTimelineZoom({render:false})
+        if(!isMobileLayout()) closeMobileSheet()
         renderWeek()
         update()
     },150)
 })
 
-window.addEventListener("orientationchange",scheduleViewportMetricUpdate)
-window.visualViewport?.addEventListener("resize",scheduleViewportMetricUpdate)
-window.visualViewport?.addEventListener("scroll",scheduleViewportMetricUpdate)
+window.addEventListener("orientationchange",scheduleViewportMetricUpdate,{passive:true})
+window.visualViewport?.addEventListener("resize",scheduleViewportMetricUpdate,{passive:true})
 
 //--------------------------------
 // ACTIVE DAY UI
@@ -3909,7 +3916,7 @@ function renderMiniMonth(){
     }
 }
 
-function updateOutlookPanels(){
+function updateOutlookPanels(options={}){
     let today = new Date()
     let railMonth = document.getElementById("railMonthLabel")
     let railDate = document.getElementById("railDateLabel")
@@ -3940,7 +3947,8 @@ function updateOutlookPanels(){
                 : weekLabel
     }
 
-    renderMiniMonth()
+    let mobileLayout = isMobileLayout()
+    if(!mobileLayout) renderMiniMonth()
 
     if(mobileView){
         mobileView.textContent = plannerView === "month"
@@ -3975,6 +3983,7 @@ function updateOutlookPanels(){
     updateMobileNav()
 
     if(!agendaList) return
+    if(mobileLayout && !options.forceAgenda && !document.body.classList.contains("mobile-agenda-open")) return
     agendaList.innerHTML = ""
 
     let blocks = visibleAgendaBlocks()
@@ -4977,8 +4986,8 @@ function scheduleViewportMetricUpdate(){
     clearTimeout(viewportUpdateTimer)
     viewportUpdateTimer = setTimeout(()=>{
         updateAppViewportMetrics()
-        applyTimelineZoom()
-    },80)
+        applyTimelineZoom({render:false})
+    },120)
 }
 
 function isDesktopWorkspaceLayout(){

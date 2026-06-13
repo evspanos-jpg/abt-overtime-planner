@@ -4900,10 +4900,13 @@ body,
 
     .toolbar,
     .calendar-rail,
-    .timeline-panel,
     .month-panel,
     .agenda-pane {
         contain: layout paint;
+    }
+
+    .timeline-panel {
+        contain: none;
     }
 
     .toolbar-menu-button {
@@ -4965,6 +4968,37 @@ body,
     .event-edit-button,
     .resize-handle {
         touch-action: none;
+    }
+
+    .mobile-calendar-bar,
+    .mobile-bottom-nav,
+    .file-menu,
+    .modal-backdrop,
+    .agenda-pane,
+    .block-editor,
+    .full-search-dialog,
+    .settings-dialog,
+    .conflict-review-dialog {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .timeline-panel,
+    .month-panel,
+    .agenda-pane,
+    .mobile-calendar-bar,
+    .mobile-bottom-nav {
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.26);
+    }
+
+    .event,
+    .month-event {
+        transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+    }
+
+    .event:hover,
+    .month-event:hover {
+        transform: none;
     }
 }
 
