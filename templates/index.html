@@ -14,8 +14,8 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=44">
-    <link rel="stylesheet" href="../static/style.css?v=44">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=50">
+    <link rel="stylesheet" href="../static/style.css?v=50">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -282,9 +282,10 @@ const OT_RATE = 65
 const DOUBLE_OT_RATE = 90
 const BILLING_INCREMENT = 0.5
 const WORK_BREAK_LIMIT_HOURS = 5 / 60
-const CONTINUOUS_BREAK_TOLERANCE_HOURS = WORK_BREAK_LIMIT_HOURS
 const DAILY_RESET_BREAK_HOURS = 1
+const CONTINUOUS_RESET_BREAK_HOURS = DAILY_RESET_BREAK_HOURS
 const STORAGE_KEY = "abtOvertimePlannerState"
+const AUTOSAVE_ENABLED_KEY = "abtOvertimePlannerAutosaveEnabled"
 const PROJECT_FILE_VERSION = 1
 const PROJECT_FILE_TYPE = "abt-overtime-planner"
 const PROJECT_FILENAME_KEY = "abtOvertimePlannerProjectName"
@@ -364,6 +365,8 @@ let resizeUpdateTimer = null
 let projectFileHandle = null
 let currentProjectName = "abt-overtime-planner.abt-planner.json"
 let pendingCloudImportProvider = ""
+let selectedMonthEvents = new Set()
+let autosaveEnabled = true
 
 //--------------------------------
 // BUILD TIMELINE
@@ -506,7 +509,10 @@ function getSelectedBlocks(){
 function clearSelection(){
     selectedBlocks.forEach(el=>el.classList.remove("selected"))
     selectedBlocks.clear()
+    document.querySelectorAll(".month-event.selected").forEach(el=>el.classList.remove("selected"))
+    selectedMonthEvents.clear()
     selectedBlock = null
+    updateSelectionStatus()
 }
 
 function selectBlock(el,mode="replace"){
@@ -520,15 +526,81 @@ function selectBlock(el,mode="replace"){
             selectedBlocks.delete(el)
             el.classList.remove("selected")
             selectedBlock = getSelectedBlocks().at(-1) || null
+            updateSelectionStatus()
             return
         }
     }else if(mode!=="add"){
         clearSelection()
+    }else{
+        clearMonthSelection()
     }
 
     selectedBlocks.add(el)
     selectedBlock = el
     selectedBlock.classList.add("selected")
+    updateSelectionStatus()
+}
+
+function monthSelectionKey(dateKeyValue,index){
+    return dateKeyValue+"|"+index
+}
+
+function clearMonthSelection(){
+    document.querySelectorAll(".month-event.selected").forEach(el=>el.classList.remove("selected"))
+    selectedMonthEvents.clear()
+    updateSelectionStatus()
+}
+
+function selectMonthEvent(el,mode="replace"){
+    if(!el) return
+
+    let key = monthSelectionKey(el.dataset.dateKey,el.dataset.eventIndex)
+
+    if(mode === "toggle"){
+        if(selectedMonthEvents.has(key)){
+            selectedMonthEvents.delete(key)
+            el.classList.remove("selected")
+            updateSelectionStatus()
+            return
+        }
+    }else if(mode !== "add"){
+        clearSelection()
+    }else{
+        selectedBlocks.forEach(block=>block.classList.remove("selected"))
+        selectedBlocks.clear()
+        selectedBlock = null
+    }
+
+    selectedMonthEvents.add(key)
+    el.classList.add("selected")
+    updateSelectionStatus()
+}
+
+function getSelectedMonthEvents(){
+    return [...selectedMonthEvents]
+        .map(key=>{
+            let [eventDateKey,indexValue] = key.split("|")
+            let index = Number(indexValue)
+            let event = monthEvents[eventDateKey]?.[index]
+            return event ? {dateKey:eventDateKey,index,event} : null
+        })
+        .filter(Boolean)
+}
+
+function getSelectionSummary(){
+    let weekCount = getSelectedBlocks().length
+    let monthCount = getSelectedMonthEvents().length
+    let total = weekCount + monthCount
+
+    if(total === 0) return "No selection"
+    if(monthCount && !weekCount) return monthCount+" calendar event"+(monthCount === 1 ? "" : "s")+" selected"
+    if(weekCount && !monthCount) return weekCount+" block"+(weekCount === 1 ? "" : "s")+" selected"
+    return total+" items selected"
+}
+
+function updateSelectionStatus(){
+    let status = document.getElementById("selectionStatus")
+    if(status) status.textContent = getSelectionSummary()
 }
 
 function rectsIntersect(a,b){
@@ -741,7 +813,6 @@ function attachBlockPointerControls(el){
             el.setPointerCapture(e.pointerId)
         }
         draggedBlock = el
-        el.dataset.skipClickSelect = "1"
         currentDay = el.dataset.day || currentDay
         updateActiveDay()
 
@@ -765,6 +836,7 @@ function attachBlockPointerControls(el){
         let startHeight = el.offsetHeight
         let minHeight = Math.max(40,hoursToPixels(SNAP))
         let undoRecorded = false
+        let pointerMoved = false
 
         el.classList.add("is-moving")
         document.body.classList.add("dragging-block")
@@ -779,6 +851,8 @@ function attachBlockPointerControls(el){
             if(!undoRecorded && Math.abs(dy) > 2){
                 pushUndoState()
                 undoRecorded = true
+                pointerMoved = true
+                el.dataset.skipClickSelect = "1"
             }
 
             if(mode === "drag"){
@@ -825,6 +899,11 @@ function attachBlockPointerControls(el){
             }else if(undoRecorded){
                 saveDay()
                 update()
+            }else if(upEvent.pointerType === "touch" && !pointerMoved){
+                el.dataset.skipClickSelect = "1"
+                selectBlock(el)
+                update()
+                openBlockEditor(el)
             }
 
             draggedBlock = null
@@ -883,6 +962,20 @@ function moveBlockToDay(el,targetDay){
 }
 
 function copySelectedBlock(){
+    let monthSelections = getSelectedMonthEvents()
+    if(monthSelections.length){
+        blockClipboard = monthSelections.map(({event})=>({
+            start:event.start,
+            dur:event.dur,
+            y:hoursToPixels(event.start - START_HOUR),
+            h:hoursToPixels(event.dur),
+            title:event.title,
+            location:event.location,
+            description:event.description
+        }))
+        return
+    }
+
     let blocks = getSelectedBlocks()
     if(blocks.length===0){
         alert("Select one or more blocks first.")
@@ -893,6 +986,21 @@ function copySelectedBlock(){
 }
 
 function cutSelectedBlock(){
+    let monthSelections = getSelectedMonthEvents()
+    if(monthSelections.length){
+        blockClipboard = monthSelections.map(({event})=>({
+            start:event.start,
+            dur:event.dur,
+            y:hoursToPixels(event.start - START_HOUR),
+            h:hoursToPixels(event.dur),
+            title:event.title,
+            location:event.location,
+            description:event.description
+        }))
+        deleteSelectedMonthEvents(monthSelections)
+        return
+    }
+
     let blocks = getSelectedBlocks()
     if(blocks.length===0){
         alert("Select one or more blocks first.")
@@ -908,14 +1016,48 @@ function cutSelectedBlock(){
 }
 
 function deleteSelectedBlocks(){
+    let monthSelections = getSelectedMonthEvents()
+    if(monthSelections.length){
+        if(!confirm("Delete "+monthSelections.length+" selected calendar event"+(monthSelections.length === 1 ? "" : "s")+"?")) return
+        deleteSelectedMonthEvents(monthSelections)
+        return
+    }
+
     let blocks = getSelectedBlocks()
     if(blocks.length===0) return
+    if(!confirm("Delete "+blocks.length+" selected block"+(blocks.length === 1 ? "" : "s")+"?")) return
 
     pushUndoState()
     blocks.forEach(el=>el.remove())
     clearSelection()
     saveDay()
     update()
+}
+
+function deleteSelectedMonthEvents(monthSelections=getSelectedMonthEvents()){
+    if(monthSelections.length===0) return
+
+    pushUndoState()
+
+    let byDate = monthSelections.reduce((map,item)=>{
+        if(!map[item.dateKey]) map[item.dateKey] = []
+        map[item.dateKey].push(item.index)
+        return map
+    },{})
+
+    Object.keys(byDate).forEach(eventDateKey=>{
+        let indexes = byDate[eventDateKey].sort((a,b)=>b-a)
+        indexes.forEach(index=>monthEvents[eventDateKey]?.splice(index,1))
+        if(!monthEvents[eventDateKey]?.length) delete monthEvents[eventDateKey]
+    })
+
+    selectedMonthEvents.clear()
+    if(selectedWeekStartKey) loadWeekFromMonth(selectedWeekStartKey)
+    renderMonthView()
+    updateImportSummary()
+    savePlannerState()
+    updateUndoButton()
+    updateSelectionStatus()
 }
 
 function pasteBlock(){
@@ -944,7 +1086,29 @@ function pasteBlock(){
 
 function selectAllBlocks(){
     clearSelection()
+    if(plannerView === "month"){
+        selectAllCalendarEvents()
+        return
+    }
+
     document.querySelectorAll(".event").forEach(el=>selectBlock(el,"add"))
+    updateSelectionStatus()
+}
+
+function selectAllCalendarEvents(){
+    clearSelection()
+
+    Object.keys(monthEvents).forEach(eventDateKey=>{
+        ;(monthEvents[eventDateKey] || []).forEach((event,index)=>{
+            selectedMonthEvents.add(monthSelectionKey(eventDateKey,index))
+        })
+    })
+
+    document.querySelectorAll(".month-event").forEach(el=>{
+        let key = monthSelectionKey(el.dataset.dateKey,el.dataset.eventIndex)
+        el.classList.toggle("selected",selectedMonthEvents.has(key))
+    })
+    updateSelectionStatus()
 }
 
 function editSelectedBlock(){
@@ -1139,6 +1303,273 @@ function resetAll(){
     loadDay()
 }
 
+function deleteAllBlocks(){
+    let weekBlockCount = DAY_ORDER.reduce((total,day)=>total + (weekData[day] || []).length,0)
+    let calendarEventCount = Object.values(monthEvents || {}).reduce((total,events)=>total + (events || []).length,0)
+    let summary = calendarEventCount
+        ? "Delete "+calendarEventCount+" calendar event"+(calendarEventCount === 1 ? "" : "s")+" and clear the current week?"
+        : "Delete "+weekBlockCount+" block"+(weekBlockCount === 1 ? "" : "s")+" from the planner?"
+
+    if(!confirm(summary)) return
+
+    pushUndoState()
+    weekData = emptyWeekData()
+    monthEvents = {}
+    importSummaryText = ""
+    importedEventCount = 0
+    skippedNonAbtCount = 0
+    selectedWeekStartKey = null
+    clearSelection()
+    closeBlockEditor()
+    loadDay()
+    updateWeekHeader()
+    updateImportSummary()
+    renderMonthView()
+    savePlannerState()
+    updateUndoButton()
+}
+
+function ensureDeleteAllButton(){
+    if(document.querySelector("[data-delete-all-button]")) return
+
+    const firstGroup = document.querySelector("#controls .tool-group")
+    if(!firstGroup) return
+
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "danger"
+    button.dataset.deleteAllButton = "true"
+    button.textContent = "Delete All"
+    button.onclick = deleteAllBlocks
+    firstGroup.appendChild(button)
+}
+
+function ensureDeleteSelectedButton(){
+    if(document.querySelector("[data-delete-selected-button]")) return
+
+    const group = document.querySelectorAll("#controls .tool-group")[1]
+    if(!group) return
+
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "danger"
+    button.dataset.deleteSelectedButton = "true"
+    button.textContent = "Delete Selected"
+    button.onclick = deleteSelectedBlocks
+    group.appendChild(button)
+}
+
+function ensureSelectAllCalendarButton(){
+    if(document.querySelector("[data-select-calendar-button]")) return
+
+    const group = document.querySelectorAll("#controls .tool-group")[1]
+    if(!group) return
+
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "secondary"
+    button.dataset.selectCalendarButton = "true"
+    button.textContent = "Select Calendar"
+    button.onclick = selectAllCalendarEvents
+    group.appendChild(button)
+}
+
+function triggerProjectOpen(){
+    document.getElementById("projectFileInput")?.click()
+}
+
+function triggerCalendarFilePicker(){
+    document.getElementById("fileInput")?.click()
+}
+
+function closeOpenFileMenus(){
+    document.querySelector(".file-menu-wrap")?.classList.remove("is-open")
+    document.getElementById("fileMenuButton")?.setAttribute("aria-expanded","false")
+}
+
+function rebuildToolbar(){
+    const controls = document.getElementById("controls")
+    if(!controls) return
+
+    const exportScopeValue = document.getElementById("exportScope")?.value || "week"
+    controls.innerHTML = ""
+    controls.classList.add("optimized-controls")
+
+    function group(className){
+        const node = document.createElement("div")
+        node.className = "tool-group " + className
+        controls.appendChild(node)
+        return node
+    }
+
+    function button(parent,label,className,handler,id=""){
+        const node = document.createElement("button")
+        node.type = "button"
+        node.className = className
+        node.textContent = label
+        if(id) node.id = id
+        node.addEventListener("click",handler)
+        parent.appendChild(node)
+        return node
+    }
+
+    function filePicker(parent,label,id,accept,onChange){
+        const picker = document.createElement("label")
+        picker.className = "file-picker"
+
+        const text = document.createElement("span")
+        text.textContent = label
+        picker.appendChild(text)
+
+        const input = document.createElement("input")
+        input.type = "file"
+        input.id = id
+        input.accept = accept
+        input.addEventListener("change",onChange)
+        picker.appendChild(input)
+        parent.appendChild(picker)
+
+        return picker
+    }
+
+    function menuItem(parent,label,handler,id=""){
+        const node = document.createElement("button")
+        node.type = "button"
+        node.className = "file-menu-item"
+        node.textContent = label
+        if(id) node.id = id
+        node.addEventListener("click",event=>{
+            event.stopPropagation()
+            handler()
+            closeFileMenu()
+        })
+        parent.appendChild(node)
+        return node
+    }
+
+    function menuSection(parent,label){
+        const node = document.createElement("div")
+        node.className = "file-menu-section"
+        node.textContent = label
+        parent.appendChild(node)
+        return node
+    }
+
+    function closeFileMenu(){
+        document.querySelector(".file-menu-wrap")?.classList.remove("is-open")
+        document.getElementById("fileMenuButton")?.setAttribute("aria-expanded","false")
+    }
+
+    const fileGroup = group("file-tools")
+    const fileWrap = document.createElement("div")
+    fileWrap.className = "file-menu-wrap"
+    fileGroup.appendChild(fileWrap)
+
+    const fileButton = document.createElement("button")
+    fileButton.type = "button"
+    fileButton.id = "fileMenuButton"
+    fileButton.className = "secondary file-menu-button"
+    fileButton.textContent = "File menu"
+    fileButton.setAttribute("aria-haspopup","true")
+    fileButton.setAttribute("aria-expanded","false")
+    fileButton.addEventListener("click",event=>{
+        event.stopPropagation()
+        let isOpen = fileWrap.classList.toggle("is-open")
+        fileButton.setAttribute("aria-expanded",String(isOpen))
+    })
+    fileWrap.appendChild(fileButton)
+
+    const fileMenu = document.createElement("div")
+    fileMenu.className = "file-menu"
+    fileMenu.setAttribute("role","menu")
+    fileMenu.addEventListener("click",event=>event.stopPropagation())
+    fileWrap.appendChild(fileMenu)
+
+    menuSection(fileMenu,"Project")
+    menuItem(fileMenu,"Save",saveProject)
+    menuItem(fileMenu,"Save As",saveProjectAs)
+    menuItem(fileMenu,"Set Save Location",chooseSaveLocation)
+    menuItem(fileMenu,autosaveEnabled ? "Autosave On" : "Autosave Off",toggleAutosave,"autosaveMenuButton")
+    menuItem(fileMenu,"Open Project",triggerProjectOpen)
+
+    filePicker(fileMenu,"Calendar File","fileInput",".ics,.ical,.ifb,.cal,.csv,text/calendar,text/csv",importICS)
+    filePicker(fileMenu,"Project File","projectFileInput",".abt-planner.json,.json,application/json",openProjectFile)
+
+    menuSection(fileMenu,"Calendar")
+    menuItem(fileMenu,"Import Calendar",triggerCalendarFilePicker)
+    menuItem(fileMenu,"Export Calendar",exportICS)
+    menuItem(fileMenu,"Export PDF",exportPDF)
+
+    const exportScope = document.createElement("label")
+    exportScope.className = "export-scope file-menu-scope"
+    const exportLabel = document.createElement("span")
+    exportLabel.textContent = "Export"
+    exportScope.appendChild(exportLabel)
+    const exportSelect = document.createElement("select")
+    exportSelect.id = "exportScope"
+    ;[
+        ["week","Selected week"],
+        ["month","Full month"]
+    ].forEach(([value,label])=>{
+        const option = document.createElement("option")
+        option.value = value
+        option.textContent = label
+        exportSelect.appendChild(option)
+    })
+    exportSelect.value = exportScopeValue
+    exportSelect.addEventListener("change",savePlannerState)
+    exportScope.appendChild(exportSelect)
+    fileMenu.appendChild(exportScope)
+
+    menuSection(fileMenu,"Cloud")
+    menuItem(fileMenu,"Import OneDrive",()=>importProjectFromCloud("onedrive"))
+    menuItem(fileMenu,"Import Google",()=>importProjectFromCloud("google"))
+    menuItem(fileMenu,"Upload OneDrive",()=>uploadProjectToCloud("onedrive"))
+    menuItem(fileMenu,"Upload Google",()=>uploadProjectToCloud("google"))
+
+    const saveStatus = document.createElement("span")
+    saveStatus.className = "save-status file-menu-status"
+    saveStatus.id = "saveStatus"
+    saveStatus.textContent = "Autosaved locally"
+    fileMenu.appendChild(saveStatus)
+
+    const createGroup = group("create-tools")
+    button(createGroup,"Add Block","primary",addBlock)
+    button(createGroup,"Edit","secondary",editSelectedBlock)
+    button(createGroup,"Undo","secondary",undoLastChange,"undoButton")
+    button(createGroup,"Delete Selected","danger",deleteSelectedBlocks)
+    button(createGroup,"Delete All","danger",deleteAllBlocks)
+
+    const selectionGroup = group("selection-tools")
+    button(selectionGroup,"Select All","secondary",selectAllBlocks)
+    button(selectionGroup,"All Calendar","secondary",selectAllCalendarEvents)
+    button(selectionGroup,"Clear","secondary",clearSelection)
+    button(selectionGroup,"Copy","secondary",copySelectedBlock)
+    button(selectionGroup,"Cut","secondary",cutSelectedBlock)
+    button(selectionGroup,"Paste","secondary",pasteBlock)
+    const selectionStatus = document.createElement("span")
+    selectionStatus.className = "selection-status"
+    selectionStatus.id = "selectionStatus"
+    selectionStatus.textContent = "No selection"
+    selectionGroup.appendChild(selectionStatus)
+
+    const calendarGroup = group("calendar-tools")
+    button(calendarGroup,"Filters","secondary",openImportFilterEditor)
+
+    const viewGroup = group("view-tools")
+    button(viewGroup,"Current Week","secondary",goToCurrentWeek)
+    button(viewGroup,"Prev Month","secondary",()=>changeMonth(-1))
+    button(viewGroup,"Next Month","secondary",()=>changeMonth(1))
+    button(viewGroup,"Week View","secondary",()=>setPlannerView("week"),"weekViewButton")
+    button(viewGroup,"Month View","secondary",()=>setPlannerView("month"),"monthViewButton")
+
+    updateUndoButton()
+    document.getElementById("weekViewButton")?.classList.toggle("active-view",plannerView === "week")
+    document.getElementById("monthViewButton")?.classList.toggle("active-view",plannerView === "month")
+    updateAutosaveButton()
+    updateSelectionStatus()
+}
+
 //--------------------------------
 // GET SCHEDULE
 //--------------------------------
@@ -1186,10 +1617,22 @@ function getWorkedBreakAfter(schedule,index){
 }
 
 function applyDailyOvertime(schedule){
+    let totalWorkedHours = schedule.reduce((total,block)=>total + block.dur,0)
+
     schedule.forEach((block,index)=>{
         block.workedBreakAfter = getWorkedBreakAfter(schedule,index)
         block.billableDur = roundBillableHours(block.dur + block.workedBreakAfter)
+        block.continuousOvertimeHours = 0
+        block.dailyTierOvertimeHours = 0
+        block.doubleOvertimeHours = 0
+        block.overtimeHours = 0
+        block.premiumHours = 0
+        block.regularHours = block.billableDur
     })
+
+    if(totalWorkedHours <= DAILY_NO_OVERTIME_LIMIT + 0.0001){
+        return schedule
+    }
 
     let dailyTierOvertime = 0
     let regularRemaining = DAILY_REGULAR_HOURS
@@ -1200,7 +1643,7 @@ function applyDailyOvertime(schedule){
     schedule.forEach(block=>{
         if(previousBlock){
             let gap = block.start - (previousBlock.start + previousBlock.dur)
-            if(gap > CONTINUOUS_BREAK_TOLERANCE_HOURS + 0.0001){
+            if(gap >= CONTINUOUS_RESET_BREAK_HOURS - 0.0001){
                 regularRemaining = DAILY_REGULAR_HOURS
             }
             if(gap >= DAILY_RESET_BREAK_HOURS - 0.0001){
@@ -1571,6 +2014,7 @@ function handleKeyboardShortcut(event){
     if(event.defaultPrevented) return
 
     if(event.key === "Escape"){
+        closeOpenFileMenus()
         closeBlockEditor()
         closeImportFilterEditor()
         return
@@ -1619,7 +2063,7 @@ function handleKeyboardShortcut(event){
 
     if(!hasShortcutModifier(event) && (key === "delete" || key === "backspace")){
         let blocks = getSelectedBlocks()
-        if(blocks.length){
+        if(blocks.length || getSelectedMonthEvents().length){
             event.preventDefault()
             event.stopPropagation()
             deleteSelectedBlocks()
@@ -1628,6 +2072,10 @@ function handleKeyboardShortcut(event){
 }
 
 window.addEventListener("keydown", handleKeyboardShortcut, true)
+
+document.addEventListener("click",event=>{
+    if(!event.target.closest(".file-menu-wrap")) closeOpenFileMenus()
+})
 
 document.getElementById("blockEditorBackdrop")?.addEventListener("click", event=>{
     if(event.target.id === "blockEditorBackdrop") closeBlockEditor()
@@ -1675,6 +2123,7 @@ function updateActiveDay(){
 // MONTH VIEW
 //--------------------------------
 function setPlannerView(view){
+    if(plannerView !== view) clearSelection()
     plannerView = view
 
     document.querySelector(".timeline-panel")?.classList.toggle("is-hidden",view !== "week")
@@ -1839,6 +2288,53 @@ function setSaveStatus(message){
     if(status) status.innerText = message
 }
 
+function plannerStatusLabel(prefix){
+    let name = currentProjectName || "planner"
+    return prefix + " - " + name
+}
+
+function updateAutosaveButton(){
+    let button = document.getElementById("autosaveToggleButton")
+    let menuButton = document.getElementById("autosaveMenuButton")
+
+    if(button){
+        button.textContent = autosaveEnabled ? "Autosave On" : "Autosave Off"
+        button.classList.toggle("active-view",autosaveEnabled)
+    }
+
+    if(menuButton){
+        menuButton.textContent = autosaveEnabled ? "Autosave On" : "Autosave Off"
+        menuButton.classList.toggle("active-view",autosaveEnabled)
+    }
+}
+
+function loadAutosavePreference(){
+    try{
+        let value = localStorage.getItem(AUTOSAVE_ENABLED_KEY)
+        autosaveEnabled = value === null ? true : value !== "false"
+    }catch(error){
+        autosaveEnabled = true
+    }
+}
+
+function setAutosaveEnabled(enabled){
+    autosaveEnabled = Boolean(enabled)
+
+    try{
+        localStorage.setItem(AUTOSAVE_ENABLED_KEY,String(autosaveEnabled))
+    }catch(error){
+        console.warn("Autosave preference could not be saved.",error)
+    }
+
+    updateAutosaveButton()
+    setSaveStatus(plannerStatusLabel(autosaveEnabled ? "Autosave enabled" : "Autosave disabled"))
+    if(autosaveEnabled) savePlannerState()
+}
+
+function toggleAutosave(){
+    setAutosaveEnabled(!autosaveEnabled)
+}
+
 function plannerStatePayload(){
     return {
         fileType: PROJECT_FILE_TYPE,
@@ -1957,7 +2453,7 @@ async function saveProject(options={}){
 
             await writeProjectFile(projectFileHandle,text)
             savePlannerState()
-            setSaveStatus("Saved " + currentProjectName)
+            setSaveStatus(plannerStatusLabel("Saved"))
             return
         }
 
@@ -1968,7 +2464,7 @@ async function saveProject(options={}){
 
         downloadTextFile(text,normalizeProjectFileName(currentProjectName))
         savePlannerState()
-        setSaveStatus("Downloaded " + currentProjectName)
+        setSaveStatus(plannerStatusLabel("Downloaded"))
     }catch(error){
         if(error?.name === "AbortError") return
         console.warn("Project could not be saved.",error)
@@ -1977,6 +2473,10 @@ async function saveProject(options={}){
 }
 
 function saveProjectAs(){
+    return saveProject({saveAs:true})
+}
+
+function chooseSaveLocation(){
     return saveProject({saveAs:true})
 }
 
@@ -2086,6 +2586,10 @@ async function uploadProjectToCloud(provider){
 
 function savePlannerState(){
     if(isRestoringState) return
+    if(!autosaveEnabled){
+        setSaveStatus("Autosave disabled")
+        return
+    }
 
     try{
         localStorage.setItem(STORAGE_KEY,JSON.stringify({
@@ -2101,10 +2605,10 @@ function savePlannerState(){
             exportScope:getExportScope(),
             monthAnchorDate: dateKey(monthAnchorDate)
         }))
-        setSaveStatus("Autosaved locally")
+        setSaveStatus(plannerStatusLabel("Autosaved locally"))
     }catch(error){
         console.warn("Planner state could not be saved.",error)
-        setSaveStatus("Autosave failed")
+        setSaveStatus(plannerStatusLabel("Autosave failed"))
     }
 }
 
@@ -2272,7 +2776,9 @@ function renderMonthView(){
             cellDate.setDate(start.getDate() + (week * 7) + day)
 
             let key = dateKey(cellDate)
-            let events = (monthEvents[key] || []).slice().sort((a,b)=>a.start-b.start)
+            let events = (monthEvents[key] || [])
+                .map((event,index)=>({...event,monthIndex:index}))
+                .sort((a,b)=>a.start-b.start)
             let dailyPay = calculateMonthDayPay(events)
             weekTotal += dailyPay
 
@@ -2314,6 +2820,25 @@ function renderMonthView(){
             events.forEach(event=>{
                 let eventEl = document.createElement("div")
                 eventEl.className = "month-event"
+                eventEl.dataset.dateKey = key
+                eventEl.dataset.eventIndex = String(event.monthIndex)
+                eventEl.tabIndex = 0
+                eventEl.setAttribute("role","button")
+                eventEl.setAttribute("aria-label","Select "+(event.title || "event")+" on "+key)
+                eventEl.classList.toggle("selected",selectedMonthEvents.has(monthSelectionKey(key,event.monthIndex)))
+                eventEl.addEventListener("click",eventClick=>{
+                    eventClick.stopPropagation()
+                    if(eventClick.ctrlKey || eventClick.metaKey) selectMonthEvent(eventEl,"toggle")
+                    else if(eventClick.shiftKey) selectMonthEvent(eventEl,"add")
+                    else selectMonthEvent(eventEl)
+                })
+                eventEl.addEventListener("keydown",eventKey=>{
+                    if(eventKey.key === "Enter" || eventKey.key === " "){
+                        eventKey.preventDefault()
+                        eventKey.stopPropagation()
+                        selectMonthEvent(eventEl,eventKey.shiftKey ? "add" : "replace")
+                    }
+                })
 
                 let eventTitle = document.createElement("strong")
                 eventTitle.innerText = event.title || "Imported Event"
@@ -3115,14 +3640,40 @@ function exportPDF(){
     doc.save("planner.pdf")
 }
 
+function polishControlLabels(){
+    const labels = new Map([
+        ["addBlock()","Add Block"],
+        ["undoLastChange()","Undo"],
+        ["resetAll()","Reset"],
+        ["selectAllBlocks()","Select All"],
+        ["clearSelection()","Clear"],
+        ["editSelectedBlock()","Edit"],
+        ["copySelectedBlock()","Copy"],
+        ["cutSelectedBlock()","Cut"],
+        ["pasteBlock()","Paste"],
+        ["importICS()","Import Calendar"],
+        ["openImportFilterEditor()","Filters"],
+        ["exportICS()","Export Calendar"],
+        ["exportPDF()","PDF"]
+    ])
+
+    document.querySelectorAll("button[onclick]").forEach(button=>{
+        const label = labels.get(button.getAttribute("onclick"))
+        if(label) button.textContent = label
+    })
+}
+
 // INIT
+loadAutosavePreference()
+rebuildToolbar()
+polishControlLabels()
 buildTimeline()
 updateActiveDay()
 loadProjectName()
 restorePlannerState()
 updateWeekHeader()
 updateImportSummary()
-setSaveStatus("Autosaved locally")
+setSaveStatus(autosaveEnabled ? "Autosaved locally" : "Autosave disabled")
 updateUndoButton()
 </script>
 

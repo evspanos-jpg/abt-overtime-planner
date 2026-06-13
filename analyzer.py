@@ -1,8 +1,17 @@
 def simulate_schedule(schedule):
 
     schedule = sorted(schedule, key=lambda x: x["start"])
+    total_worked_hours = sum(block["duration"] for block in schedule)
 
-    continuous_break_tolerance = 0
+    if total_worked_hours <= 4:
+        return {
+            "type": "SAFE",
+            "hours": 0,
+            "rate": 0,
+            "pay": 0
+        }
+
+    continuous_reset_break_hours = 1
     continuous_hours = 0
     daily_hours = 0
     last_end = None
@@ -18,10 +27,11 @@ def simulate_schedule(schedule):
         duration = block["duration"]
         end = start + duration
 
-        # Reset continuity on any break, and daily tiers on a 1-hour break.
+        # Breaks shorter than 1 hour keep the continuous OT clock running.
+        # A 1-hour break resets both continuous OT and daily tiers.
         if last_end is not None:
             gap = start - last_end
-            if gap > continuous_break_tolerance:
+            if gap >= continuous_reset_break_hours:
                 continuous_hours = 0
             if gap >= 1:
                 daily_hours = 0

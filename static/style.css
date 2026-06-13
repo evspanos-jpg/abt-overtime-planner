@@ -44,7 +44,7 @@ body {
         linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 280px),
         var(--bg);
     color: var(--text);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: Aptos, "Segoe UI Variable", "Segoe UI", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     font-feature-settings: "tnum";
     -webkit-font-smoothing: antialiased;
     text-rendering: geometricPrecision;
@@ -131,6 +131,8 @@ h2 {
    Controls
 ========================= */
 .toolbar {
+    position: relative;
+    z-index: 90;
     margin-bottom: 16px;
     padding: 11px;
     border: 1px solid rgba(255, 255, 255, 0.11);
@@ -147,6 +149,43 @@ h2 {
     gap: 9px;
     flex-wrap: wrap;
     align-items: center;
+}
+
+#controls.optimized-controls {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+}
+
+#controls.optimized-controls .tool-group {
+    align-content: start;
+    align-items: stretch;
+}
+
+#controls.optimized-controls .file-tools {
+    grid-column: span 2;
+    overflow: visible;
+}
+
+#controls.optimized-controls .create-tools {
+    grid-column: span 3;
+}
+
+#controls.optimized-controls .selection-tools {
+    grid-column: span 3;
+}
+
+#controls.optimized-controls .calendar-tools {
+    grid-column: span 1;
+}
+
+#controls.optimized-controls .save-tools {
+    grid-column: span 6;
+}
+
+#controls.optimized-controls .view-tools {
+    grid-column: 1 / -1;
 }
 
 .tool-group {
@@ -173,6 +212,9 @@ h2 {
 }
 
 button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: 42px;
     padding: 0 14px;
     border: 1px solid rgba(255, 255, 255, 0.13);
@@ -184,10 +226,116 @@ button {
     cursor: pointer;
     font-size: 14px;
     font-weight: 760;
-    white-space: nowrap;
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.14);
     transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
     touch-action: manipulation;
+}
+
+#controls.optimized-controls button {
+    flex: 1 1 112px;
+    min-width: 0;
+    padding-inline: 12px;
+    max-width: 100%;
+}
+
+.file-menu-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.file-menu-button {
+    width: 100%;
+}
+
+.file-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 200;
+    display: none;
+    width: min(320px, calc(100vw - 32px));
+    padding: 8px;
+    border: 1px solid rgba(238, 232, 219, 0.14);
+    border-radius: 8px;
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.06), rgba(255, 252, 244, 0.018)),
+        var(--surface);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.36);
+}
+
+.file-menu-wrap.is-open .file-menu {
+    display: grid;
+    gap: 6px;
+}
+
+.file-menu::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    left: 18px;
+    width: 10px;
+    height: 10px;
+    border-top: 1px solid rgba(238, 232, 219, 0.14);
+    border-left: 1px solid rgba(238, 232, 219, 0.14);
+    background: var(--surface);
+    transform: rotate(45deg);
+}
+
+.file-menu-item {
+    width: 100%;
+    justify-content: flex-start;
+    min-height: 38px;
+    padding: 8px 10px;
+    text-align: left;
+}
+
+.file-menu-section {
+    margin: 5px 4px 2px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(238, 232, 219, 0.1);
+    color: var(--orange);
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.file-menu-section:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.file-menu .file-picker,
+.file-menu .export-scope,
+.file-menu .save-status {
+    width: 100%;
+}
+
+.file-menu .save-status {
+    justify-content: flex-start;
+    min-height: 32px;
+    padding: 0 8px;
+}
+
+.selection-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 100%;
+    min-height: 30px;
+    padding: 0 9px;
+    border: 1px solid rgba(238, 232, 219, 0.1);
+    border-radius: 7px;
+    background: rgba(255, 252, 244, 0.035);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 760;
 }
 
 button:hover {
@@ -915,6 +1063,21 @@ body.selecting-blocks * {
         linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 38%),
         linear-gradient(135deg, rgba(15, 118, 110, 0.78), rgba(32, 38, 46, 0.98));
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.month-event:hover,
+.month-event:focus-visible {
+    border-color: rgba(239, 197, 111, 0.48);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(239, 197, 111, 0.16);
+    outline: none;
+}
+
+.month-event.selected {
+    border-color: rgba(239, 197, 111, 0.82);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26), 0 0 0 3px rgba(239, 197, 111, 0.2);
+    transform: translateY(-1px);
 }
 
 .month-event strong,
@@ -1189,20 +1352,74 @@ body.selecting-blocks * {
 ========================= */
 @media (max-width: 760px) {
     body {
-        padding: 12px;
+        padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
     }
 
     .app-header {
         align-items: stretch;
         flex-direction: column;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    h2 {
+        font-size: 30px;
+        line-height: 1;
     }
 
     .earnings-summary {
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
     }
 
     .earnings-card {
+        min-width: 0;
+        padding: 11px 12px;
         text-align: left;
+    }
+
+    .earnings-card strong {
+        font-size: 24px;
+    }
+
+    .toolbar {
+        position: sticky;
+        top: env(safe-area-inset-top, 0);
+        z-index: 30;
+        margin: 0 -2px 12px;
+        padding: 8px;
+    }
+
+    #controls {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    #controls.optimized-controls {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    #controls.optimized-controls .create-tools,
+    #controls.optimized-controls .selection-tools,
+    #controls.optimized-controls .file-tools,
+    #controls.optimized-controls .calendar-tools,
+    #controls.optimized-controls .save-tools,
+    #controls.optimized-controls .view-tools {
+        grid-column: 1 / -1;
+    }
+
+    .file-menu {
+        position: static;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .file-menu::before {
+        content: none;
     }
 
     #controls,
@@ -1213,28 +1430,80 @@ body.selecting-blocks * {
 
     .tool-group {
         align-items: stretch;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        padding: 8px;
     }
 
     .tool-group button,
+    .file-picker,
+    .export-scope {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+    }
+
+    .tool-group button {
+        min-height: 52px;
+        padding: 0 10px;
+        white-space: normal;
+    }
+
+    #controls.optimized-controls .tool-group button {
+        flex-basis: calc(50% - 4px);
+    }
+
+    .tool-group .primary,
+    .save-tools .primary,
+    .save-tools .project-file-picker,
+    .save-status {
+        grid-column: 1 / -1;
+    }
+
     .file-picker {
-        flex: 1 1 140px;
+        flex-direction: column;
+        gap: 5px;
+        padding: 8px;
+        text-align: center;
+    }
+
+    input[type="file"] {
+        max-width: 100%;
+        min-width: 0;
+        font-size: 12px;
+    }
+
+    .export-scope {
+        min-height: 52px;
+    }
+
+    .export-scope select,
+    .week-selector select {
+        min-height: 40px;
+    }
+
+    .save-status {
+        justify-content: center;
+        min-height: 36px;
     }
 
     #timeline-container {
-        height: 62vh;
-        min-height: 460px;
+        height: 58dvh;
+        min-height: 430px;
+        scroll-padding-top: 58px;
     }
 
     #timeline {
-        min-width: 860px;
+        min-width: 720px;
     }
 
     .week-grid-header {
-        grid-template-columns: 58px repeat(7, minmax(108px, 1fr));
+        grid-template-columns: 50px repeat(7, minmax(92px, 1fr));
     }
 
     .week-grid-body {
-        grid-template-columns: 58px minmax(756px, 1fr);
+        grid-template-columns: 50px minmax(644px, 1fr);
     }
 
     .time-gutter-heading {
@@ -1242,8 +1511,73 @@ body.selecting-blocks * {
     }
 
     .day-heading {
-        min-height: 52px;
-        padding: 0 6px;
+        min-height: 58px;
+        padding: 0 4px;
+    }
+
+    .day-heading span {
+        font-size: 11px;
+    }
+
+    .day-heading strong {
+        font-size: 13px;
+    }
+
+    #timeRuler,
+    #dayColumns {
+        height: 1180px;
+    }
+
+    .day-column {
+        min-width: 92px;
+    }
+
+    .event {
+        left: 4px;
+        right: 4px;
+        min-height: 56px;
+    }
+
+    .event-edit-button {
+        top: 7px;
+        right: 7px;
+        min-height: 38px;
+        min-width: 42px;
+        padding: 0 10px;
+        opacity: 1;
+    }
+
+    .label {
+        inset: 10px 52px 17px 8px;
+        font-size: 12px;
+    }
+
+    .month-panel {
+        max-height: calc(100dvh - 150px);
+    }
+
+    .month-header {
+        grid-template-columns: 46px 1fr 46px;
+        padding: 10px;
+    }
+
+    .month-header strong {
+        font-size: 17px;
+    }
+
+    .month-weekdays,
+    .month-grid {
+        grid-template-columns: repeat(7, minmax(108px, 1fr));
+        min-width: 756px;
+    }
+
+    .month-grid {
+        max-height: calc(100dvh - 260px);
+    }
+
+    .month-day {
+        min-height: 122px;
+        padding: 8px;
     }
 
     .external-assistant-header {
@@ -1289,6 +1623,19 @@ body.selecting-blocks * {
         align-items: stretch;
     }
 
+    #controls.optimized-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #controls.optimized-controls .create-tools,
+    #controls.optimized-controls .selection-tools,
+    #controls.optimized-controls .file-tools,
+    #controls.optimized-controls .calendar-tools,
+    #controls.optimized-controls .save-tools,
+    #controls.optimized-controls .view-tools {
+        grid-column: auto;
+    }
+
     .tool-group {
         align-items: stretch;
         min-width: 0;
@@ -1316,6 +1663,16 @@ body.selecting-blocks * {
 
     .view-tools {
         justify-content: flex-end;
+    }
+
+    #controls.optimized-controls .view-tools,
+    #controls.optimized-controls .calendar-tools,
+    #controls.optimized-controls .save-tools {
+        grid-column: 1 / -1;
+    }
+
+    #controls.optimized-controls .file-tools {
+        grid-column: span 1;
     }
 
     input[type="file"] {
@@ -1547,7 +1904,10 @@ body.selecting-blocks * {
     }
 
     button,
-    .file-picker {
+    .file-picker,
+    .export-scope,
+    .week-selector select,
+    .export-scope select {
         min-height: 48px;
         padding-left: 15px;
         padding-right: 15px;
@@ -1642,26 +2002,487 @@ body.selecting-blocks * {
 @media (max-width: 760px) {
     .modal-backdrop {
         align-items: end;
-        padding: 10px;
+        place-items: end center;
+        padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
     }
 
     .block-editor {
-        max-height: 88vh;
+        width: 100%;
+        max-height: 88dvh;
+        border-bottom-right-radius: 0;
+        border-bottom-left-radius: 0;
     }
 
     .block-editor-grid {
         grid-template-columns: 1fr;
-        gap: 10px;
-        padding: 13px;
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .block-editor-header {
+        padding: 14px;
+    }
+
+    .block-editor-header h3 {
+        font-size: 17px;
     }
 
     .block-editor-actions {
         align-items: stretch;
         flex-direction: column-reverse;
+        padding: 12px 14px max(14px, env(safe-area-inset-bottom));
     }
 
     .block-editor-actions div {
         display: grid;
         grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .block-editor-actions button {
+        min-height: 52px;
+    }
+}
+
+/* =========================
+   Professional polish
+========================= */
+:root {
+    --bg: #11110f;
+    --surface: #1a1a17;
+    --surface-2: #22211d;
+    --surface-3: #2c2a25;
+    --surface-glass: rgba(26, 26, 23, 0.9);
+    --line: #4a463c;
+    --line-soft: rgba(238, 232, 219, 0.12);
+    --line-faint: rgba(238, 232, 219, 0.07);
+    --text: #fbfaf6;
+    --muted: #c7c0b3;
+    --muted-2: #8e8678;
+    --blue: #4f7cae;
+    --blue-hover: #5b8bc1;
+    --orange: #d9aa55;
+    --green: #68b684;
+    --teal: #54b8a7;
+    --rose: #d86984;
+    --shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
+    --shadow-soft: 0 10px 24px rgba(0, 0, 0, 0.22);
+    --radius: 8px;
+}
+
+html {
+    background: var(--bg);
+}
+
+body {
+    background:
+        linear-gradient(180deg, rgba(217, 170, 85, 0.08), transparent 340px),
+        linear-gradient(90deg, rgba(84, 184, 167, 0.04), transparent 42%),
+        var(--bg);
+    letter-spacing: 0;
+}
+
+.app-shell {
+    width: min(1240px, 100%);
+}
+
+.app-header {
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.eyebrow {
+    color: var(--orange);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+h2 {
+    font-size: clamp(30px, 4vw, 46px);
+    font-weight: 780;
+    letter-spacing: 0;
+}
+
+.earnings-summary {
+    gap: 8px;
+}
+
+.earnings-card,
+.toolbar,
+.timeline-panel,
+.month-panel,
+.block-editor {
+    border-color: rgba(238, 232, 219, 0.13);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.045), rgba(255, 252, 244, 0.012)),
+        var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.earnings-card {
+    min-width: 142px;
+    padding: 12px 15px;
+}
+
+.earnings-card.weekly {
+    background:
+        linear-gradient(180deg, rgba(217, 170, 85, 0.08), rgba(255, 252, 244, 0.018)),
+        var(--surface-2);
+}
+
+.earnings-card span,
+.file-picker span,
+.week-selector span,
+.export-scope span,
+.month-header span {
+    letter-spacing: 0;
+}
+
+.earnings-card strong {
+    color: #efc56f;
+    font-size: 28px;
+    font-weight: 780;
+}
+
+.toolbar {
+    padding: 10px;
+    backdrop-filter: blur(18px) saturate(120%);
+}
+
+#controls {
+    gap: 8px;
+}
+
+.tool-group {
+    gap: 6px;
+    padding: 6px;
+    border-color: rgba(238, 232, 219, 0.09);
+    background: rgba(255, 252, 244, 0.025);
+}
+
+button,
+.chatgpt-link {
+    border-color: rgba(238, 232, 219, 0.14);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.075), rgba(255, 252, 244, 0.018)),
+        #343028;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 720;
+    box-shadow: inset 0 1px 0 rgba(255, 252, 244, 0.08), 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+
+#controls.optimized-controls button {
+    min-height: 44px;
+    padding: 7px 11px;
+    font-size: 12.5px;
+    font-weight: 740;
+    line-height: 1.12;
+}
+
+#controls.optimized-controls .calendar-tools button,
+#controls.optimized-controls .save-tools button,
+#controls.optimized-controls .view-tools button {
+    flex-basis: 104px;
+}
+
+button:hover,
+.chatgpt-link:hover,
+.chatgpt-link:focus-visible {
+    border-color: rgba(239, 197, 111, 0.36);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.11), rgba(255, 252, 244, 0.026)),
+        #3b372e;
+    box-shadow: inset 0 1px 0 rgba(255, 252, 244, 0.1), 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+button:focus-visible,
+.file-picker:focus-within,
+.month-day:focus-visible,
+.chatgpt-link:focus-visible {
+    outline: 2px solid rgba(239, 197, 111, 0.54);
+    outline-offset: 2px;
+}
+
+button.primary {
+    border-color: rgba(84, 184, 167, 0.52);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.16), rgba(255, 252, 244, 0.02)),
+        linear-gradient(135deg, #4eb6a2, #84c790);
+    color: #101511;
+}
+
+button.primary:hover {
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.2), rgba(255, 252, 244, 0.035)),
+        linear-gradient(135deg, #60c4b2, #96d29e);
+}
+
+button.secondary {
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.065), rgba(255, 252, 244, 0.015)),
+        var(--surface-3);
+}
+
+button.secondary:hover {
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.1), rgba(255, 252, 244, 0.024)),
+        #38352d;
+}
+
+button.active-view {
+    border-color: rgba(217, 170, 85, 0.58);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.16), rgba(255, 252, 244, 0.025)),
+        linear-gradient(135deg, #c79a45, #68b684);
+    color: #15130f;
+}
+
+button.danger {
+    border-color: rgba(216, 105, 132, 0.44);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.09), transparent),
+        #7f2b3a;
+}
+
+button.danger:hover {
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.13), transparent),
+        #96384a;
+}
+
+.file-picker,
+.export-scope,
+.week-selector select,
+.export-scope select {
+    border-color: rgba(84, 184, 167, 0.28);
+    background:
+        linear-gradient(180deg, rgba(84, 184, 167, 0.08), rgba(255, 252, 244, 0.014)),
+        rgba(84, 184, 167, 0.035);
+}
+
+input[type="file"] {
+    color: var(--muted);
+}
+
+.save-status {
+    color: var(--muted-2);
+}
+
+.timeline-header,
+.block-editor-header,
+.month-header {
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.052), rgba(255, 252, 244, 0.012)),
+        #171713;
+}
+
+.timeline-header {
+    padding: 14px 16px;
+    color: var(--muted);
+}
+
+#timeline-container,
+#timeline,
+#timeRuler,
+.month-grid {
+    background: #11110f;
+}
+
+.week-grid-header {
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.06), rgba(255, 252, 244, 0.018)),
+        #181813;
+    border-bottom-color: rgba(238, 232, 219, 0.13);
+}
+
+.time-gutter-heading,
+#timeRuler,
+.day-heading,
+.day-column,
+.month-day,
+.month-weekdays span {
+    border-color: var(--line-faint);
+}
+
+.day-heading {
+    color: var(--muted);
+}
+
+.day-heading:hover,
+.day-heading.active {
+    background:
+        linear-gradient(180deg, rgba(217, 170, 85, 0.12), rgba(84, 184, 167, 0.04));
+}
+
+.day-heading.today {
+    box-shadow: inset 0 -3px 0 #efc56f;
+}
+
+.day-heading strong,
+.month-total,
+.month-week-total {
+    color: #efc56f;
+}
+
+.grid-line.hour,
+.time-line.hour {
+    border-top-color: rgba(238, 232, 219, 0.17);
+}
+
+.grid-line.quarter,
+.time-line.quarter {
+    border-top-color: rgba(238, 232, 219, 0.045);
+}
+
+.day-column {
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.015), transparent),
+        rgba(255, 252, 244, 0.01);
+}
+
+.day-column.active {
+    background:
+        linear-gradient(180deg, rgba(84, 184, 167, 0.065), transparent),
+        rgba(84, 184, 167, 0.024);
+}
+
+.day-column.today {
+    background:
+        linear-gradient(180deg, rgba(217, 170, 85, 0.075), transparent),
+        rgba(217, 170, 85, 0.028);
+    box-shadow: inset 0 0 0 1px rgba(217, 170, 85, 0.28);
+}
+
+.event {
+    border-color: rgba(84, 184, 167, 0.42);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.12), rgba(255, 252, 244, 0.02) 38%),
+        linear-gradient(135deg, #263b35, #24231e);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 252, 244, 0.08);
+}
+
+.event::after {
+    background:
+        linear-gradient(90deg, rgba(84, 184, 167, 0.18), transparent 34%),
+        linear-gradient(180deg, rgba(255, 252, 244, 0.1), transparent 42%);
+}
+
+.event:hover {
+    border-color: rgba(239, 197, 111, 0.5);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.36), 0 0 0 1px rgba(239, 197, 111, 0.16);
+}
+
+.event.selected {
+    border-color: rgba(239, 197, 111, 0.82);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.38), 0 0 0 3px rgba(239, 197, 111, 0.2);
+}
+
+.event-edit-button {
+    background: rgba(17, 17, 15, 0.88);
+    border-color: rgba(238, 232, 219, 0.14);
+    color: var(--text);
+}
+
+.event-title {
+    font-weight: 800;
+}
+
+.event-meta,
+.event-detail {
+    color: rgba(251, 250, 246, 0.88);
+}
+
+.month-weekdays {
+    background: #151511;
+}
+
+.month-day {
+    background: rgba(255, 252, 244, 0.012);
+}
+
+.month-day.has-events {
+    background: rgba(84, 184, 167, 0.045);
+}
+
+.month-day.selected-week {
+    box-shadow: inset 0 0 0 2px rgba(84, 184, 167, 0.36);
+}
+
+.month-day.today {
+    box-shadow: inset 0 0 0 2px rgba(239, 197, 111, 0.5);
+}
+
+.month-event {
+    border-color: rgba(84, 184, 167, 0.28);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.09), transparent 40%),
+        linear-gradient(135deg, rgba(54, 89, 80, 0.92), rgba(34, 33, 29, 0.98));
+}
+
+.month-event.selected {
+    border-color: rgba(239, 197, 111, 0.86);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28), 0 0 0 3px rgba(239, 197, 111, 0.22);
+}
+
+.block-editor input,
+.block-editor select,
+.block-editor textarea {
+    border-color: rgba(84, 184, 167, 0.28);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 244, 0.045), transparent),
+        #24231f;
+}
+
+.block-editor input:focus,
+.block-editor select:focus,
+.block-editor textarea:focus,
+.week-selector select:focus,
+.export-scope select:focus {
+    outline-color: rgba(239, 197, 111, 0.42);
+    border-color: rgba(239, 197, 111, 0.56);
+}
+
+.external-assistant-panel {
+    border-color: rgba(84, 184, 167, 0.22);
+    background: #faf8f0;
+    box-shadow: var(--shadow-soft);
+}
+
+.chatgpt-mark,
+.chatgpt-link-mark {
+    border-radius: 6px;
+}
+
+* {
+    scrollbar-color: rgba(217, 170, 85, 0.38) rgba(255, 252, 244, 0.055);
+    scrollbar-width: thin;
+}
+
+@media (max-width: 760px) {
+    .app-header {
+        margin-bottom: 14px;
+    }
+
+    .toolbar {
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+    }
+
+    .tool-group {
+        border-radius: 8px;
+    }
+
+    .timeline-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .event {
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 252, 244, 0.08);
+    }
+
+    .block-editor {
+        box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.5);
     }
 }

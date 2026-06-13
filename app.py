@@ -60,6 +60,13 @@ def simulate():
 
     data = request.json or {}
     schedule = data.get("schedule", [])
+    total_worked_hours = sum(float(block.get("duration", block.get("dur", 0)) or 0) for block in schedule)
+
+    if total_worked_hours <= 4:
+        return jsonify({
+            "pay": 0,
+            "type": ""
+        })
 
     result = simulate_schedule(schedule)
 
