@@ -3,11 +3,13 @@ def simulate_schedule(schedule):
     schedule = sorted(schedule, key=lambda x: x["start"])
 
     continuous_break_tolerance = 0
-    total_hours = 0
     continuous_hours = 0
+    daily_hours = 0
     last_end = None
 
     continuous_ot_hours = 0
+    daily_ot_65 = 0
+    double_ot_90 = 0
 
     # ✅ STEP 1 — CONTINUOUS OT (per segment)
     for block in schedule:
@@ -16,13 +18,13 @@ def simulate_schedule(schedule):
         duration = block["duration"]
         end = start + duration
 
-        total_hours += duration
-
-        # ✅ Reset if break ≥ 1 hour
+        # Reset continuity on any break, and daily tiers on a 1-hour break.
         if last_end is not None:
             gap = start - last_end
             if gap > continuous_break_tolerance:
                 continuous_hours = 0
+            if gap >= 1:
+                daily_hours = 0
 
         before = continuous_hours
         after = continuous_hours + duration
@@ -33,11 +35,16 @@ def simulate_schedule(schedule):
             continuous_ot_hours += ot_add
 
         continuous_hours = after
+        daily_before = daily_hours
+        daily_after = daily_hours + duration
+        daily_ot_65 += max(0, min(daily_after, 8) - max(daily_before, 4))
+        double_ot_90 += max(0, daily_after - max(daily_before, 8))
+        daily_hours = daily_after
         last_end = end
 
     # ✅ STEP 2 — DAILY TIERS (STACKING)
 
-    if total_hours <= 4:
+    if continuous_ot_hours <= 0 and daily_ot_65 <= 0 and double_ot_90 <= 0:
         return {
             "type": "SAFE",
             "hours": 0,
@@ -45,12 +52,7 @@ def simulate_schedule(schedule):
             "pay": 0
         }
 
-    # OT from 6 → 8
-    daily_ot_65 = max(0, min(total_hours, 8) - 4)
-
-    # Double OT after 8
-    double_ot_90 = max(0, total_hours - 8)
-
+    # Daily OT is calculated per work span, reset by a 1-hour break.
     # ✅ STEP 3 — COMBINE CORRECTLY
 
     # Use the *larger* of continuous vs 6–8 band
