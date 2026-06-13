@@ -279,6 +279,7 @@ const DAILY_NO_OVERTIME_LIMIT = 4
 const DAILY_TIER_OT_START = 6
 const DAILY_TIER_OT_END = 8
 const OT_RATE = 65
+const DOUBLE_OT_RATE = 90
 const BILLING_INCREMENT = 0.5
 const WORK_BREAK_LIMIT_HOURS = 5 / 60
 const CONTINUOUS_BREAK_TOLERANCE_HOURS = WORK_BREAK_LIMIT_HOURS
@@ -1194,7 +1195,9 @@ function applyDailyOvertime(schedule){
         schedule.forEach(block=>{
             block.continuousOvertimeHours = 0
             block.dailyTierOvertimeHours = 0
+            block.doubleOvertimeHours = 0
             block.overtimeHours = 0
+            block.premiumHours = 0
             block.regularHours = block.billableDur
         })
         return schedule
@@ -1227,13 +1230,16 @@ function applyDailyOvertime(schedule){
         let overtimeStart = Math.max(blockStart,DAILY_NO_OVERTIME_LIMIT)
         let overtimeEnd = Math.min(blockEnd,DAILY_TIER_OT_END)
         block.dailyTierOvertimeHours = Math.max(0,overtimeEnd - overtimeStart)
+        let doubleOvertimeStart = Math.max(blockStart,DAILY_TIER_OT_END)
+        block.doubleOvertimeHours = Math.max(0,blockEnd - doubleOvertimeStart)
         elapsed = blockEnd
     })
 
     let useDailyTier = dailyTierOvertime > continuousOvertime
     schedule.forEach(block=>{
         block.overtimeHours = useDailyTier ? block.dailyTierOvertimeHours : block.continuousOvertimeHours
-        block.regularHours = Math.max(block.billableDur - block.overtimeHours,0)
+        block.premiumHours = Math.max(block.overtimeHours,block.doubleOvertimeHours || 0)
+        block.regularHours = Math.max(block.billableDur - block.premiumHours,0)
     })
 
     return schedule
@@ -1247,11 +1253,19 @@ function calculateBlockOvertime(block){
     )
 }
 
+function calculateBlockDoubleOvertime(block){
+    return block.doubleOvertimeHours || 0
+}
+
+function calculateBlockPay(block){
+    return (calculateBlockOvertime(block)*OT_RATE) + (calculateBlockDoubleOvertime(block)*DOUBLE_OT_RATE)
+}
+
 function calculateDailyPay(schedule){
     applyDailyOvertime(schedule)
 
     return schedule.reduce((daily,b)=>{
-        return daily + (calculateBlockOvertime(b)*OT_RATE)
+        return daily + calculateBlockPay(b)
     },0)
 }
 
@@ -1330,7 +1344,8 @@ function renderBlock(block){
     let dur=block.dur
     let billableDur=block.billableDur || dur
     let overtime=calculateBlockOvertime(block)
-    let regular=block.regularHours ?? (overtime>0 ? DAILY_REGULAR_HOURS : dur)
+    let premium=block.premiumHours ?? Math.max(overtime,calculateBlockDoubleOvertime(block))
+    let regular=block.regularHours ?? (premium>0 ? Math.max(billableDur-premium,0) : dur)
 
     if(regular>0){
         let d=document.createElement("div")
@@ -1340,11 +1355,11 @@ function renderBlock(block){
         el.appendChild(d)
     }
 
-    if(overtime>0){
+    if(premium>0){
         let d=document.createElement("div")
         d.className="segment"
         d.style.top=(regular/billableDur*100)+"%"
-        d.style.height=(overtime/billableDur*100)+"%"
+        d.style.height=(premium/billableDur*100)+"%"
         d.style.background="linear-gradient(135deg, #be185d 0%, #ec4899 48%, #a78bfa 100%)"
         el.appendChild(d)
     }
@@ -1382,7 +1397,7 @@ function renderBlock(block){
 
     let time=document.createElement("div")
     time.className="event-meta"
-    time.innerText=formatTime(block.start)+" - "+formatTime(block.start+block.dur)+" | $"+(overtime*OT_RATE).toFixed(0)
+    time.innerText=formatTime(block.start)+" - "+formatTime(block.start+block.dur)+" | $"+calculateBlockPay(block).toFixed(0)
     label.appendChild(time)
 
     if(block.hasOverlap){

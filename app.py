@@ -1,4 +1,5 @@
 import os
+from analyzer import simulate_schedule
 from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 
 app = Flask(__name__)
@@ -60,14 +61,11 @@ def simulate():
     data = request.json or {}
     schedule = data.get("schedule", [])
 
-    total_hours = sum(b["duration"] for b in schedule)
-    ot = max(0, min(total_hours, 8) - 4)
-    dbl = max(0, total_hours - 8)
-    pay = ot * 65 + dbl * 90
+    result = simulate_schedule(schedule)
 
     return jsonify({
-        "pay": round(pay, 2),
-        "type": "Overtime" if pay > 0 else ""
+        "pay": result["pay"],
+        "type": result["type"] if result["pay"] > 0 else ""
     })
 
 
