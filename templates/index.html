@@ -15,7 +15,7 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=72">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=90">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -25,24 +25,7 @@
 <body>
 
 <div class="app-shell">
-    <header class="app-header">
-        <div>
-            <p class="eyebrow">Weekly schedule</p>
-            <h2>ABT Overtime Planner</h2>
-        </div>
-
-        <div class="earnings-summary">
-            <div class="earnings-card">
-                <span>Daily</span>
-                <strong id="daily">$0</strong>
-            </div>
-            <div class="earnings-card weekly">
-                <span>Weekly</span>
-                <strong id="weekly">$0</strong>
-            </div>
-        </div>
-    </header>
-
+    <header class="outlook-topbar" aria-label="Planner command bar">
     <section class="toolbar" aria-label="Planner controls">
         <div id="controls">
             <div class="tool-group">
@@ -96,10 +79,24 @@
             <div class="tool-group view-tools">
                 <button type="button" class="secondary" onclick="goToCurrentWeek()">Current Week</button>
                 <button type="button" class="secondary active-view" id="weekViewButton" onclick="setPlannerView('week')">Week View</button>
+                <button type="button" class="secondary" id="threeDayViewButton" onclick="setPlannerView('three-day')">3 Day</button>
+                <button type="button" class="secondary" id="dayViewButton" onclick="setPlannerView('day')">Day Focus</button>
                 <button type="button" class="secondary" id="monthViewButton" onclick="setPlannerView('month')">Month View</button>
             </div>
         </div>
     </section>
+
+        <div class="earnings-summary" aria-label="Pay totals">
+            <div class="earnings-card">
+                <span>Daily</span>
+                <strong id="daily">$0</strong>
+            </div>
+            <div class="earnings-card weekly">
+                <span>Weekly</span>
+                <strong id="weekly">$0</strong>
+            </div>
+        </div>
+    </header>
 
     <section class="mobile-calendar-bar" aria-label="Mobile calendar controls">
         <button type="button" class="secondary mobile-today-chip" onclick="goToCurrentWeek()">
@@ -132,6 +129,8 @@
             <div class="rail-actions" aria-label="Calendar quick actions">
                 <button type="button" class="secondary rail-action-button" onclick="goToCurrentWeek()">Today</button>
                 <button type="button" class="secondary rail-action-button" onclick="setPlannerView('workweek')">Work Week</button>
+                <button type="button" class="secondary rail-action-button" onclick="setPlannerView('three-day')">3 Day</button>
+                <button type="button" class="secondary rail-action-button" onclick="setPlannerView('day')">Day</button>
                 <button type="button" class="secondary rail-action-button" onclick="setPlannerView('week')">Week</button>
                 <button type="button" class="secondary rail-action-button" onclick="setPlannerView('month')">Month</button>
             </div>
@@ -233,6 +232,10 @@
         <button type="button" class="mobile-nav-button" data-mobile-nav="week" onclick="setPlannerView('week'); closeMobileSheet()">
             <span class="mobile-nav-icon icon-week-view" aria-hidden="true"></span>
             <span>Week</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="day" onclick="setPlannerView('day'); closeMobileSheet()">
+            <span class="mobile-nav-icon icon-week-view" aria-hidden="true"></span>
+            <span>Day</span>
         </button>
         <button type="button" class="mobile-nav-button" data-mobile-nav="month" onclick="setPlannerView('month'); closeMobileSheet()">
             <span class="mobile-nav-icon icon-month-view" aria-hidden="true"></span>
@@ -428,6 +431,8 @@
                         <select id="settingsDefaultViewInput" onchange="setDefaultPlannerView(this.value)">
                             <option value="week">Week</option>
                             <option value="workweek">Work Week</option>
+                            <option value="three-day">3 Day</option>
+                            <option value="day">Day Focus</option>
                             <option value="month">Month</option>
                         </select>
                     </label>
@@ -484,6 +489,8 @@ const TIMELINE_ZOOM_MIN = 0.75
 const TIMELINE_ZOOM_MAX = 1.5
 const TIMELINE_ZOOM_STEP = 0.125
 const MOBILE_LAYOUT_QUERY = "(max-width: 760px), (max-width: 1180px) and (pointer: coarse)"
+const DESKTOP_LAYOUT_QUERY = "(min-width: 1181px)"
+const TOUCH_CAPABLE_QUERY = "(any-pointer: coarse), (pointer: coarse)"
 const PROJECT_FILE_VERSION = 1
 const PROJECT_FILE_TYPE = "abt-overtime-planner"
 const PROJECT_FILENAME_KEY = "abtOvertimePlannerProjectName"
@@ -529,12 +536,10 @@ const ABT_IMPORT_PATTERNS = [
 const DAY_ORDER = ["mon","tue","wed","thu","fri","sat","sun"]
 const TOOLBAR_DEFAULTS = [
     {key:"file", label:"File", visible:true},
-    {key:"blocks", label:"Blocks", visible:true},
-    {key:"selection", label:"Selection", visible:true},
+    {key:"edit", label:"Edit", visible:true},
     {key:"calendar", label:"Calendar", visible:true},
     {key:"view", label:"View", visible:true},
-    {key:"zoom", label:"Zoom", visible:true},
-    {key:"theme", label:"Theme", visible:true}
+    {key:"tools", label:"Tools", visible:true}
 ]
 const DAY_LABELS = {
     mon:"Mon",
@@ -545,6 +550,8 @@ const DAY_LABELS = {
     sat:"Sat",
     sun:"Sun"
 }
+const TIMELINE_VIEWS = ["week","workweek","three-day","day"]
+const PLANNER_VIEWS = [...TIMELINE_VIEWS,"month"]
 
 let weekData = {mon:[],tue:[],wed:[],thu:[],fri:[],sat:[],sun:[]}
 let currentDay = "mon"
@@ -568,6 +575,9 @@ let editingBlock = null
 let customImportKeywords = []
 let customImportPatterns = []
 let lastTimelinePointerType = "mouse"
+let touchTimelineStart = null
+let suppressNextTouchTimelineClick = false
+let penTimelineTap = null
 let cachedTimelineHeight = null
 let resizeUpdateTimer = null
 let viewportUpdateTimer = null
@@ -589,6 +599,8 @@ let toastTimer = null
 function buildTimeline(){
     timeline.innerHTML=""
     cachedTimelineHeight = null
+    let visibleDays = visibleTimelineDays()
+    document.body.dataset.timelineDays = String(visibleDays.length)
     let header=document.createElement("div")
     header.className="week-grid-header"
 
@@ -596,7 +608,7 @@ function buildTimeline(){
     gutterHead.className="time-gutter-heading"
     header.appendChild(gutterHead)
 
-    DAY_ORDER.forEach(day=>{
+    visibleDays.forEach(day=>{
         let btn=document.createElement("button")
         btn.type="button"
         btn.className="day-heading"
@@ -604,7 +616,15 @@ function buildTimeline(){
         btn.innerHTML=`<span>${DAY_LABELS[day]}</span><strong id="${day}-total">$0</strong>`
         btn.onclick=()=>{
             if(draggedBlock) return
-            currentDay=day
+            if(plannerView === "three-day" || plannerView === "day"){
+                saveAllDays({persist:false})
+                currentDay=day
+                buildTimeline()
+                applyTimelineZoom({render:false})
+                renderWeek()
+            }else{
+                currentDay=day
+            }
             updateActiveDay()
             update()
         }
@@ -620,7 +640,7 @@ function buildTimeline(){
     let columns=document.createElement("div")
     columns.id="dayColumns"
 
-    DAY_ORDER.forEach(day=>{
+    visibleDays.forEach(day=>{
         let col=document.createElement("div")
         col.className="day-column"
         col.dataset.day=day
@@ -676,8 +696,88 @@ function isMobileLayout(){
     return window.matchMedia(MOBILE_LAYOUT_QUERY).matches
 }
 
+function isPhoneLayout(){
+    return window.matchMedia("(max-width: 760px)").matches
+}
+
+function isTabletLayout(){
+    return window.matchMedia("(min-width: 761px) and (max-width: 1180px) and (pointer: coarse)").matches
+}
+
+function isDesktopLayout(){
+    return window.matchMedia(DESKTOP_LAYOUT_QUERY).matches
+}
+
+function isTouchCapable(){
+    return window.matchMedia(TOUCH_CAPABLE_QUERY).matches || navigator.maxTouchPoints > 0
+}
+
+function isDesktopTouchLayout(){
+    return isDesktopLayout() && isTouchCapable()
+}
+
+function syncInputCapabilityClasses(){
+    document.body.classList.toggle("touch-capable",isTouchCapable())
+    document.body.classList.toggle("desktop-touch",isDesktopTouchLayout())
+}
+
 function timelineBaseHeight(){
     return isMobileLayout() ? 1180 : 1300
+}
+
+function normalizePlannerView(view){
+    if(view === "3day") return "three-day"
+    if(view === "dayfocus") return "day"
+    return PLANNER_VIEWS.includes(view) ? view : "week"
+}
+
+function mobileFriendlyView(view){
+    view = normalizePlannerView(view)
+    if(!isPhoneLayout()) return view
+    if(view === "week" || view === "workweek") return "three-day"
+    return view
+}
+
+function currentDayIndex(){
+    return Math.max(0,DAY_ORDER.indexOf(currentDay))
+}
+
+function visibleTimelineDays(view=plannerView){
+    view = normalizePlannerView(view)
+    if(view === "workweek") return DAY_ORDER.slice(0,6)
+    if(view === "three-day"){
+        let start = Math.min(currentDayIndex(),DAY_ORDER.length - 3)
+        return DAY_ORDER.slice(start,start + 3)
+    }
+    if(view === "day") return [DAY_ORDER[currentDayIndex()]]
+    return DAY_ORDER
+}
+
+function plannerViewLabel(view=plannerView){
+    view = normalizePlannerView(view)
+    if(view === "workweek") return "Work Week"
+    if(view === "three-day") return "3 Day"
+    if(view === "day") return "Day Focus"
+    if(view === "month") return "Month"
+    return "Week"
+}
+
+function normalizeViewLabel(label){
+    let key = String(label || "").trim().toLowerCase().replace(/\s+/g,"")
+    if(key === "3day") return "three-day"
+    if(key === "day" || key === "dayfocus") return "day"
+    return key
+}
+
+function agendaRangeLabelForView(weekLabel){
+    if(plannerView === "month") return monthName(monthAnchorDate)
+    if(plannerView === "workweek") return weekLabel+" - Mon-Sat"
+    if(plannerView === "three-day"){
+        let days = visibleTimelineDays()
+        return weekLabel+" - "+DAY_LABELS[days[0]]+"-"+DAY_LABELS[days[days.length - 1]]
+    }
+    if(plannerView === "day") return weekLabel+" - "+DAY_LABELS[currentDay]
+    return weekLabel
 }
 
 function timelineZoomPercent(){
@@ -1179,7 +1279,7 @@ function attachBlockPointerControls(el){
         }
 
         let rect = el.getBoundingClientRect()
-        let edgeSize = e.pointerType === "touch" ? 24 : 12
+        let edgeSize = blockResizeEdgeSize(e)
         let mode = "drag"
 
         if(e.clientY - rect.top <= edgeSize) mode = "resize-top"
@@ -1202,7 +1302,7 @@ function attachBlockPointerControls(el){
             let y = startY
             let h = startHeight
 
-            if(!undoRecorded && Math.abs(dy) > 2){
+            if(!undoRecorded && Math.abs(dy) > pointerMoveThreshold(e)){
                 pushUndoState()
                 undoRecorded = true
                 pointerMoved = true
@@ -1253,7 +1353,7 @@ function attachBlockPointerControls(el){
             }else if(undoRecorded){
                 saveDay()
                 update()
-            }else if(upEvent.pointerType === "touch" && !pointerMoved){
+            }else if(isDirectPointer(upEvent) && !pointerMoved){
                 el.dataset.skipClickSelect = "1"
                 selectBlock(el)
                 update()
@@ -1554,9 +1654,26 @@ function saveEditedBlock(){
     editingBlock.style.transform = `translateY(${y}px)`
     editingBlock.style.height = h+"px"
 
-    ;(getDayColumn(day) || getDayColumn(currentDay)).appendChild(editingBlock)
-    currentDay = day
-    selectBlock(editingBlock)
+    let destinationColumn = getDayColumn(day)
+    if(destinationColumn){
+        destinationColumn.appendChild(editingBlock)
+        currentDay = day
+        selectBlock(editingBlock)
+    }else{
+        let movedBlock = getBlockData(editingBlock)
+        saveAllDays({persist:false})
+        editingBlock.remove()
+        weekData[day] = [...(weekData[day] || []),{
+            start:movedBlock.start,
+            dur:movedBlock.dur,
+            title:movedBlock.title,
+            location:movedBlock.location,
+            description:movedBlock.description
+        }].sort((a,b)=>a.start-b.start)
+        currentDay = day
+        clearSelection()
+        renderWeek()
+    }
     closeBlockEditor()
     saveDay()
     update()
@@ -1582,7 +1699,7 @@ function saveDay(){
 }
 
 function saveAllDays(options={}){
-    DAY_ORDER.forEach(day=>{
+    visibleTimelineDays().forEach(day=>{
         weekData[day] = getSchedule(day).map(b=>({
             start:b.start,
             dur:b.dur,
@@ -1608,7 +1725,7 @@ function renderWeek(){
     clearSelection()
     timeline.querySelectorAll(".event").forEach(e=>e.remove())
 
-    DAY_ORDER.forEach(day=>{
+    visibleTimelineDays().forEach(day=>{
         weekData[day].forEach(b=>{
             let y=((b.start-START_HOUR)/HOURS)*timelineHeight()
             let h=(b.dur/HOURS)*timelineHeight()
@@ -1631,7 +1748,7 @@ function addBlock(){
 }
 
 function addBlockAtTimelinePoint(event,openEditor=false){
-    let dayColumn = event.target.closest(".day-column") || getDayColumnAtPoint(event.clientX,event.clientY)
+    let dayColumn = event.target?.closest?.(".day-column") || getDayColumnAtPoint(event.clientX,event.clientY)
     if(!dayColumn) return
 
     let h = hoursToPixels(1)
@@ -1931,14 +2048,14 @@ function updateThemeButtons(){
 function loadDefaultPlannerView(){
     try{
         let value = localStorage.getItem(DEFAULT_VIEW_KEY)
-        defaultPlannerView = ["week","workweek","month"].includes(value) ? value : "week"
+        defaultPlannerView = normalizePlannerView(value)
     }catch(error){
         defaultPlannerView = "week"
     }
 }
 
 function setDefaultPlannerView(view){
-    defaultPlannerView = ["week","workweek","month"].includes(view) ? view : "week"
+    defaultPlannerView = normalizePlannerView(view)
     try{
         localStorage.setItem(DEFAULT_VIEW_KEY,defaultPlannerView)
     }catch(error){
@@ -2008,9 +2125,14 @@ function updateMobileNav(){
     let settingsOpen = !document.getElementById("settingsBackdrop")?.classList.contains("is-hidden")
     document.querySelectorAll("[data-mobile-nav]").forEach(button=>{
         let nav = button.dataset.mobileNav
+        if(nav === "week"){
+            let label = button.querySelector("span:last-child")
+            if(label) label.textContent = isPhoneLayout() ? "3 Day" : "Week"
+        }
         button.classList.toggle("active-view",
             (nav === "today" && isDateInSelectedWeek(today)) ||
-            (nav === "week" && ["week","workweek"].includes(plannerView) && !document.body.classList.contains("mobile-agenda-open")) ||
+            (nav === "week" && ["week","workweek","three-day"].includes(plannerView) && !document.body.classList.contains("mobile-agenda-open")) ||
+            (nav === "day" && plannerView === "day" && !document.body.classList.contains("mobile-agenda-open")) ||
             (nav === "month" && plannerView === "month") ||
             (nav === "agenda" && document.body.classList.contains("mobile-agenda-open")) ||
             (nav === "settings" && settingsOpen)
@@ -2212,6 +2334,30 @@ function rebuildToolbar(){
             saveStatus.textContent = "Autosaved locally"
             fileMenu.appendChild(saveStatus)
         },
+        edit(item){
+            const editGroup = group("edit-tools")
+            const editMenu = menuButton(editGroup,item.label,"","icon-edit")
+            menuSection(editMenu,"Blocks")
+            menuItem(editMenu,"Add Block",addBlock,"",{iconClass:"icon-add"})
+            menuItem(editMenu,"Edit Selected",editSelectedBlock,"",{iconClass:"icon-edit"})
+            menuItem(editMenu,"Undo",undoLastChange,"undoButton",{iconClass:"icon-undo"})
+            menuItem(editMenu,"Redo",redoLastChange,"redoButton",{iconClass:"icon-redo"})
+            menuItem(editMenu,"Delete Selected",deleteSelectedBlocks,"",{iconClass:"icon-trash",className:"danger"})
+            menuItem(editMenu,"Delete All",deleteAllBlocks,"",{iconClass:"icon-trash",className:"danger"})
+            menuSection(editMenu,"Selection")
+            menuItem(editMenu,"Select All",selectAllBlocks,"",{iconClass:"icon-select-all"})
+            menuItem(editMenu,"All Calendar",selectAllCalendarEvents,"",{iconClass:"icon-calendar-check"})
+            menuItem(editMenu,"Clear Selection",clearSelection,"",{iconClass:"icon-clear"})
+            menuSection(editMenu,"Clipboard")
+            menuItem(editMenu,"Copy",copySelectedBlock,"",{iconClass:"icon-copy"})
+            menuItem(editMenu,"Cut",cutSelectedBlock,"",{iconClass:"icon-cut"})
+            menuItem(editMenu,"Paste",pasteBlock,"",{iconClass:"icon-paste"})
+            const selectionStatus = document.createElement("span")
+            selectionStatus.className = "selection-status"
+            selectionStatus.id = "selectionStatus"
+            selectionStatus.textContent = "No selection"
+            editMenu.appendChild(selectionStatus)
+        },
         blocks(item){
             const createGroup = group("create-tools")
             const createMenu = menuButton(createGroup,item.label,"","icon-blocks")
@@ -2256,7 +2402,18 @@ function rebuildToolbar(){
             button(viewMenu,"Next","secondary file-menu-item",()=>changeMonth(1),"",{iconClass:"icon-next",ariaLabel:"Next month",title:"Next month"})
             button(viewMenu,"Work Week","secondary file-menu-item",()=>setPlannerView("workweek"),"workWeekViewButton",{iconClass:"icon-week-view",ariaLabel:"Work week view",title:"Work week view"})
             button(viewMenu,"Week","secondary file-menu-item",()=>setPlannerView("week"),"weekViewButton",{iconClass:"icon-week-view",ariaLabel:"Week view",title:"Week view"})
+            button(viewMenu,"3 Day","secondary file-menu-item",()=>setPlannerView("three-day"),"threeDayViewButton",{iconClass:"icon-week-view",ariaLabel:"3 day view",title:"3 day view"})
+            button(viewMenu,"Day Focus","secondary file-menu-item",()=>setPlannerView("day"),"dayViewButton",{iconClass:"icon-week-view",ariaLabel:"Day focus view",title:"Day focus view"})
             button(viewMenu,"Month","secondary file-menu-item",()=>setPlannerView("month"),"monthViewButton",{iconClass:"icon-month-view",ariaLabel:"Month view",title:"Month view"})
+            menuSection(viewMenu,"Zoom")
+            menuItem(viewMenu,"Zoom In",zoomInTimeline,"zoomInButton",{iconClass:"icon-zoom-in"})
+            menuItem(viewMenu,"Zoom Out",zoomOutTimeline,"zoomOutButton",{iconClass:"icon-zoom-out"})
+            menuItem(viewMenu,"Reset Zoom",resetTimelineZoom,"resetZoomButton",{iconClass:"icon-zoom-reset"})
+            const zoomStatus = document.createElement("span")
+            zoomStatus.className = "zoom-status"
+            zoomStatus.id = "zoomStatus"
+            zoomStatus.textContent = "100%"
+            viewMenu.appendChild(zoomStatus)
         },
         zoom(item){
             const zoomGroup = group("zoom-tools")
@@ -2279,6 +2436,21 @@ function rebuildToolbar(){
             lightButton.dataset.themeMode = "light"
             menuSection(themeMenu,"Quick switch")
             menuItem(themeMenu,"Toggle Theme",toggleThemeMode,"",{iconClass:"icon-theme"})
+        },
+        tools(item){
+            const toolsGroup = group("tools-tools")
+            const toolsMenu = menuButton(toolsGroup,item.label,"toolsMenuButton","icon-settings")
+            menuSection(toolsMenu,"Find")
+            menuItem(toolsMenu,"Search",openFullSearch,"fullSearchButton",{iconClass:"icon-search"})
+            menuSection(toolsMenu,"Appearance")
+            const darkButton = menuItem(toolsMenu,"Dark Mode",()=>setThemeMode("dark"),"",{iconClass:"icon-moon"})
+            darkButton.dataset.themeMode = "dark"
+            const lightButton = menuItem(toolsMenu,"Light Mode",()=>setThemeMode("light"),"",{iconClass:"icon-sun"})
+            lightButton.dataset.themeMode = "light"
+            menuItem(toolsMenu,"Toggle Theme",toggleThemeMode,"",{iconClass:"icon-theme"})
+            menuSection(toolsMenu,"Settings")
+            menuItem(toolsMenu,"Settings",openSettings,"settingsButton",{iconClass:"icon-settings"})
+            menuItem(toolsMenu,"Customize Toolbar",openToolbarCustomizer,"toolbarCustomizeButton",{iconClass:"icon-settings"})
         }
     }
 
@@ -2286,15 +2458,11 @@ function rebuildToolbar(){
         .filter(item=>item.visible && builders[item.key])
         .forEach(item=>builders[item.key](item))
 
-    const searchGroup = group("search-tools")
-    button(searchGroup,"Search","secondary toolbar-menu-button",openFullSearch,"fullSearchButton",{iconClass:"icon-search",title:"Full search"})
-
-    const customizeGroup = group("customize-tools")
-    button(customizeGroup,"Settings","secondary toolbar-menu-button",openSettings,"settingsButton",{iconClass:"icon-settings",title:"Settings"})
-    button(customizeGroup,"Customize","secondary toolbar-menu-button",openToolbarCustomizer,"toolbarCustomizeButton",{iconClass:"icon-settings",title:"Customize toolbar"})
-
     updateHistoryButtons()
     document.getElementById("weekViewButton")?.classList.toggle("active-view",plannerView === "week")
+    document.getElementById("workWeekViewButton")?.classList.toggle("active-view",plannerView === "workweek")
+    document.getElementById("threeDayViewButton")?.classList.toggle("active-view",plannerView === "three-day")
+    document.getElementById("dayViewButton")?.classList.toggle("active-view",plannerView === "day")
     document.getElementById("monthViewButton")?.classList.toggle("active-view",plannerView === "month")
     updateAutosaveButton()
     updateThemeButtons()
@@ -2330,6 +2498,19 @@ function getSchedule(dayKey=null){
                 el:e
             }
         })
+        .sort((a,b)=>a.start-b.start)
+}
+
+function storedSchedule(day){
+    return (weekData[day] || [])
+        .map(block=>({
+            start:Number(block.start) || START_HOUR,
+            dur:Number(block.dur) || 1,
+            day,
+            title:block.title || "Block",
+            location:block.location || "",
+            description:block.description || ""
+        }))
         .sort((a,b)=>a.start-b.start)
 }
 
@@ -2462,23 +2643,26 @@ function markScheduleOverlaps(schedule){
 function update(options={}){
     let activeDaily=0
     let weeklyTotal=0
+    let visibleDays = new Set(visibleTimelineDays())
 
     DAY_ORDER.forEach(day=>{
-        let schedule=getSchedule(day)
+        let schedule=visibleDays.has(day) ? getSchedule(day) : storedSchedule(day)
         markScheduleOverlaps(schedule)
         let daily=calculateDailyPay(schedule)
         weeklyTotal += daily
 
-        weekData[day] = schedule.map(b=>({
-            start:b.start,
-            dur:b.dur,
-            title:b.title,
-            location:b.location,
-            description:b.description
-        }))
+        if(visibleDays.has(day)){
+            weekData[day] = schedule.map(b=>({
+                start:b.start,
+                dur:b.dur,
+                title:b.title,
+                location:b.location,
+                description:b.description
+            }))
+        }
 
         schedule.forEach(block=>{
-            renderBlock(block)
+            if(block.el) renderBlock(block)
         })
 
         let dayTotal = document.getElementById(day+"-total")
@@ -2617,9 +2801,17 @@ timeline.addEventListener("click", e=>{
         suppressTimelineClick = false
         return
     }
+    if(lastTimelinePointerType === "touch" && suppressNextTouchTimelineClick){
+        suppressNextTouchTimelineClick = false
+        return
+    }
+    if(lastTimelinePointerType === "pen" && penTimelineTap){
+        penTimelineTap = null
+        return
+    }
 
     if(!e.target.closest(".event") && getDayColumnAtPoint(e.clientX,e.clientY)){
-        addBlockAtTimelinePoint(e,lastTimelinePointerType === "touch")
+        addBlockAtTimelinePoint(e,isDirectPointer({pointerType:lastTimelinePointerType}))
         return
     }
 
@@ -2631,8 +2823,18 @@ timeline.addEventListener("click", e=>{
 timeline.addEventListener("pointerdown", e=>{
     lastTimelinePointerType = e.pointerType || "mouse"
 
+    if(isTouchPointer(e) && !e.target.closest(".event")){
+        let scroller = document.getElementById("timeline-container")
+        touchTimelineStart = {
+            x:e.clientX,
+            y:e.clientY,
+            scrollLeft:scroller?.scrollLeft || 0,
+            scrollTop:scroller?.scrollTop || 0
+        }
+    }
+
     if(e.button !== 0 || e.target.closest(".event")) return
-    if(e.pointerType === "touch") return
+    if(isTouchPointer(e)) return
 
     e.preventDefault()
 
@@ -2649,17 +2851,27 @@ timeline.addEventListener("pointerdown", e=>{
     let baseSelection = new Set(getSelectedBlocks())
     let additive = e.shiftKey || e.ctrlKey || e.metaKey
     let didDragSelection = false
+    let selectionStarted = false
+    let startPointer = {
+        x:e.clientX,
+        y:e.clientY,
+        pointerType:e.pointerType || "mouse"
+    }
 
     if(!additive) clearSelection()
 
-    selectionBox = document.createElement("div")
-    selectionBox.className = "selection-box"
-    selectionBox.style.left = startX+"px"
-    selectionBox.style.top = startY+"px"
-    selectionBox.style.width = "0px"
-    selectionBox.style.height = "0px"
-    timeline.appendChild(selectionBox)
-    document.body.classList.add("selecting-blocks")
+    function ensureSelectionBox(){
+        if(selectionStarted) return
+        selectionStarted = true
+        selectionBox = document.createElement("div")
+        selectionBox.className = "selection-box"
+        selectionBox.style.left = startX+"px"
+        selectionBox.style.top = startY+"px"
+        selectionBox.style.width = "0px"
+        selectionBox.style.height = "0px"
+        timeline.appendChild(selectionBox)
+        document.body.classList.add("selecting-blocks")
+    }
 
     function onPointerMove(moveEvent){
         moveEvent.preventDefault()
@@ -2670,7 +2882,9 @@ timeline.addEventListener("pointerdown", e=>{
         let top = Math.min(startY,currentY)
         let width = Math.abs(currentX-startX)
         let height = Math.abs(currentY-startY)
-        didDragSelection = didDragSelection || width > 4 || height > 4
+        didDragSelection = didDragSelection || width > pointerMoveThreshold(startPointer) || height > pointerMoveThreshold(startPointer)
+        if(!didDragSelection) return
+        ensureSelectionBox()
 
         selectionBox.style.left = left+"px"
         selectionBox.style.top = top+"px"
@@ -2691,6 +2905,13 @@ timeline.addEventListener("pointerdown", e=>{
             selectionBox = null
         }
 
+        if(isPenPointer(startPointer) && !didDragSelection && getDayColumnAtPoint(startPointer.x,startPointer.y)){
+            penTimelineTap = true
+            addBlockAtTimelinePoint(startPointer,true)
+            suppressTimelineClick = true
+            return
+        }
+
         suppressTimelineClick = didDragSelection
     }
 
@@ -2698,6 +2919,21 @@ timeline.addEventListener("pointerdown", e=>{
     document.addEventListener("pointerup",onPointerUp)
     document.addEventListener("pointercancel",onPointerUp)
 })
+
+timeline.addEventListener("pointerup", e=>{
+    if(e.pointerType !== "touch" || !touchTimelineStart) return
+    let scroller = document.getElementById("timeline-container")
+    let moved = Math.hypot(e.clientX - touchTimelineStart.x,e.clientY - touchTimelineStart.y)
+    let scrolled = Math.abs((scroller?.scrollLeft || 0) - touchTimelineStart.scrollLeft) + Math.abs((scroller?.scrollTop || 0) - touchTimelineStart.scrollTop)
+    suppressNextTouchTimelineClick = moved > 10 || scrolled > 6
+    touchTimelineStart = null
+},{passive:true})
+
+timeline.addEventListener("pointercancel", e=>{
+    if(e.pointerType !== "touch") return
+    suppressNextTouchTimelineClick = true
+    touchTimelineStart = null
+},{passive:true})
 
 timeline.addEventListener("dblclick", e=>{
     if(e.target.closest(".event")) return
@@ -2912,21 +3148,37 @@ function updateActiveDay(){
 // MONTH VIEW
 //--------------------------------
 function setPlannerView(view){
+    view = mobileFriendlyView(view)
     if(plannerView !== view) clearSelection()
+    if(TIMELINE_VIEWS.includes(plannerView) && document.querySelector(".event")){
+        saveAllDays({persist:false})
+    }
     plannerView = view
     closeMobileSheet()
 
     document.body.classList.toggle("workweek-mode",view === "workweek")
-    document.querySelector(".timeline-panel")?.classList.toggle("is-hidden",!["week","workweek"].includes(view))
+    document.body.classList.toggle("three-day-mode",view === "three-day")
+    document.body.classList.toggle("day-focus-mode",view === "day")
+    document.querySelector(".timeline-panel")?.classList.toggle("is-hidden",!TIMELINE_VIEWS.includes(view))
     document.getElementById("monthPanel")?.classList.toggle("is-hidden",view !== "month")
-    document.getElementById("weekViewButton")?.classList.toggle("active-view",view === "week" || view === "workweek")
+    document.getElementById("weekViewButton")?.classList.toggle("active-view",view === "week")
+    document.getElementById("threeDayViewButton")?.classList.toggle("active-view",view === "three-day")
+    document.getElementById("dayViewButton")?.classList.toggle("active-view",view === "day")
     document.getElementById("workWeekViewButton")?.classList.toggle("active-view",view === "workweek")
     document.getElementById("monthViewButton")?.classList.toggle("active-view",view === "month")
 
+    if(TIMELINE_VIEWS.includes(view)){
+        buildTimeline()
+        applyTimelineZoom({render:false})
+        renderWeek()
+    }
+
     updateWeekHeader()
+    updateActiveDay()
     updateImportSummary()
     savePlannerState()
     if(view === "month") renderMonthView()
+    else update()
     updateOutlookPanels()
     updateMobileNav()
 }
@@ -2952,7 +3204,7 @@ function goToCurrentWeek(){
     updateActiveDay()
     update()
     renderMonthView()
-    setPlannerView("week")
+    setPlannerView(isPhoneLayout() ? "day" : "week")
 }
 
 function changeWeek(offset){
@@ -2964,13 +3216,26 @@ function changeWeek(offset){
     updateActiveDay()
     update()
     renderMonthView()
-    setPlannerView(plannerView === "workweek" ? "workweek" : "week")
+    setPlannerView(TIMELINE_VIEWS.includes(plannerView) ? plannerView : "week")
 }
 
 function changeMobilePeriod(offset){
     if(plannerView === "month"){
         changeMonth(offset)
         updateOutlookPanels()
+        return
+    }
+
+    if(plannerView === "three-day" || plannerView === "day"){
+        saveDay()
+        let step = plannerView === "three-day" ? 3 : 1
+        let activeDate = addDays(selectedWeekStartDate(),currentDayIndex() + (offset * step))
+        selectedWeekStartKey = dateKey(startOfPlannerWeek(activeDate))
+        monthAnchorDate = new Date(activeDate.getFullYear(),activeDate.getMonth(),1)
+        currentDay = DAY_ORDER[(activeDate.getDay() + 6) % 7]
+        loadWeekFromMonth(selectedWeekStartKey,{currentDay})
+        renderMonthView()
+        setPlannerView(plannerView)
         return
     }
 
@@ -3067,8 +3332,34 @@ function updateWeekHeader(){
     let range = document.getElementById("weekRangeText")
     if(!title || !range) return
 
-    title.innerText = selectedWeekStartKey ? "Weekly calls: "+weekRangeLabel(parseDateKey(selectedWeekStartKey)) : "Weekly calls"
+    title.innerText = selectedWeekStartKey
+        ? plannerViewLabel(plannerView)+": "+weekRangeLabel(parseDateKey(selectedWeekStartKey))
+        : plannerViewLabel(plannerView)
     range.innerText = "10:00 AM - 11:00 PM"
+}
+
+function isTouchPointer(event){
+    return event?.pointerType === "touch"
+}
+
+function isPenPointer(event){
+    return event?.pointerType === "pen"
+}
+
+function isDirectPointer(event){
+    return isTouchPointer(event) || isPenPointer(event)
+}
+
+function pointerMoveThreshold(event){
+    if(isPenPointer(event)) return 1.5
+    if(isTouchPointer(event)) return 6
+    return 2
+}
+
+function blockResizeEdgeSize(event){
+    if(isTouchPointer(event)) return 28
+    if(isPenPointer(event)) return 16
+    return 12
 }
 
 function updateImportSummary(){
@@ -3514,7 +3805,7 @@ function selectWeekFromMonth(key){
     setPlannerView("week")
 }
 
-function loadWeekFromMonth(key){
+function loadWeekFromMonth(key,options={}){
     let start = parseDateKey(key)
     let selectedWeekData = emptyWeekData()
 
@@ -3530,7 +3821,7 @@ function loadWeekFromMonth(key){
     })
 
     weekData = selectedWeekData
-    currentDay = "mon"
+    currentDay = options.currentDay || "mon"
     loadDay()
     updateActiveDay()
     updateWeekHeader()
@@ -3636,8 +3927,9 @@ function matchesSearchQuery(block,query){
 
 function visibleAgendaBlocks(){
     let query = String(document.getElementById("agendaSearchInput")?.value || "").trim().toLowerCase()
+    let visibleDays = new Set(visibleTimelineDays())
     return agendaScopeBlocks()
-        .filter(block=>plannerView !== "workweek" || block.day !== "sun")
+        .filter(block=>plannerView === "month" || visibleDays.has(block.day))
         .filter(block=>matchesSearchQuery(block,query))
 }
 
@@ -3850,10 +4142,10 @@ function openAgendaBlock(block){
     if(block.dateKey) selectedWeekStartKey = dateKey(startOfPlannerWeek(block.date))
 
     if(plannerView === "month" && block.dateKey){
-        loadWeekFromMonth(selectedWeekStartKey)
+        loadWeekFromMonth(selectedWeekStartKey,{currentDay})
     }
 
-    setPlannerView("week")
+    setPlannerView(TIMELINE_VIEWS.includes(plannerView) ? plannerView : "week")
     updateActiveDay()
 }
 
@@ -3865,8 +4157,10 @@ function changeMiniMonth(offset){
 }
 
 function selectMiniMonthDate(key){
-    selectedWeekStartKey = dateKey(startOfPlannerWeek(parseDateKey(key)))
-    monthAnchorDate = new Date(parseDateKey(key).getFullYear(),parseDateKey(key).getMonth(),1)
+    let selectedDate = parseDateKey(key)
+    selectedWeekStartKey = dateKey(startOfPlannerWeek(selectedDate))
+    monthAnchorDate = new Date(selectedDate.getFullYear(),selectedDate.getMonth(),1)
+    currentDay = DAY_ORDER[(selectedDate.getDay() + 6) % 7]
 
     let hasWeekEvents = DAY_ORDER.some((day,index)=>{
         let date = addDays(parseDateKey(selectedWeekStartKey),index)
@@ -3874,7 +4168,7 @@ function selectMiniMonthDate(key){
     })
 
     if(hasWeekEvents){
-        loadWeekFromMonth(selectedWeekStartKey)
+        loadWeekFromMonth(selectedWeekStartKey,{currentDay})
         setPlannerView(plannerView === "month" ? "month" : plannerView)
         renderMonthView()
         updateOutlookPanels()
@@ -3940,11 +4234,7 @@ function updateOutlookPanels(options={}){
     let weekLabel = weekRangeLabel(weekStart)
     if(railWeek) railWeek.textContent = weekLabel
     if(agendaRange){
-        agendaRange.textContent = plannerView === "month"
-            ? monthName(monthAnchorDate)
-            : plannerView === "workweek"
-                ? weekLabel+" · Mon-Sat"
-                : weekLabel
+        agendaRange.textContent = agendaRangeLabelForView(weekLabel)
     }
 
     let mobileLayout = isMobileLayout()
@@ -3953,16 +4243,12 @@ function updateOutlookPanels(options={}){
     if(mobileView){
         mobileView.textContent = plannerView === "month"
             ? monthName(monthAnchorDate)
-            : plannerView === "workweek"
-                ? "Work Week"
-                : "Week"
+            : (plannerView === "three-day" && isTabletLayout() ? "Week" : plannerViewLabel())
     }
     if(mobileRange){
         mobileRange.textContent = plannerView === "month"
             ? "Month view"
-            : plannerView === "workweek"
-                ? weekLabel+" - Mon-Sat"
-                : weekLabel
+            : agendaRangeLabelForView(weekLabel)
     }
 
     let eventCount = agendaScopeBlocks().length
@@ -3973,10 +4259,9 @@ function updateOutlookPanels(options={}){
     }
 
     document.querySelectorAll(".rail-action-button").forEach(button=>{
-        let label = button.textContent.trim().toLowerCase().replace(/\s+/g,"")
+        let label = normalizeViewLabel(button.textContent)
         button.classList.toggle("active-view",
             label === plannerView ||
-            (label === "workweek" && plannerView === "workweek") ||
             (label === "today" && isDateInSelectedWeek(today))
         )
     })
@@ -4980,6 +5265,7 @@ function polishControlLabels(){
 function updateAppViewportMetrics(){
     let height = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight
     document.documentElement.style.setProperty("--app-vh",(height * 0.01)+"px")
+    syncInputCapabilityClasses()
 }
 
 function scheduleViewportMetricUpdate(){
@@ -4991,7 +5277,7 @@ function scheduleViewportMetricUpdate(){
 }
 
 function isDesktopWorkspaceLayout(){
-    return window.matchMedia("(min-width: 1181px) and (pointer: fine)").matches
+    return isDesktopLayout()
 }
 
 function clampWorkspaceLayout(layout){
@@ -5071,6 +5357,7 @@ function initWorkspaceResizers(){
 
 // INIT
 updateAppViewportMetrics()
+syncInputCapabilityClasses()
 loadWorkspaceLayout()
 loadThemeMode()
 loadTimelineZoom()

@@ -4873,6 +4873,209 @@ body,
     }
 }
 
+/* Final mobile polish pass */
+@media (max-width: 760px) and (orientation: portrait) {
+    .calendar-rail {
+        display: none;
+    }
+
+    .calendar-workspace {
+        gap: 5px;
+    }
+}
+
+@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
+    .mobile-add-button {
+        display: inline-grid;
+        place-items: center;
+        overflow: hidden;
+        color: #121820;
+        font-size: 0;
+        line-height: 0;
+        position: relative;
+    }
+
+    .mobile-add-button .button-icon {
+        width: 18px;
+        height: 18px;
+        flex-basis: 18px;
+        color: currentColor;
+    }
+
+    .mobile-add-button::before,
+    .mobile-add-button::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        border-radius: 999px;
+        background: #102019;
+        transform: translate(-50%, -50%);
+    }
+
+    .mobile-add-button::before {
+        width: 16px;
+        height: 2px;
+    }
+
+    .mobile-add-button::after {
+        width: 2px;
+        height: 16px;
+    }
+
+    .timeline-panel {
+        margin-top: 0;
+    }
+
+    .file-menu,
+    .toolbar-menu {
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
+    }
+
+    .file-menu-item.icon-text-button {
+        display: inline-flex;
+        align-items: center;
+    }
+}
+
+@media (max-width: 760px) and (orientation: portrait) {
+    .mobile-bottom-nav {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .mobile-nav-button {
+        min-height: 38px;
+        font-size: 8px;
+    }
+
+    .mobile-nav-icon {
+        width: 15px;
+        height: 15px;
+        flex-basis: 15px;
+    }
+
+    body:has(.modal-backdrop:not(.is-hidden)) .mobile-bottom-nav {
+        display: none;
+    }
+}
+
+/* Mobile scroll repair */
+@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
+    html,
+    body {
+        height: auto;
+        min-height: 100%;
+        overflow-y: auto;
+        overscroll-behavior-y: auto;
+    }
+
+    body {
+        overscroll-behavior-y: auto;
+    }
+
+    #timeline-container {
+        overflow-x: auto;
+        overflow-y: auto;
+        overscroll-behavior: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x pan-y;
+        scroll-padding-top: 44px;
+        scroll-padding-bottom: 78px;
+    }
+
+    #timeline,
+    #dayColumns,
+    .day-column,
+    #timeRuler {
+        touch-action: pan-x pan-y;
+    }
+
+    #timeline {
+        margin-bottom: calc(58px + max(8px, env(safe-area-inset-bottom)));
+    }
+
+    .event,
+    .event-edit-button,
+    .resize-handle {
+        touch-action: none;
+    }
+
+    body.dragging-block,
+    body.selecting-blocks {
+        overflow: hidden;
+    }
+
+    body.dragging-block #timeline-container,
+    body.selecting-blocks #timeline-container {
+        overscroll-behavior: none;
+        touch-action: none;
+    }
+}
+
+/* Compact mobile earnings header */
+@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
+    .app-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(134px, 42%);
+        gap: 5px;
+        align-items: end;
+        margin-bottom: 4px;
+        padding-bottom: 4px;
+    }
+
+    .eyebrow {
+        margin-bottom: 2px;
+        font-size: 8px;
+        line-height: 1;
+    }
+
+    h2 {
+        font-size: clamp(18px, 5.5vw, 23px);
+        line-height: 1;
+    }
+
+    .earnings-summary {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 3px;
+        align-self: end;
+    }
+
+    .earnings-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        min-width: 0;
+        min-height: 0;
+        padding: 3px 6px;
+        border-radius: 6px;
+        box-shadow: none;
+        text-align: left;
+    }
+
+    .earnings-card span {
+        font-size: 9px;
+        line-height: 1;
+    }
+
+    .earnings-card strong {
+        margin-top: 0;
+        font-size: 14px;
+        line-height: 1;
+    }
+}
+
+@media (max-width: 340px) {
+    .app-header {
+        grid-template-columns: 1fr;
+    }
+
+    .earnings-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 /* Cross-platform mobile production refinements */
 @media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
     * {
@@ -5176,6 +5379,810 @@ body,
     }
 }
 
+/* Outlook-style top command bar */
+.outlook-topbar {
+    position: sticky;
+    top: max(8px, env(safe-area-inset-top));
+    z-index: 300;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: stretch;
+    margin: 0 0 8px;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012)),
+        rgba(3, 4, 5, 0.94);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.44);
+    backdrop-filter: blur(16px);
+}
+
+.outlook-topbar .toolbar {
+    position: relative;
+    z-index: 305;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+.outlook-topbar #controls.optimized-controls {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding-bottom: 1px;
+    scrollbar-width: thin;
+}
+
+.outlook-topbar #controls.optimized-controls .tool-group {
+    flex: 0 0 auto;
+    width: auto;
+}
+
+.outlook-topbar .toolbar-menu-wrap {
+    width: auto;
+}
+
+.outlook-topbar .toolbar-menu-button {
+    min-width: 94px;
+    min-height: 36px;
+    padding: 0 10px;
+    border-radius: 7px;
+    gap: 7px;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.outlook-topbar .toolbar-menu-button .button-icon {
+    width: 16px;
+    height: 16px;
+    flex-basis: 16px;
+}
+
+.outlook-topbar .selection-status,
+.outlook-topbar .zoom-status {
+    min-height: 18px;
+    margin-top: 2px;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    font-size: 10px;
+}
+
+.outlook-topbar .earnings-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(94px, 1fr));
+    gap: 6px;
+    align-items: stretch;
+}
+
+.outlook-topbar .earnings-card {
+    min-width: 0;
+    min-height: 36px;
+    padding: 6px 10px;
+    border-radius: 7px;
+    box-shadow: none;
+    text-align: right;
+}
+
+.outlook-topbar .earnings-card span {
+    font-size: 10px;
+    line-height: 1;
+}
+
+.outlook-topbar .earnings-card strong {
+    margin-top: 1px;
+    font-size: 20px;
+}
+
+.outlook-topbar .file-menu,
+.outlook-topbar .toolbar-menu {
+    top: calc(100% + 8px);
+    bottom: auto;
+    z-index: 520;
+}
+
+.calendar-workspace {
+    margin-top: 0;
+}
+
+@media (min-width: 1181px) {
+    .outlook-topbar {
+        grid-template-columns: minmax(0, 1fr) minmax(220px, auto);
+        margin-bottom: 10px;
+    }
+
+    .outlook-topbar .toolbar-menu-button {
+        min-width: 108px;
+    }
+
+    .outlook-topbar .file-menu,
+    .outlook-topbar .toolbar-menu {
+        left: 0;
+        right: auto;
+        min-width: 240px;
+    }
+
+    .outlook-topbar .customize-tools .toolbar-menu-button,
+    .outlook-topbar .search-tools .toolbar-menu-button {
+        min-width: 102px;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) and (pointer: coarse) {
+    .outlook-topbar {
+        top: max(6px, env(safe-area-inset-top));
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 24%);
+        gap: 6px;
+        margin-bottom: 6px;
+        padding: 6px;
+    }
+
+    .outlook-topbar #controls.optimized-controls {
+        gap: 5px;
+    }
+
+    .outlook-topbar .toolbar-menu-button {
+        min-width: 44px;
+        min-height: 40px;
+        padding: 0 8px;
+    }
+
+    .outlook-topbar .toolbar-menu-button .button-label {
+        display: none;
+    }
+
+    .outlook-topbar .earnings-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
+        padding: 0;
+    }
+
+    .outlook-topbar .earnings-card {
+        min-height: 40px;
+        padding: 6px 7px;
+    }
+
+    .outlook-topbar .earnings-card strong {
+        font-size: 18px;
+    }
+
+    .mobile-calendar-bar {
+        top: calc(max(6px, env(safe-area-inset-top)) + 58px);
+        margin-bottom: 6px;
+    }
+}
+
+@media (max-width: 760px) {
+    .outlook-topbar {
+        position: sticky;
+        top: max(4px, env(safe-area-inset-top));
+        display: block;
+        margin-bottom: 5px;
+        padding: 4px;
+        border-radius: 9px;
+    }
+
+    .outlook-topbar #controls.optimized-controls {
+        display: grid;
+        grid-template-columns: repeat(9, minmax(36px, 1fr));
+        gap: 3px;
+        overflow: visible;
+    }
+
+    .outlook-topbar .toolbar-menu-button {
+        min-width: 0;
+        min-height: 36px;
+        padding: 4px;
+        border-radius: 7px;
+    }
+
+    .outlook-topbar .toolbar-menu-button .button-label,
+    .outlook-topbar .selection-status,
+    .outlook-topbar .zoom-status,
+    .outlook-topbar .earnings-summary {
+        display: none;
+    }
+
+    .mobile-calendar-bar {
+        top: calc(max(4px, env(safe-area-inset-top)) + 50px);
+    }
+}
+
+/* OLED, iPad, and desktop polish */
+:root[data-theme="dark"],
+:root:not([data-theme]),
+:root[data-theme=""] {
+    --bg: #000;
+    --surface: #050607;
+    --surface-2: #0a0d10;
+    --surface-3: #11161c;
+    --surface-glass: rgba(5, 6, 7, 0.9);
+    --line: rgba(255, 255, 255, 0.16);
+    --line-soft: rgba(255, 255, 255, 0.09);
+    --line-faint: rgba(255, 255, 255, 0.045);
+    --text: #f7fafc;
+    --muted: #a8b3bf;
+    --muted-2: #6f7c89;
+    --scrollbar-track: rgba(255, 255, 255, 0.06);
+    --scrollbar-thumb: rgba(45, 212, 191, 0.7);
+    --scrollbar-thumb-hover: rgba(244, 176, 74, 0.88);
+    --timeline-panel-bg: #030405;
+    --shadow: 0 24px 70px rgba(0, 0, 0, 0.58);
+    --shadow-soft: 0 12px 34px rgba(0, 0, 0, 0.46);
+}
+
+:root[data-theme="dark"] html,
+:root:not([data-theme]) html,
+:root[data-theme=""] html,
+:root[data-theme="dark"] body,
+:root:not([data-theme]) body,
+:root[data-theme=""] body {
+    background: #000;
+}
+
+:root[data-theme="dark"] body,
+:root:not([data-theme]) body,
+:root[data-theme=""] body {
+    background:
+        linear-gradient(180deg, rgba(45, 212, 191, 0.055), transparent 230px),
+        linear-gradient(0deg, rgba(244, 176, 74, 0.025), transparent 320px),
+        #000;
+}
+
+:root[data-theme="dark"] .app-shell,
+:root:not([data-theme]) .app-shell,
+:root[data-theme=""] .app-shell {
+    border-color: rgba(255, 255, 255, 0.13);
+    background: rgba(0, 0, 0, 0.68);
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.56);
+}
+
+:root[data-theme="dark"] .toolbar,
+:root:not([data-theme]) .toolbar,
+:root[data-theme="dark"] .calendar-rail,
+:root[data-theme="dark"] .agenda-pane,
+:root[data-theme="dark"] .timeline-panel,
+:root[data-theme="dark"] .month-panel,
+:root[data-theme="dark"] .earnings-card,
+:root[data-theme="dark"] .block-editor,
+:root[data-theme="dark"] .mobile-bottom-nav,
+:root[data-theme="dark"] .mobile-calendar-bar,
+:root:not([data-theme]) .calendar-rail,
+:root:not([data-theme]) .agenda-pane,
+:root:not([data-theme]) .timeline-panel,
+:root:not([data-theme]) .month-panel,
+:root:not([data-theme]) .earnings-card,
+:root:not([data-theme]) .block-editor,
+:root:not([data-theme]) .mobile-bottom-nav,
+:root:not([data-theme]) .mobile-calendar-bar {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+        var(--surface-glass);
+    border-color: rgba(255, 255, 255, 0.13);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+:root[data-theme="dark"] #timeline-container,
+:root[data-theme="dark"] #timeline,
+:root:not([data-theme]) #timeline-container,
+:root:not([data-theme]) #timeline,
+:root[data-theme=""] #timeline-container,
+:root[data-theme=""] #timeline {
+    background: #000;
+}
+
+:root[data-theme="dark"] .day-column,
+:root:not([data-theme]) .day-column,
+:root[data-theme=""] .day-column {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 120px),
+        #030405;
+}
+
+:root[data-theme="dark"] .day-column.active,
+:root:not([data-theme]) .day-column.active,
+:root[data-theme=""] .day-column.active {
+    background:
+        linear-gradient(180deg, rgba(45, 212, 191, 0.09), rgba(45, 212, 191, 0.025)),
+        #030405;
+}
+
+:root[data-theme="dark"] .event,
+:root:not([data-theme]) .event,
+:root[data-theme=""] .event {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        0 12px 26px rgba(0, 0, 0, 0.38);
+}
+
+@media (min-width: 1181px) {
+    body {
+        padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+    }
+
+    .app-shell {
+        width: min(1760px, calc(100vw - 32px));
+        border-radius: 10px;
+    }
+
+    .app-header {
+        grid-template-columns: minmax(360px, 1fr) minmax(520px, 0.95fr);
+        gap: 14px;
+        padding: 14px;
+    }
+
+    .hero-card,
+    .earnings-summary,
+    .toolbar,
+    .calendar-rail,
+    .timeline-panel,
+    .agenda-pane,
+    .month-panel {
+        border-radius: 8px;
+    }
+
+    .toolbar {
+        padding: 8px;
+        gap: 6px;
+    }
+
+    button,
+    .file-picker,
+    .export-scope,
+    .week-selector select {
+        min-height: 34px;
+    }
+
+    .calendar-workspace {
+        grid-template-columns: minmax(190px, var(--workspace-rail-width)) 6px minmax(960px, 1fr) 6px minmax(250px, var(--workspace-agenda-width));
+        gap: 8px;
+        padding: 8px;
+    }
+
+    .timeline-header,
+    .agenda-header,
+    .rail-header {
+        padding: 10px 12px;
+    }
+
+    #timeline-container {
+        height: min(calc(var(--app-vh) * 76), 840px);
+        min-height: 640px;
+    }
+
+    .week-grid-header {
+        grid-template-columns: 58px repeat(7, minmax(124px, 1fr));
+    }
+
+    .week-grid-body {
+        grid-template-columns: 58px minmax(868px, 1fr);
+    }
+
+    #dayColumns {
+        grid-template-columns: repeat(7, minmax(124px, 1fr));
+    }
+
+    .event {
+        border-radius: 7px;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) and (pointer: coarse) {
+    body {
+        padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) calc(72px + max(10px, env(safe-area-inset-bottom))) max(12px, env(safe-area-inset-left));
+    }
+
+    .app-shell {
+        width: min(100%, 1180px);
+        border-radius: 10px;
+    }
+
+    .app-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 30%);
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .hero-card {
+        min-height: 92px;
+        padding: 13px 14px;
+    }
+
+    .hero-card h1 {
+        font-size: clamp(22px, 3vw, 32px);
+        line-height: 1.02;
+    }
+
+    .earnings-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+        padding: 8px;
+    }
+
+    .earnings-card {
+        min-height: 54px;
+        padding: 8px;
+    }
+
+    .toolbar,
+    .toolbar-strip,
+    .toolbar-row {
+        gap: 5px;
+    }
+
+    .toolbar {
+        position: sticky;
+        top: max(8px, env(safe-area-inset-top));
+        z-index: 22;
+        margin-bottom: 8px;
+        padding: 6px;
+    }
+
+    .calendar-workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(244px, 29%);
+        gap: 10px;
+        padding: 8px;
+        overflow: visible;
+    }
+
+    .calendar-rail,
+    .workspace-resizer {
+        display: none;
+    }
+
+    .timeline-panel,
+    .agenda-pane {
+        min-height: 0;
+        border-radius: 9px;
+    }
+
+    .agenda-pane {
+        position: static;
+        inset: auto;
+        display: flex;
+        width: auto;
+        height: auto;
+        max-height: none;
+        transform: none;
+        opacity: 1;
+        pointer-events: auto;
+        z-index: auto;
+    }
+
+    .agenda-list {
+        max-height: calc(var(--app-vh) * 62);
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #timeline-container {
+        height: calc(var(--app-vh) * 72);
+        min-height: 720px;
+        max-height: calc(var(--app-vh) * 82);
+        overscroll-behavior: contain;
+    }
+
+    #timeline {
+        min-width: 890px;
+    }
+
+    .week-grid-header {
+        grid-template-columns: 54px repeat(7, minmax(116px, 1fr));
+    }
+
+    .week-grid-body {
+        grid-template-columns: 54px minmax(812px, 1fr);
+    }
+
+    #dayColumns {
+        grid-template-columns: repeat(7, minmax(116px, 1fr));
+    }
+
+    .day-column {
+        min-width: 116px;
+    }
+
+    .mobile-calendar-bar {
+        position: sticky;
+        top: max(8px, env(safe-area-inset-top));
+        z-index: 28;
+        grid-template-columns: 54px 42px minmax(0, 1fr) 42px 48px;
+        gap: 6px;
+        margin: 0 0 8px;
+        padding: 6px;
+        border-radius: 10px;
+    }
+
+    .mobile-bottom-nav {
+        right: max(12px, env(safe-area-inset-right));
+        bottom: max(10px, env(safe-area-inset-bottom));
+        left: max(12px, env(safe-area-inset-left));
+        width: auto;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 5px;
+        padding: 6px;
+        border-radius: 10px;
+    }
+
+    .mobile-nav-button {
+        min-height: 44px;
+        gap: 2px;
+        padding: 4px 3px;
+        font-size: 10px;
+    }
+
+    .mobile-nav-icon {
+        width: 18px;
+        height: 18px;
+        flex-basis: 18px;
+    }
+}
+
+/* Compact mobile menus and dialogs */
+@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
+    .file-menu,
+    .toolbar-menu {
+        right: max(6px, env(safe-area-inset-right));
+        bottom: calc(54px + max(6px, env(safe-area-inset-bottom)));
+        left: max(6px, env(safe-area-inset-left));
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px;
+        max-height: min(calc(var(--app-vh) * 56), 430px);
+        padding: 6px;
+        border-radius: 10px;
+    }
+
+    .file-menu-section,
+    .file-menu-status,
+    .file-menu .file-picker,
+    .file-menu .export-scope,
+    .file-menu .save-status {
+        grid-column: 1 / -1;
+    }
+
+    .file-menu-section {
+        min-height: 0;
+        margin: 2px 0 0;
+        padding: 3px 4px 1px;
+        border: 0;
+        color: var(--muted-2);
+        font-size: 9px;
+        line-height: 1;
+        letter-spacing: 0;
+    }
+
+    .file-menu-item {
+        min-height: 34px;
+        padding: 5px 7px;
+        border-radius: 7px;
+        gap: 6px;
+        font-size: 11px;
+        line-height: 1.1;
+    }
+
+    .file-menu-item .button-icon,
+    .toolbar-menu-button .button-icon {
+        width: 15px;
+        height: 15px;
+        flex-basis: 15px;
+    }
+
+    .file-menu .file-picker,
+    .file-menu .export-scope,
+    .file-menu .save-status {
+        min-height: 36px;
+        padding: 5px 7px;
+        border-radius: 7px;
+        font-size: 11px;
+    }
+
+    .file-menu .export-scope {
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 7px;
+    }
+
+    .file-menu select,
+    .file-menu input {
+        min-height: 30px;
+        padding: 4px 7px;
+        border-radius: 7px;
+        font-size: 13px;
+    }
+
+    .toolbar-menu-button {
+        min-height: 36px;
+        padding: 4px;
+        border-radius: 8px;
+    }
+
+    .mobile-calendar-bar,
+    .mobile-bottom-nav,
+    .file-menu,
+    .toolbar-menu,
+    .block-editor,
+    .full-search-dialog,
+    .settings-dialog,
+    .conflict-review-dialog {
+        border-radius: 10px;
+    }
+
+    .modal-backdrop {
+        padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    }
+
+    .block-editor,
+    .full-search-dialog,
+    .settings-dialog,
+    .conflict-review-dialog {
+        width: min(100%, 520px);
+        max-height: min(calc(var(--app-vh) * 88), 620px);
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .block-editor-header {
+        min-height: 34px;
+        padding-bottom: 6px;
+    }
+
+    .block-editor-header h3 {
+        font-size: 15px;
+    }
+
+    .block-editor-grid {
+        gap: 7px;
+    }
+
+    .block-editor label {
+        gap: 4px;
+        font-size: 10px;
+    }
+
+    .block-editor input,
+    .block-editor select,
+    .block-editor textarea,
+    .agenda-search input,
+    .full-search-field input {
+        min-height: 36px;
+        padding: 7px 9px;
+        border-radius: 7px;
+        font-size: 14px;
+    }
+
+    .block-editor textarea {
+        min-height: 70px;
+    }
+
+    .block-editor-actions {
+        gap: 6px;
+        padding-top: 6px;
+    }
+
+    .block-editor-actions button {
+        min-height: 36px;
+        padding: 6px 9px;
+        font-size: 12px;
+    }
+
+    .settings-sections {
+        gap: 8px;
+    }
+
+    .settings-section {
+        gap: 7px;
+        padding: 8px;
+        border-radius: 8px;
+    }
+
+    .settings-field,
+    .settings-toggle {
+        min-height: 34px;
+    }
+
+    .full-search-results,
+    .conflict-review-list,
+    .toolbar-customizer-list {
+        gap: 6px;
+    }
+
+    .agenda-pane {
+        border-radius: 12px 12px 0 0;
+    }
+
+    .agenda-header {
+        min-height: 38px;
+        padding: 8px 10px;
+    }
+
+    .agenda-search {
+        padding: 8px 10px;
+    }
+
+    .agenda-item {
+        min-height: 44px;
+        padding: 8px;
+        border-radius: 8px;
+    }
+}
+
+@media (max-width: 390px) {
+    .file-menu,
+    .toolbar-menu {
+        grid-template-columns: 1fr;
+        max-height: min(calc(var(--app-vh) * 62), 460px);
+    }
+
+    .file-menu-item {
+        min-height: 32px;
+    }
+}
+
+/* Touch and Apple Pencil responsiveness */
+#timeline,
+#dayColumns,
+.day-column {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+#timeline-container {
+    touch-action: pan-x pan-y;
+}
+
+.event {
+    touch-action: none;
+    will-change: transform, height;
+}
+
+.event.is-moving {
+    cursor: grabbing;
+}
+
+.dragging-block #timeline-container,
+.selecting-blocks #timeline-container {
+    overscroll-behavior: none;
+}
+
+.dragging-block .event.is-moving {
+    box-shadow:
+        0 18px 36px rgba(0, 0, 0, 0.42),
+        0 0 0 2px rgba(84, 184, 167, 0.5);
+}
+
+@media (pointer: coarse) {
+    .event-edit-button {
+        min-width: 38px;
+        min-height: 38px;
+    }
+
+    .resize-handle {
+        min-height: 24px;
+    }
+
+    .resize-handle::before {
+        min-height: 5px;
+    }
+}
+
+@media (pointer: fine) {
+    .event-edit-button,
+    .resize-handle {
+        touch-action: none;
+    }
+}
+
 /* Seven-day timeline fit */
 @media (min-width: 1181px) {
     .app-shell {
@@ -5285,4 +6292,1016 @@ body,
     body.timeline-comfort-scroll .day-column {
         min-width: 166px;
     }
+}
+
+body[data-timeline-days="6"] #timeline {
+    min-width: 900px;
+}
+
+body[data-timeline-days="6"] .week-grid-header {
+    grid-template-columns: 64px repeat(6, minmax(132px, 1fr));
+}
+
+body[data-timeline-days="6"] .week-grid-body {
+    grid-template-columns: 64px minmax(792px, 1fr);
+}
+
+body[data-timeline-days="6"] #dayColumns {
+    grid-template-columns: repeat(6, minmax(132px, 1fr));
+}
+
+body[data-timeline-days="6"] .day-column {
+    min-width: 132px;
+}
+
+body[data-timeline-days="3"] #timeline {
+    min-width: 560px;
+}
+
+body[data-timeline-days="3"] .week-grid-header {
+    grid-template-columns: 64px repeat(3, minmax(150px, 1fr));
+}
+
+body[data-timeline-days="3"] .week-grid-body {
+    grid-template-columns: 64px minmax(450px, 1fr);
+}
+
+body[data-timeline-days="3"] #dayColumns {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+}
+
+body[data-timeline-days="3"] .day-column {
+    min-width: 150px;
+}
+
+body[data-timeline-days="1"] #timeline {
+    min-width: 340px;
+}
+
+body[data-timeline-days="1"] .week-grid-header {
+    grid-template-columns: 64px minmax(240px, 1fr);
+}
+
+body[data-timeline-days="1"] .week-grid-body {
+    grid-template-columns: 64px minmax(240px, 1fr);
+}
+
+body[data-timeline-days="1"] #dayColumns {
+    grid-template-columns: minmax(240px, 1fr);
+}
+
+body[data-timeline-days="1"] .day-column {
+    min-width: 240px;
+}
+
+@media (max-width: 720px) {
+    body[data-timeline-days="6"] #timeline {
+        min-width: 610px;
+    }
+
+    body[data-timeline-days="6"] .week-grid-header {
+        grid-template-columns: 50px repeat(6, minmax(92px, 1fr));
+    }
+
+    body[data-timeline-days="6"] .week-grid-body {
+        grid-template-columns: 50px minmax(552px, 1fr);
+    }
+
+    body[data-timeline-days="6"] #dayColumns {
+        grid-template-columns: repeat(6, minmax(92px, 1fr));
+    }
+
+    body[data-timeline-days="3"] #timeline {
+        min-width: 410px;
+    }
+
+    body[data-timeline-days="3"] .week-grid-header {
+        grid-template-columns: 50px repeat(3, minmax(112px, 1fr));
+    }
+
+    body[data-timeline-days="3"] .week-grid-body {
+        grid-template-columns: 50px minmax(336px, 1fr);
+    }
+
+    body[data-timeline-days="3"] #dayColumns {
+        grid-template-columns: repeat(3, minmax(112px, 1fr));
+    }
+
+    body[data-timeline-days="1"] #timeline {
+        min-width: 300px;
+    }
+
+    body[data-timeline-days="1"] .week-grid-header {
+        grid-template-columns: 50px minmax(220px, 1fr);
+    }
+
+    body[data-timeline-days="1"] .week-grid-body {
+        grid-template-columns: 50px minmax(220px, 1fr);
+    }
+
+    body[data-timeline-days="1"] #dayColumns {
+        grid-template-columns: minmax(220px, 1fr);
+    }
+
+    body[data-timeline-days="1"] .day-column {
+        min-width: 220px;
+    }
+}
+
+/* Compact mobile timeline controls */
+@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
+    body {
+        padding: max(5px, env(safe-area-inset-top)) max(5px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left));
+        padding-bottom: calc(58px + max(6px, env(safe-area-inset-bottom)));
+        overscroll-behavior-y: none;
+    }
+
+    .app-shell {
+        gap: 6px;
+    }
+
+    .app-header {
+        gap: 6px;
+        margin-bottom: 5px;
+        padding-bottom: 6px;
+    }
+
+    h2 {
+        font-size: clamp(21px, 6.2vw, 28px);
+    }
+
+    .earnings-summary {
+        gap: 5px;
+    }
+
+    .earnings-card {
+        padding: 7px 8px;
+        min-height: 0;
+    }
+
+    .earnings-card span {
+        font-size: 10px;
+    }
+
+    .earnings-card strong {
+        font-size: 19px;
+    }
+
+    .mobile-calendar-bar {
+        top: max(4px, env(safe-area-inset-top));
+        grid-template-columns: 44px 34px minmax(0, 1fr) 34px 38px;
+        gap: 4px;
+        margin-bottom: 5px;
+        padding: 4px;
+        border-radius: 10px;
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.24);
+    }
+
+    .mobile-today-chip,
+    .mobile-period-button,
+    .mobile-add-button {
+        min-height: 36px;
+        border-radius: 8px;
+    }
+
+    .mobile-today-chip {
+        padding: 2px;
+    }
+
+    .mobile-today-chip span {
+        font-size: 9px;
+    }
+
+    .mobile-today-chip strong {
+        font-size: 17px;
+    }
+
+    .mobile-period-title {
+        gap: 0;
+    }
+
+    .mobile-period-title strong {
+        font-size: 13px;
+        line-height: 1.1;
+    }
+
+    .mobile-period-title span {
+        font-size: 10px;
+        line-height: 1.1;
+    }
+
+    .timeline-panel {
+        border-radius: 8px;
+    }
+
+    .timeline-header {
+        min-height: 34px;
+        padding: 5px 7px;
+    }
+
+    .timeline-header-copy span:first-child {
+        font-size: 12px;
+    }
+
+    .timeline-header-copy span:last-child {
+        font-size: 10px;
+    }
+
+    .timeline-header-actions {
+        gap: 4px;
+    }
+
+    .timeline-header-actions button {
+        min-height: 28px;
+        padding: 3px 6px;
+        font-size: 10px;
+    }
+
+    #timeline-container {
+        height: calc(var(--app-vh) * 76);
+        min-height: 520px;
+        max-height: calc(var(--app-vh) * 86);
+        scroll-padding-top: 44px;
+        overscroll-behavior: contain;
+        scroll-behavior: auto;
+        touch-action: pan-x pan-y;
+    }
+
+    .week-grid-header {
+        grid-template-columns: 44px repeat(7, minmax(86px, 1fr));
+    }
+
+    .week-grid-body {
+        grid-template-columns: 44px minmax(602px, 1fr);
+    }
+
+    #dayColumns {
+        grid-template-columns: repeat(7, minmax(86px, 1fr));
+    }
+
+    #timeline {
+        min-width: 650px;
+    }
+
+    .time-gutter-heading,
+    .day-heading {
+        min-height: 44px;
+    }
+
+    .time-line {
+        font-size: 9px;
+        padding-right: 4px;
+    }
+
+    .day-heading span {
+        font-size: 10px;
+    }
+
+    .day-heading strong {
+        font-size: 12px;
+    }
+
+    .day-column {
+        min-width: 86px;
+    }
+
+    .event {
+        left: 3px;
+        right: 3px;
+        min-height: 48px;
+        border-radius: 7px;
+    }
+
+    .label {
+        inset: 8px 40px 14px 7px;
+        font-size: 11px;
+        line-height: 1.15;
+    }
+
+    .event-edit-button {
+        top: 6px;
+        right: 6px;
+        min-width: 34px;
+        min-height: 34px;
+        padding: 0 7px;
+    }
+
+    .resize-handle {
+        min-height: 18px;
+    }
+
+    .mobile-bottom-nav {
+        right: max(5px, env(safe-area-inset-right));
+        bottom: max(5px, env(safe-area-inset-bottom));
+        left: max(5px, env(safe-area-inset-left));
+        gap: 2px;
+        padding: 4px;
+        border-radius: 10px;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.36);
+    }
+
+    .mobile-nav-button {
+        min-height: 42px;
+        gap: 1px;
+        padding: 3px 2px;
+        border-radius: 8px;
+        font-size: 9px;
+    }
+
+    .mobile-nav-icon {
+        width: 17px;
+        height: 17px;
+        flex-basis: 17px;
+    }
+
+    .file-menu-item,
+    .file-menu .file-picker,
+    .file-menu .export-scope {
+        min-height: 42px;
+    }
+
+    .app-toast {
+        bottom: calc(62px + max(6px, env(safe-area-inset-bottom)));
+    }
+}
+
+@media (max-width: 430px) {
+    body[data-timeline-days="7"] #timeline,
+    #timeline {
+        min-width: 620px;
+    }
+
+    .week-grid-header {
+        grid-template-columns: 42px repeat(7, minmax(82px, 1fr));
+    }
+
+    .week-grid-body {
+        grid-template-columns: 42px minmax(574px, 1fr);
+    }
+
+    #dayColumns {
+        grid-template-columns: repeat(7, minmax(82px, 1fr));
+    }
+
+    .day-column {
+        min-width: 82px;
+    }
+}
+
+@media (max-width: 760px) and (orientation: landscape), (max-width: 1180px) and (pointer: coarse) and (orientation: landscape) {
+    body {
+        padding-bottom: max(4px, env(safe-area-inset-bottom));
+    }
+
+    .mobile-calendar-bar {
+        grid-template-columns: 40px 32px minmax(0, 1fr) 32px 36px;
+        gap: 3px;
+        margin-bottom: 4px;
+        padding: 3px;
+    }
+
+    .mobile-today-chip,
+    .mobile-period-button,
+    .mobile-add-button {
+        min-height: 32px;
+    }
+
+    #timeline-container {
+        height: calc(var(--app-vh) * 82);
+        min-height: 280px;
+        max-height: calc(var(--app-vh) * 90);
+    }
+
+    .mobile-bottom-nav {
+        width: 54px;
+        padding: 3px;
+    }
+
+    .mobile-nav-button {
+        min-height: 0;
+        padding: 3px 1px;
+        font-size: 8px;
+    }
+
+    .mobile-nav-icon {
+        width: 15px;
+        height: 15px;
+        flex-basis: 15px;
+    }
+}
+
+/* Final Outlook topbar precedence */
+.outlook-topbar {
+    position: sticky;
+    top: max(8px, env(safe-area-inset-top));
+    z-index: 620;
+}
+
+.outlook-topbar .toolbar {
+    display: block;
+    margin: 0;
+}
+
+.outlook-topbar #controls.optimized-controls .tool-group {
+    display: flex;
+    flex-wrap: nowrap;
+}
+
+.outlook-topbar .selection-status,
+.outlook-topbar .zoom-status {
+    display: none;
+}
+
+.outlook-topbar .file-menu,
+.outlook-topbar .toolbar-menu {
+    top: calc(100% + 8px);
+    bottom: auto;
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px);
+}
+
+.outlook-topbar .file-menu-wrap.is-open .file-menu,
+.outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu {
+    display: grid;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+@media (max-width: 1180px) and (pointer: coarse) {
+    .outlook-topbar .file-menu,
+    .outlook-topbar .toolbar-menu {
+        position: fixed;
+        top: calc(max(6px, env(safe-area-inset-top)) + 76px);
+        right: max(8px, env(safe-area-inset-right));
+        bottom: auto;
+        left: max(8px, env(safe-area-inset-left));
+        width: auto;
+        max-height: min(calc(var(--app-vh) * 62), 560px);
+    }
+}
+
+/* Outlook ribbon tab styling */
+.outlook-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    min-height: 44px;
+    padding: 5px 8px 4px;
+    border-radius: 0;
+    border-width: 0 0 1px;
+    border-color: rgba(255, 255, 255, 0.11);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.006)),
+        rgba(0, 0, 0, 0.96);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.34);
+}
+
+.outlook-topbar #controls.optimized-controls {
+    gap: 2px;
+    align-items: center;
+    padding: 0;
+    border-radius: 0;
+}
+
+.outlook-topbar .toolbar-menu-wrap {
+    position: relative;
+}
+
+.outlook-topbar .toolbar-menu-button {
+    min-width: 0;
+    min-height: 34px;
+    padding: 0 11px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #d8e0e8;
+    box-shadow: inset 0 -2px 0 transparent;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.outlook-topbar .toolbar-menu-button:hover,
+.outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button,
+.outlook-topbar .toolbar-menu-button.active-view {
+    background: rgba(255, 255, 255, 0.075);
+    color: #fff;
+    box-shadow: inset 0 -2px 0 var(--teal);
+    transform: none;
+}
+
+.outlook-topbar .toolbar-menu-button:focus-visible {
+    outline: 2px solid rgba(45, 212, 191, 0.65);
+    outline-offset: -2px;
+}
+
+.outlook-topbar .toolbar-menu-button .button-icon {
+    width: 14px;
+    height: 14px;
+    flex-basis: 14px;
+    color: #b7c3cf;
+}
+
+.outlook-topbar .toolbar-menu-button .button-label {
+    display: inline;
+    max-width: 92px;
+    font-size: 13px;
+}
+
+.outlook-topbar .file-menu-button::after {
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
+    border-color: currentColor;
+    opacity: 0.72;
+}
+
+.outlook-topbar .search-tools,
+.outlook-topbar .customize-tools {
+    margin-left: 4px;
+}
+
+.outlook-topbar .earnings-summary {
+    grid-template-columns: repeat(2, minmax(84px, 1fr));
+    gap: 4px;
+    align-self: center;
+}
+
+.outlook-topbar .earnings-card {
+    min-height: 34px;
+    padding: 4px 9px;
+    border: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0;
+    background: transparent;
+}
+
+.outlook-topbar .earnings-card span {
+    color: #9aa6b2;
+    font-size: 9px;
+    font-weight: 780;
+}
+
+.outlook-topbar .earnings-card strong {
+    color: #ffd166;
+    font-size: 18px;
+}
+
+.outlook-topbar .file-menu,
+.outlook-topbar .toolbar-menu {
+    top: calc(100% + 4px);
+    min-width: 260px;
+    border-radius: 4px;
+    border-color: rgba(255, 255, 255, 0.14);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+        #090b0d;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.48);
+}
+
+@media (min-width: 1181px) {
+    .outlook-topbar .toolbar-menu-button {
+        min-width: 0;
+    }
+
+    .outlook-topbar .customize-tools .toolbar-menu-button {
+        max-width: 98px;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) and (pointer: coarse) {
+    .outlook-topbar {
+        min-height: 48px;
+        padding: 5px 7px;
+    }
+
+    .outlook-topbar .toolbar-menu-button {
+        min-width: 42px;
+        min-height: 38px;
+        padding: 0 8px;
+        border-radius: 0;
+    }
+
+    .outlook-topbar .toolbar-menu-button .button-label {
+        display: none;
+    }
+
+    .outlook-topbar .earnings-summary {
+        grid-template-columns: repeat(2, minmax(76px, 1fr));
+    }
+
+    .outlook-topbar .earnings-card {
+        min-height: 38px;
+    }
+
+    .outlook-topbar .file-menu,
+    .outlook-topbar .toolbar-menu {
+        top: calc(max(6px, env(safe-area-inset-top)) + 54px);
+    }
+}
+
+@media (max-width: 760px) {
+    .outlook-topbar {
+        min-height: 42px;
+        padding: 4px;
+    }
+
+    .outlook-topbar #controls.optimized-controls {
+        grid-template-columns: repeat(9, minmax(34px, 1fr));
+        gap: 1px;
+    }
+
+    .outlook-topbar .toolbar-menu-button {
+        min-height: 34px;
+        padding: 0;
+        border-radius: 0;
+    }
+
+    .outlook-topbar .toolbar-menu-button .button-icon {
+        width: 15px;
+        height: 15px;
+        flex-basis: 15px;
+    }
+
+    .outlook-topbar .file-menu,
+    .outlook-topbar .toolbar-menu {
+        top: calc(max(4px, env(safe-area-inset-top)) + 46px);
+    }
+}
+
+/* Touch-enabled desktop support */
+body.desktop-touch {
+    overscroll-behavior: none;
+}
+
+body.desktop-touch .outlook-topbar {
+    min-height: 52px;
+    padding: 6px 10px 5px;
+}
+
+body.desktop-touch .outlook-topbar #controls.optimized-controls {
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+}
+
+body.desktop-touch .outlook-topbar .toolbar-menu-button {
+    min-height: 42px;
+    padding: 0 13px;
+    touch-action: manipulation;
+}
+
+body.desktop-touch .outlook-topbar .toolbar-menu-button .button-icon {
+    width: 17px;
+    height: 17px;
+    flex-basis: 17px;
+}
+
+body.desktop-touch .outlook-topbar .file-menu,
+body.desktop-touch .outlook-topbar .toolbar-menu {
+    min-width: 300px;
+    max-height: min(calc(var(--app-vh) * 72), 680px);
+    padding: 8px;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.desktop-touch .file-menu-item,
+body.desktop-touch .file-menu .file-picker,
+body.desktop-touch .file-menu .export-scope {
+    min-height: 46px;
+    padding: 10px 12px;
+    touch-action: manipulation;
+}
+
+body.desktop-touch .calendar-workspace,
+body.desktop-touch #timeline-container,
+body.desktop-touch .agenda-list,
+body.desktop-touch .month-panel,
+body.desktop-touch .month-grid {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+body.desktop-touch #timeline-container {
+    touch-action: pan-x pan-y;
+    scroll-padding-top: 54px;
+}
+
+body.desktop-touch .day-heading {
+    min-height: 54px;
+    touch-action: manipulation;
+}
+
+body.desktop-touch .day-column {
+    touch-action: pan-x pan-y;
+}
+
+body.desktop-touch .event {
+    min-height: 58px;
+    touch-action: none;
+}
+
+body.desktop-touch .event-edit-button {
+    opacity: 1;
+    min-width: 42px;
+    min-height: 42px;
+    touch-action: manipulation;
+}
+
+body.desktop-touch .resize-handle {
+    min-height: 24px;
+    touch-action: none;
+}
+
+body.desktop-touch .resize-handle::before {
+    height: 8px;
+}
+
+body.desktop-touch .workspace-resizer {
+    width: 18px;
+    margin-inline: -3px;
+    touch-action: none;
+}
+
+body.desktop-touch .workspace-resizer::before {
+    inset-inline: 5px;
+}
+
+body.desktop-touch button,
+body.desktop-touch .rail-action-button,
+body.desktop-touch .mobile-nav-button,
+body.desktop-touch .month-day,
+body.desktop-touch .mini-month-day {
+    touch-action: manipulation;
+}
+
+body.desktop-touch.dragging-block #timeline-container,
+body.desktop-touch.selecting-blocks #timeline-container,
+body.desktop-touch.resizing-workspace {
+    touch-action: none;
+}
+
+/* Outlook-inspired dark and light palettes */
+:root[data-theme="dark"],
+:root:not([data-theme]),
+:root[data-theme=""] {
+    color-scheme: dark;
+    --bg: #000;
+    --surface: #111315;
+    --surface-2: #1b1d20;
+    --surface-3: #24272b;
+    --surface-glass: rgba(17, 19, 21, 0.94);
+    --line: #3a3d42;
+    --line-soft: rgba(255, 255, 255, 0.12);
+    --line-faint: rgba(255, 255, 255, 0.055);
+    --text: #f3f2f1;
+    --muted: #c8c6c4;
+    --muted-2: #979593;
+    --blue: #0078d4;
+    --blue-hover: #106ebe;
+    --orange: #d7ba7d;
+    --green: #13a10e;
+    --teal: #2899f5;
+    --rose: #d13438;
+    --scrollbar-track: rgba(255, 255, 255, 0.06);
+    --scrollbar-thumb: rgba(0, 120, 212, 0.74);
+    --scrollbar-thumb-hover: rgba(40, 153, 245, 0.9);
+    --timeline-panel-bg: #0b0c0e;
+    --event-regular-start: #005a9e;
+    --event-regular-mid: #0078d4;
+    --event-regular-end: #2899f5;
+    --event-premium-start: #605e5c;
+    --event-premium-end: #8a8886;
+}
+
+:root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f3f2f1;
+    --surface: #ffffff;
+    --surface-2: #faf9f8;
+    --surface-3: #edebe9;
+    --surface-glass: rgba(255, 255, 255, 0.94);
+    --line: #d2d0ce;
+    --line-soft: rgba(50, 49, 48, 0.14);
+    --line-faint: rgba(50, 49, 48, 0.07);
+    --text: #201f1e;
+    --muted: #605e5c;
+    --muted-2: #8a8886;
+    --blue: #0078d4;
+    --blue-hover: #106ebe;
+    --orange: #8a6a00;
+    --green: #107c10;
+    --teal: #0078d4;
+    --rose: #a4262c;
+    --scrollbar-track: rgba(50, 49, 48, 0.08);
+    --scrollbar-thumb: rgba(0, 120, 212, 0.72);
+    --scrollbar-thumb-hover: rgba(16, 110, 190, 0.9);
+    --timeline-panel-bg: #ffffff;
+    --event-regular-start: #005a9e;
+    --event-regular-mid: #0078d4;
+    --event-regular-end: #2899f5;
+    --event-premium-start: #605e5c;
+    --event-premium-end: #8a8886;
+    --shadow: 0 14px 34px rgba(50, 49, 48, 0.12);
+    --shadow-soft: 0 8px 22px rgba(50, 49, 48, 0.09);
+}
+
+:root[data-theme="dark"] body,
+:root:not([data-theme]) body,
+:root[data-theme=""] body {
+    background:
+        linear-gradient(180deg, rgba(0, 120, 212, 0.075), transparent 240px),
+        #000;
+}
+
+:root[data-theme="light"] body {
+    background:
+        linear-gradient(180deg, rgba(0, 120, 212, 0.08), transparent 300px),
+        #f3f2f1;
+}
+
+:root[data-theme="dark"] .outlook-topbar,
+:root:not([data-theme]) .outlook-topbar,
+:root[data-theme=""] .outlook-topbar {
+    border-color: #323130;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.024), transparent),
+        #0f1011;
+}
+
+:root[data-theme="light"] .outlook-topbar {
+    border-color: #d2d0ce;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(250, 249, 248, 0.96)),
+        #ffffff;
+    box-shadow: 0 8px 22px rgba(50, 49, 48, 0.1);
+}
+
+:root[data-theme="light"] .outlook-topbar .toolbar-menu-button {
+    color: #323130;
+}
+
+:root[data-theme="light"] .outlook-topbar .toolbar-menu-button .button-icon {
+    color: #605e5c;
+}
+
+:root[data-theme="light"] .outlook-topbar .toolbar-menu-button:hover,
+:root[data-theme="light"] .outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button,
+:root[data-theme="light"] .outlook-topbar .toolbar-menu-button.active-view {
+    background: #edebe9;
+    color: #201f1e;
+    box-shadow: inset 0 -2px 0 #0078d4;
+}
+
+:root[data-theme="dark"] .outlook-topbar .toolbar-menu-button:hover,
+:root[data-theme="dark"] .outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button,
+:root[data-theme="dark"] .outlook-topbar .toolbar-menu-button.active-view,
+:root:not([data-theme]) .outlook-topbar .toolbar-menu-button:hover,
+:root:not([data-theme]) .outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button,
+:root:not([data-theme]) .outlook-topbar .toolbar-menu-button.active-view {
+    background: #252423;
+    box-shadow: inset 0 -2px 0 #2899f5;
+}
+
+:root[data-theme="light"] .toolbar,
+:root[data-theme="light"] .calendar-rail,
+:root[data-theme="light"] .agenda-pane,
+:root[data-theme="light"] .timeline-panel,
+:root[data-theme="light"] .month-panel,
+:root[data-theme="light"] .earnings-card,
+:root[data-theme="light"] .block-editor,
+:root[data-theme="light"] .mobile-calendar-bar,
+:root[data-theme="light"] .mobile-bottom-nav {
+    border-color: #d2d0ce;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(250, 249, 248, 0.94)),
+        #ffffff;
+}
+
+:root[data-theme="dark"] .toolbar,
+:root:not([data-theme]) .toolbar,
+:root[data-theme="dark"] .calendar-rail,
+:root[data-theme="dark"] .agenda-pane,
+:root[data-theme="dark"] .timeline-panel,
+:root[data-theme="dark"] .month-panel,
+:root[data-theme="dark"] .earnings-card,
+:root[data-theme="dark"] .block-editor,
+:root[data-theme="dark"] .mobile-calendar-bar,
+:root[data-theme="dark"] .mobile-bottom-nav {
+    border-color: #323130;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
+        #111315;
+}
+
+:root[data-theme="light"] #timeline-container,
+:root[data-theme="light"] #timeline,
+:root[data-theme="light"] #timeRuler,
+:root[data-theme="light"] .day-column {
+    background: #ffffff;
+}
+
+:root[data-theme="light"] .week-grid-header,
+:root[data-theme="light"] .day-heading,
+:root[data-theme="light"] .timeline-header,
+:root[data-theme="light"] .month-header,
+:root[data-theme="light"] .agenda-header {
+    background: #faf9f8;
+}
+
+:root[data-theme="light"] .timeline-header,
+:root[data-theme="light"] .month-header,
+:root[data-theme="light"] .agenda-header {
+    border-color: #d2d0ce;
+    color: #201f1e;
+}
+
+:root[data-theme="light"] .timeline-header-copy span,
+:root[data-theme="light"] .agenda-header span,
+:root[data-theme="light"] .month-header span {
+    color: #605e5c;
+}
+
+:root[data-theme="light"] .timeline-header-copy strong,
+:root[data-theme="light"] .timeline-header-copy span:first-child,
+:root[data-theme="light"] .agenda-header strong,
+:root[data-theme="light"] .month-header strong {
+    color: #201f1e;
+}
+
+:root[data-theme="light"] .day-column.active,
+:root[data-theme="light"] .day-heading.active {
+    background:
+        linear-gradient(180deg, rgba(0, 120, 212, 0.12), rgba(0, 120, 212, 0.035)),
+        #f3f9fd;
+}
+
+:root[data-theme="dark"] .day-column.active,
+:root[data-theme="dark"] .day-heading.active,
+:root:not([data-theme]) .day-column.active,
+:root:not([data-theme]) .day-heading.active {
+    background:
+        linear-gradient(180deg, rgba(0, 120, 212, 0.22), rgba(0, 120, 212, 0.055)),
+        #101820;
+}
+
+:root[data-theme="light"] button.primary,
+:root[data-theme="light"] .active-view,
+:root[data-theme="dark"] button.primary,
+:root[data-theme="dark"] .active-view,
+:root:not([data-theme]) button.primary,
+:root:not([data-theme]) .active-view {
+    border-color: #0078d4;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent),
+        #0078d4;
+    color: #ffffff;
+}
+
+:root[data-theme="light"] .earnings-card strong,
+:root[data-theme="dark"] .earnings-card strong,
+:root:not([data-theme]) .earnings-card strong {
+    color: #0078d4;
+}
+
+:root[data-theme="dark"] .earnings-card strong,
+:root:not([data-theme]) .earnings-card strong {
+    color: #61cdff;
+}
+
+:root[data-theme="light"] .file-menu,
+:root[data-theme="light"] .toolbar-menu {
+    border-color: #d2d0ce;
+    background: #ffffff;
+    box-shadow: 0 18px 44px rgba(50, 49, 48, 0.18);
+}
+
+:root[data-theme="dark"] .file-menu,
+:root[data-theme="dark"] .toolbar-menu,
+:root:not([data-theme]) .file-menu,
+:root:not([data-theme]) .toolbar-menu {
+    border-color: #3b3a39;
+    background: #1b1d20;
+}
+
+:root[data-theme="light"] .file-menu-item:hover,
+:root[data-theme="light"] .month-day:hover,
+:root[data-theme="light"] .mini-month-day:hover {
+    background: #edebe9;
+    border-color: rgba(0, 120, 212, 0.32);
+}
+
+:root[data-theme="dark"] .file-menu-item:hover,
+:root[data-theme="dark"] .month-day:hover,
+:root[data-theme="dark"] .mini-month-day:hover,
+:root:not([data-theme]) .file-menu-item:hover,
+:root:not([data-theme]) .month-day:hover,
+:root:not([data-theme]) .mini-month-day:hover {
+    background: #252423;
+    border-color: rgba(40, 153, 245, 0.45);
 }
