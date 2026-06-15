@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=93">
+    <link rel="stylesheet" href="static/style.css?v=94">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -29,10 +29,10 @@
     <section class="toolbar" aria-label="Planner ribbon">
         <div class="outlook-ribbon-tabs-row">
             <div class="outlook-ribbon-tabs" role="tablist" aria-label="Ribbon tabs">
-                <button type="button" class="outlook-ribbon-tab is-active" role="tab" aria-selected="true" data-ribbon-target="home" onclick="showRibbonFromTab(this)">Home</button>
-                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" data-ribbon-target="calendarMenuButton" onclick="showRibbonFromTab(this)">Send / Receive</button>
-                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" data-ribbon-target="fileMenuButton" onclick="showRibbonFromTab(this)">Folder</button>
-                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" data-ribbon-target="viewMenuButton" onclick="showRibbonFromTab(this)">View</button>
+                <button type="button" class="outlook-ribbon-tab is-active" role="tab" aria-selected="true" data-ribbon-target="home" onclick="showRibbonFromTab(this,event)">Home</button>
+                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" data-ribbon-target="calendarMenuButton" onclick="showRibbonFromTab(this,event)">Send / Receive</button>
+                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" data-ribbon-target="fileMenuButton" onclick="showRibbonFromTab(this,event)">Folder</button>
+                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" data-ribbon-target="viewMenuButton" onclick="showRibbonFromTab(this,event)">View</button>
             </div>
             <button type="button" class="secondary icon-button outlook-ribbon-pin" id="ribbonPinButton" onclick="toggleRibbonAutoHide()" aria-label="Auto-hide ribbon" title="Auto-hide ribbon">
                 <span class="button-icon icon-ribbon-pin" aria-hidden="true"></span>
@@ -5483,7 +5483,8 @@ function openRibbonMenu(menuButtonId){
     trigger.focus({preventScroll:true})
 }
 
-function showRibbonFromTab(tab=null){
+function showRibbonFromTab(tab=null,event=null){
+    event?.stopPropagation()
     setActiveRibbonTab(tab)
     revealRibbon()
     const target = tab?.dataset?.ribbonTarget || "home"
