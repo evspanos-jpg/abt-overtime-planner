@@ -8159,3 +8159,158 @@ body.ribbon-auto-hide .outlook-topbar .file-backstage-menu {
         max-width: calc(100vw - 32px) !important;
     }
 }
+
+/* Polished Outlook flyout menus. */
+@media (min-width: 761px) {
+    .outlook-topbar .file-menu,
+    .outlook-topbar .toolbar-menu {
+        border-radius: 8px !important;
+        border-color: rgba(141, 169, 196, 0.28) !important;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.024)),
+            var(--surface-glass) !important;
+        box-shadow:
+            0 22px 56px rgba(0, 0, 0, 0.42),
+            0 0 0 1px rgba(255, 255, 255, 0.055) inset !important;
+        column-gap: 8px !important;
+        row-gap: 6px !important;
+    }
+
+    .outlook-topbar .file-backstage-menu {
+        padding: 12px !important;
+        grid-template-columns: repeat(4, minmax(145px, 1fr)) !important;
+    }
+
+    .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) {
+        left: 50% !important;
+        right: auto !important;
+        width: min(640px, calc(100vw - 32px)) !important;
+        padding: 10px !important;
+        grid-template-columns: repeat(3, minmax(145px, 1fr)) !important;
+        transform: translateX(-50%) !important;
+    }
+
+    .outlook-topbar .file-menu-section,
+    .outlook-topbar .file-backstage-menu .file-menu-section,
+    .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .file-menu-section {
+        grid-column: 1 / -1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        min-height: 16px !important;
+        margin: 5px 0 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        color: var(--muted) !important;
+        font-size: 10px !important;
+        font-weight: 840 !important;
+        letter-spacing: 0 !important;
+        text-transform: uppercase !important;
+    }
+
+    .outlook-topbar .file-menu-section:first-child {
+        margin-top: 0 !important;
+    }
+
+    .outlook-topbar .file-menu-section::after {
+        content: "";
+        height: 1px;
+        flex: 1 1 auto;
+        background: rgba(141, 169, 196, 0.18);
+    }
+
+    .outlook-topbar .file-menu-item,
+    .outlook-topbar .file-picker,
+    .outlook-topbar .export-scope,
+    .outlook-topbar .save-status,
+    .outlook-topbar .selection-status,
+    .outlook-topbar .zoom-status {
+        min-height: 34px !important;
+        border-radius: 6px !important;
+        border: 1px solid rgba(141, 169, 196, 0.17) !important;
+        background: rgba(255, 255, 255, 0.035) !important;
+        box-shadow: none !important;
+    }
+
+    .outlook-topbar .file-menu-item,
+    .outlook-topbar .file-picker,
+    .outlook-topbar .export-scope {
+        padding: 7px 9px !important;
+        color: var(--text) !important;
+        font-size: 11px !important;
+        font-weight: 760 !important;
+        transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+    }
+
+    .outlook-topbar .file-menu-item:hover,
+    .outlook-topbar .file-picker:hover,
+    .outlook-topbar .export-scope:hover,
+    .outlook-topbar .file-menu-item:focus-visible,
+    .outlook-topbar .file-picker:focus-within,
+    .outlook-topbar .export-scope:focus-within {
+        border-color: rgba(0, 120, 212, 0.48) !important;
+        background: rgba(0, 120, 212, 0.16) !important;
+        transform: translateY(-1px);
+    }
+
+    .outlook-topbar .file-menu-item.danger:hover,
+    .outlook-topbar .file-menu-item.danger:focus-visible {
+        border-color: rgba(232, 17, 35, 0.45) !important;
+        background: rgba(232, 17, 35, 0.16) !important;
+    }
+
+    .outlook-topbar .file-menu-item .button-icon,
+    .outlook-topbar .file-picker::before,
+    .outlook-topbar .export-scope::before {
+        opacity: 0.9;
+    }
+
+    .outlook-topbar .file-menu-item .button-label,
+    .outlook-topbar .file-picker span,
+    .outlook-topbar .export-scope span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .outlook-topbar .export-scope {
+        gap: 8px !important;
+    }
+
+    .outlook-topbar .export-scope select {
+        min-height: 24px !important;
+        border-radius: 5px !important;
+        font-size: 11px !important;
+    }
+
+    .outlook-topbar .save-status,
+    .outlook-topbar .selection-status,
+    .outlook-topbar .zoom-status {
+        justify-content: flex-start !important;
+        padding: 0 9px !important;
+        color: var(--muted) !important;
+        font-size: 10px !important;
+        font-weight: 760 !important;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 1040px) {
+    .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) {
+        left: 50% !important;
+        right: auto !important;
+        width: min(560px, calc(100vw - 24px)) !important;
+        max-width: calc(100vw - 24px) !important;
+        transform: translateX(-50%) !important;
+        grid-template-columns: repeat(2, minmax(145px, 1fr)) !important;
+    }
+
+    .outlook-topbar .file-backstage-menu {
+        left: max(12px, env(safe-area-inset-left)) !important;
+        right: max(12px, env(safe-area-inset-right)) !important;
+        width: auto !important;
+        max-width: none !important;
+        transform: none !important;
+        grid-template-columns: repeat(2, minmax(145px, 1fr)) !important;
+    }
+}
