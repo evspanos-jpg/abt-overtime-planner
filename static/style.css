@@ -7305,3 +7305,826 @@ body.desktop-touch.resizing-workspace {
     background: #252423;
     border-color: rgba(40, 153, 245, 0.45);
 }
+
+/* Outlook 365 ribbon and navigation auto-hide */
+.outlook-ribbon-tabs-row {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+}
+
+.outlook-ribbon-pin,
+.nav-pane-pin {
+    width: 32px;
+    min-width: 32px;
+    min-height: 30px;
+    padding: 0;
+}
+
+.icon-ribbon-pin::before,
+.icon-pane-pin::before {
+    left: 5px;
+    top: 3px;
+    width: 8px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-bottom: 0;
+    transform: rotate(42deg);
+}
+
+.icon-ribbon-pin::after,
+.icon-pane-pin::after {
+    left: 8px;
+    top: 13px;
+    width: 2px;
+    height: 7px;
+    background: currentColor;
+    transform: rotate(42deg);
+    transform-origin: top center;
+}
+
+.is-unpinned .icon-ribbon-pin,
+.is-unpinned .icon-pane-pin {
+    opacity: 0.7;
+    transform: rotate(45deg);
+}
+
+.outlook-ribbon-tabs {
+    display: flex;
+    align-items: end;
+    gap: 2px;
+    min-width: 0;
+    margin: 0 0 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.outlook-ribbon-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.outlook-ribbon-tab {
+    min-height: 30px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 6px 6px 0 0;
+    background: transparent;
+    color: var(--muted);
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 760;
+}
+
+.outlook-ribbon-tab:hover,
+.outlook-ribbon-tab.is-active {
+    background: rgba(60, 130, 230, 0.16);
+    color: var(--text);
+}
+
+.outlook-ribbon-tab.is-active {
+    box-shadow: inset 0 -2px 0 #2dd4bf;
+}
+
+.outlook-topbar .toolbar {
+    min-width: 0;
+}
+
+body.ribbon-auto-hide .outlook-topbar {
+    align-items: center;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+}
+
+body.ribbon-auto-hide .outlook-ribbon-tabs {
+    margin-bottom: 0;
+    border-bottom-color: transparent;
+}
+
+body.ribbon-auto-hide .outlook-topbar #controls {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 610;
+    max-width: min(980px, calc(100vw - 32px));
+    margin: 0 auto;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018)),
+        var(--surface-glass);
+    box-shadow: 0 20px 54px rgba(0, 0, 0, 0.46);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+body.ribbon-auto-hide .outlook-topbar:focus-within #controls,
+body.ribbon-auto-hide .outlook-topbar.ribbon-peek #controls {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+body.ribbon-auto-hide .outlook-ribbon-pin {
+    border-color: rgba(45, 212, 191, 0.36);
+}
+
+body.ribbon-auto-hide .outlook-ribbon-tab {
+    min-height: 34px;
+}
+
+.navigation-pane-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 28px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.navigation-pane-header strong {
+    min-width: 0;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 820;
+    text-transform: uppercase;
+}
+
+@media (min-width: 1181px) {
+    body.navigation-auto-hide .calendar-workspace {
+        grid-template-columns: 46px 0 minmax(0, 1fr) 6px minmax(220px, var(--workspace-agenda-width));
+    }
+
+    body.navigation-auto-hide .calendar-rail {
+        grid-column: 1;
+    }
+
+    body.navigation-auto-hide .calendar-main {
+        grid-column: 3;
+    }
+
+    body.navigation-auto-hide .workspace-resizer-right {
+        grid-column: 4;
+    }
+
+    body.navigation-auto-hide .agenda-pane {
+        grid-column: 5;
+    }
+
+    body.navigation-auto-hide .workspace-resizer-left {
+        display: none;
+    }
+
+    body.navigation-auto-hide .calendar-rail {
+        z-index: 240;
+        width: 46px;
+        max-width: 46px;
+        min-height: min(72vh, 720px);
+        overflow: hidden;
+        padding: 8px 6px;
+        transition: box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    body.navigation-auto-hide .calendar-rail::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        z-index: -1;
+        width: max(260px, var(--workspace-rail-width));
+        border-radius: inherit;
+        background: inherit;
+        opacity: 0;
+        box-shadow: inherit;
+        pointer-events: none;
+        transition: opacity 0.16s ease;
+    }
+
+    body.navigation-auto-hide .calendar-rail:focus-within {
+        overflow: visible;
+        box-shadow: 0 22px 58px rgba(0, 0, 0, 0.52);
+    }
+
+    body.navigation-auto-hide .calendar-rail:focus-within::before {
+        opacity: 1;
+    }
+
+    body.navigation-auto-hide .navigation-pane-header {
+        justify-content: center;
+        padding-bottom: 8px;
+        border-bottom: 0;
+    }
+
+    body.navigation-auto-hide .navigation-pane-header strong {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+
+    body.navigation-auto-hide .calendar-rail:focus-within .navigation-pane-header {
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    }
+
+    body.navigation-auto-hide .calendar-rail:focus-within .navigation-pane-header strong {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip: auto;
+    }
+
+    body.navigation-auto-hide .calendar-rail > :not(.navigation-pane-header) {
+        position: relative;
+        z-index: 1;
+        width: calc(max(260px, var(--workspace-rail-width)) - 12px);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(-8px);
+        transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+
+    body.navigation-auto-hide .calendar-rail:focus-within > :not(.navigation-pane-header) {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0);
+        transition-delay: 0.04s;
+    }
+}
+
+@media (max-width: 760px) {
+    .outlook-ribbon-tabs {
+        display: none;
+    }
+
+    body.ribbon-auto-hide .outlook-topbar #controls {
+        position: static;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        opacity: 1;
+        pointer-events: auto;
+        transform: none;
+    }
+}
+
+/* Desktop Outlook frame: keep chrome visible and scroll pane contents internally. */
+@media (min-width: 1181px) {
+    html,
+    body {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    body {
+        height: 100dvh;
+    }
+
+    .app-shell {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .outlook-topbar {
+        position: relative;
+        top: auto;
+        align-self: start;
+    }
+
+    .calendar-workspace {
+        min-height: 0;
+        height: calc(100dvh - 96px);
+        min-height: 520px;
+        align-items: stretch;
+        overflow: hidden;
+    }
+
+    .calendar-main,
+    .timeline-panel,
+    .month-panel {
+        min-height: 0;
+        height: 100%;
+    }
+
+    .timeline-panel {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden;
+    }
+
+    #timeline-container {
+        height: 100%;
+        min-height: 460px;
+        max-height: none;
+        overflow: auto;
+    }
+
+    .month-panel {
+        overflow: auto;
+    }
+
+    .calendar-rail,
+    .agenda-pane,
+    .workspace-resizer {
+        position: relative;
+        top: auto;
+        min-height: 0;
+        max-height: 100%;
+    }
+
+    .calendar-rail,
+    .agenda-pane {
+        overflow: auto;
+    }
+
+    .agenda-pane {
+        grid-template-rows: auto auto minmax(0, 1fr);
+    }
+
+    .agenda-list {
+        min-height: 0;
+        overflow: auto;
+    }
+
+    body.navigation-auto-hide .calendar-rail {
+        min-height: 0;
+    }
+}
+
+/* Outlook Backstage-style File window */
+.outlook-topbar .file-backstage-menu {
+    position: fixed;
+    top: calc(max(10px, env(safe-area-inset-top)) + 50px);
+    right: max(16px, env(safe-area-inset-right));
+    left: max(16px, env(safe-area-inset-left));
+    z-index: 900;
+    width: auto;
+    max-width: min(1120px, calc(100vw - 32px));
+    max-height: none;
+    margin: 0 auto;
+    padding: 14px;
+    grid-template-columns: repeat(4, minmax(170px, 1fr));
+    gap: 8px;
+    overflow: visible;
+}
+
+.outlook-topbar .file-backstage-menu::before {
+    display: none;
+}
+
+.outlook-topbar .file-backstage-menu .file-menu-section {
+    grid-column: 1 / -1;
+    margin: 4px 0 0;
+    padding: 0 2px 2px;
+    border: 0;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.outlook-topbar .file-backstage-menu .file-menu-section:first-child {
+    margin-top: 0;
+}
+
+.outlook-topbar .file-backstage-menu .file-menu-item,
+.outlook-topbar .file-backstage-menu .file-picker,
+.outlook-topbar .file-backstage-menu .export-scope {
+    width: 100%;
+    min-height: 42px;
+}
+
+.outlook-topbar .file-backstage-menu .file-picker,
+.outlook-topbar .file-backstage-menu .export-scope,
+.outlook-topbar .file-backstage-menu .save-status {
+    grid-column: auto;
+}
+
+.outlook-topbar .file-backstage-menu input[type="file"] {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.outlook-topbar .file-backstage-menu .save-status {
+    justify-content: flex-start;
+    min-height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+@media (max-width: 900px) {
+    .outlook-topbar .file-backstage-menu {
+        top: calc(max(8px, env(safe-area-inset-top)) + 48px);
+        right: max(8px, env(safe-area-inset-right));
+        left: max(8px, env(safe-area-inset-left));
+        max-width: calc(100vw - 16px);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        padding: 8px;
+    }
+
+    .outlook-topbar .file-backstage-menu .file-menu-section {
+        margin-top: 2px;
+        font-size: 10px;
+    }
+
+    .outlook-topbar .file-backstage-menu .file-menu-item,
+    .outlook-topbar .file-backstage-menu .file-picker,
+    .outlook-topbar .file-backstage-menu .export-scope,
+    .outlook-topbar .file-backstage-menu .save-status {
+        min-height: 36px;
+    }
+}
+
+/* Compact Outlook menu windows for every ribbon menu except File. */
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) {
+    position: fixed;
+    top: calc(max(10px, env(safe-area-inset-top)) + 50px);
+    right: auto;
+    left: 50%;
+    z-index: 890;
+    width: min(680px, calc(100vw - 32px));
+    max-height: none;
+    padding: 12px;
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+    gap: 7px;
+    overflow: visible;
+    transform: translateX(-50%);
+}
+
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu)::before {
+    display: none;
+}
+
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .file-menu-section {
+    grid-column: 1 / -1;
+    margin: 2px 0 0;
+    padding: 0 2px;
+    border: 0;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .file-menu-section:first-child {
+    margin-top: 0;
+}
+
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .file-menu-item,
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .file-picker,
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .export-scope,
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .selection-status,
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .zoom-status {
+    width: 100%;
+    min-height: 38px;
+}
+
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .selection-status,
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .zoom-status {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    padding: 0 10px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+body.ribbon-auto-hide .outlook-topbar.ribbon-peek #controls,
+body.ribbon-auto-hide .outlook-topbar.ribbon-menu-open #controls {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+body.ribbon-auto-hide .outlook-topbar .ribbon-window-menu,
+body.ribbon-auto-hide .outlook-topbar .file-backstage-menu {
+    top: calc(max(10px, env(safe-area-inset-top)) + 104px);
+}
+
+@media (max-width: 900px) {
+    .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) {
+        top: calc(max(8px, env(safe-area-inset-top)) + 48px);
+        right: max(8px, env(safe-area-inset-right));
+        left: max(8px, env(safe-area-inset-left));
+        width: auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        padding: 8px;
+        transform: none;
+    }
+
+    .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .file-menu-item,
+    .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .file-picker,
+    .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .export-scope,
+    .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .selection-status,
+    .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .zoom-status {
+        min-height: 36px;
+    }
+
+    body.ribbon-auto-hide .outlook-topbar .ribbon-window-menu,
+    body.ribbon-auto-hide .outlook-topbar .file-backstage-menu {
+        top: calc(max(8px, env(safe-area-inset-top)) + 92px);
+    }
+}
+
+/* Full-screen fit: no page chrome waste, no desktop panel overflow. */
+@media (min-width: 1181px) {
+    body {
+        width: 100vw;
+        height: 100dvh;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .app-shell {
+        width: 100vw;
+        max-width: none;
+        height: 100dvh;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    .outlook-topbar {
+        margin: 0;
+        border-right: 0;
+        border-left: 0;
+        border-radius: 0;
+    }
+
+    .calendar-workspace {
+        height: auto;
+        min-height: 0;
+        padding: 6px;
+        grid-template-columns:
+            minmax(170px, min(var(--workspace-rail-width), 22vw))
+            6px
+            minmax(0, 1fr)
+            6px
+            minmax(210px, min(var(--workspace-agenda-width), 26vw));
+        gap: 6px;
+    }
+
+    body.navigation-auto-hide .calendar-workspace {
+        grid-template-columns: 46px 0 minmax(0, 1fr) 6px minmax(210px, min(var(--workspace-agenda-width), 26vw));
+    }
+
+    .calendar-main,
+    .timeline-panel,
+    .month-panel,
+    .calendar-rail,
+    .agenda-pane {
+        min-width: 0;
+        min-height: 0;
+        max-height: 100%;
+    }
+
+    #timeline-container {
+        min-height: 0;
+        height: 100%;
+        max-height: 100%;
+    }
+
+    .agenda-list {
+        max-height: none;
+    }
+}
+
+/* Full viewport app shell for desktop and tablet widths. */
+@media (min-width: 761px) {
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    body {
+        width: 100vw;
+        height: 100dvh;
+        padding: 0;
+    }
+
+    .app-shell {
+        width: 100vw;
+        max-width: none;
+        height: 100dvh;
+        margin: 0;
+        border-radius: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden;
+    }
+
+    .outlook-topbar {
+        margin: 0;
+        border-right: 0;
+        border-left: 0;
+        border-radius: 0;
+    }
+
+    .mobile-calendar-bar {
+        display: none;
+    }
+
+    .calendar-workspace {
+        min-height: 0;
+        height: auto;
+        display: grid;
+        grid-template-columns:
+            minmax(170px, min(var(--workspace-rail-width), 22vw))
+            6px
+            minmax(0, 1fr)
+            6px
+            minmax(210px, min(var(--workspace-agenda-width), 26vw));
+        gap: 6px;
+        overflow: hidden;
+    }
+
+    .calendar-rail {
+        display: grid;
+        grid-column: 1;
+    }
+
+    .workspace-resizer-left {
+        display: block;
+        grid-column: 2;
+    }
+
+    .calendar-main {
+        grid-column: 3;
+    }
+
+    .workspace-resizer-right {
+        display: block;
+        grid-column: 4;
+    }
+
+    .agenda-pane {
+        display: grid;
+        grid-column: 5;
+    }
+
+    .calendar-main,
+    .timeline-panel,
+    .month-panel,
+    .calendar-rail,
+    .agenda-pane {
+        min-width: 0;
+        min-height: 0;
+        max-height: 100%;
+    }
+
+    .timeline-panel {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    #timeline-container {
+        height: 100%;
+        min-height: 0;
+        max-height: 100%;
+    }
+}
+
+/* Authoritative Outlook workspace placement. Keep after all responsive rules. */
+@media (min-width: 761px) {
+    .calendar-workspace {
+        display: grid !important;
+        grid-template-columns:
+            minmax(180px, min(var(--workspace-rail-width), 22vw))
+            6px
+            minmax(0, 1fr)
+            6px
+            minmax(220px, min(var(--workspace-agenda-width), 26vw)) !important;
+        grid-template-rows: minmax(0, 1fr) !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .calendar-rail {
+        display: grid !important;
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        overflow: auto !important;
+    }
+
+    .workspace-resizer-left {
+        display: block !important;
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .calendar-main {
+        display: block !important;
+        grid-column: 3 !important;
+        grid-row: 1 !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+    }
+
+    .workspace-resizer-right {
+        display: block !important;
+        grid-column: 4 !important;
+        grid-row: 1 !important;
+    }
+
+    .agenda-pane {
+        display: grid !important;
+        grid-column: 5 !important;
+        grid-row: 1 !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        overflow: auto !important;
+    }
+
+    body.navigation-auto-hide .calendar-workspace {
+        grid-template-columns:
+            52px
+            0
+            minmax(0, 1fr)
+            6px
+            minmax(220px, min(var(--workspace-agenda-width), 26vw)) !important;
+    }
+
+    body.navigation-auto-hide .calendar-rail {
+        display: grid !important;
+        grid-column: 1 !important;
+        width: 52px !important;
+        max-width: 52px !important;
+        overflow: hidden !important;
+    }
+
+    body.navigation-auto-hide .workspace-resizer-left {
+        display: none !important;
+    }
+}
+
+/* Keep the left navigation pane visible. */
+@media (min-width: 761px) {
+    .nav-pane-pin {
+        display: none !important;
+    }
+
+    body.navigation-auto-hide .calendar-workspace,
+    .calendar-workspace {
+        grid-template-columns:
+            minmax(180px, min(var(--workspace-rail-width), 22vw))
+            6px
+            minmax(0, 1fr)
+            6px
+            minmax(220px, min(var(--workspace-agenda-width), 26vw)) !important;
+    }
+
+    body.navigation-auto-hide .calendar-rail,
+    .calendar-rail {
+        display: grid !important;
+        grid-column: 1 !important;
+        width: auto !important;
+        max-width: none !important;
+        overflow: auto !important;
+        padding: 10px !important;
+    }
+
+    body.navigation-auto-hide .workspace-resizer-left,
+    .workspace-resizer-left {
+        display: block !important;
+        grid-column: 2 !important;
+    }
+
+    body.navigation-auto-hide .calendar-rail::before {
+        content: none !important;
+    }
+
+    body.navigation-auto-hide .navigation-pane-header {
+        justify-content: space-between !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.09) !important;
+    }
+
+    body.navigation-auto-hide .navigation-pane-header strong {
+        position: static !important;
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+        clip: auto !important;
+    }
+
+    body.navigation-auto-hide .calendar-rail > :not(.navigation-pane-header) {
+        width: auto !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        transform: none !important;
+    }
+}

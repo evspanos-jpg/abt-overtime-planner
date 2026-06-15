@@ -15,7 +15,7 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=90">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=92">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -26,7 +26,18 @@
 
 <div class="app-shell">
     <header class="outlook-topbar" aria-label="Planner command bar">
-    <section class="toolbar" aria-label="Planner controls">
+    <section class="toolbar" aria-label="Planner ribbon">
+        <div class="outlook-ribbon-tabs-row">
+            <div class="outlook-ribbon-tabs" role="tablist" aria-label="Ribbon tabs">
+                <button type="button" class="outlook-ribbon-tab is-active" role="tab" aria-selected="true" onclick="showRibbonFromTab(this)">Home</button>
+                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" onclick="showRibbonFromTab(this)">Send / Receive</button>
+                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" onclick="showRibbonFromTab(this)">Folder</button>
+                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" onclick="showRibbonFromTab(this)">View</button>
+            </div>
+            <button type="button" class="secondary icon-button outlook-ribbon-pin" id="ribbonPinButton" onclick="toggleRibbonAutoHide()" aria-label="Auto-hide ribbon" title="Auto-hide ribbon">
+                <span class="button-icon icon-ribbon-pin" aria-hidden="true"></span>
+            </button>
+        </div>
         <div id="controls">
             <div class="tool-group">
                 <button type="button" class="primary" onclick="addBlock()">➕ Add Block</button>
@@ -120,6 +131,13 @@
 
     <section class="calendar-workspace" aria-label="Calendar workspace">
         <aside class="calendar-rail" aria-label="Calendar navigation">
+            <div class="navigation-pane-header">
+                <strong>Navigation</strong>
+                <button type="button" class="secondary icon-button nav-pane-pin" id="navPanePinButton" onclick="toggleNavigationPaneAutoHide()" aria-label="Auto-hide navigation pane" title="Auto-hide navigation pane">
+                    <span class="button-icon icon-pane-pin" aria-hidden="true"></span>
+                </button>
+            </div>
+
             <div class="rail-date-card">
                 <span id="railMonthLabel">Month</span>
                 <strong id="railDateLabel">--</strong>
@@ -2101,6 +2119,7 @@ function closeOpenFileMenus(){
         menu.classList.remove("is-open")
         menu.querySelector("[aria-expanded]")?.setAttribute("aria-expanded","false")
     })
+    document.querySelector(".outlook-topbar")?.classList.remove("ribbon-menu-open")
 }
 
 function closeMobileSheet(){
@@ -2262,15 +2281,17 @@ function rebuildToolbar(){
         trigger.setAttribute("aria-expanded","false")
         trigger.addEventListener("click",event=>{
             event.stopPropagation()
+            revealRibbon()
             const wasOpen = wrap.classList.contains("is-open")
             closeOpenFileMenus()
             wrap.classList.toggle("is-open",!wasOpen)
             trigger.setAttribute("aria-expanded",String(!wasOpen))
+            document.querySelector(".outlook-topbar")?.classList.toggle("ribbon-menu-open",!wasOpen)
         })
         wrap.appendChild(trigger)
 
         const menu = document.createElement("div")
-        menu.className = "file-menu toolbar-menu"
+        menu.className = "file-menu toolbar-menu ribbon-window-menu"
         menu.setAttribute("role","menu")
         menu.addEventListener("click",event=>event.stopPropagation())
         wrap.appendChild(menu)
@@ -2305,6 +2326,7 @@ function rebuildToolbar(){
         file(item){
             const fileGroup = group("file-tools")
             const fileMenu = menuButton(fileGroup,item.label,"fileMenuButton","icon-file-menu")
+            fileMenu.classList.add("file-backstage-menu")
 
             menuSection(fileMenu,"Project")
             menuItem(fileMenu,"Save",saveProject,"",{iconClass:"icon-save"})
@@ -3078,6 +3100,13 @@ window.addEventListener("keydown", handleKeyboardShortcut, true)
 
 document.addEventListener("click",event=>{
     if(!event.target.closest(".file-menu-wrap")) closeOpenFileMenus()
+    if(!event.target.closest(".outlook-topbar")) hideRibbonPeek()
+})
+
+document.addEventListener("keydown",event=>{
+    if(event.key !== "Escape") return
+    closeOpenFileMenus()
+    hideRibbonPeek()
 })
 
 document.getElementById("blockEditorBackdrop")?.addEventListener("click", event=>{
@@ -5355,6 +5384,97 @@ function initWorkspaceResizers(){
     })
 }
 
+const OUTLOOK_CHROME_KEY = "abtPlannerOutlookChrome"
+
+function loadOutlookChromeState(){
+    try{
+        const saved = JSON.parse(localStorage.getItem(OUTLOOK_CHROME_KEY) || "{}")
+        return {
+            ...saved,
+            ribbonAutoHide:!!saved.ribbonAutoHide,
+            navigationAutoHide:false
+        }
+    }catch(error){
+        return {ribbonAutoHide:false,navigationAutoHide:false}
+    }
+}
+
+function saveOutlookChromeState(){
+    try{
+        localStorage.setItem(OUTLOOK_CHROME_KEY,JSON.stringify({
+            ribbonAutoHide:document.body.classList.contains("ribbon-auto-hide"),
+            navigationAutoHide:false
+        }))
+    }catch(error){
+        console.warn("Outlook chrome state could not be saved.",error)
+    }
+}
+
+function applyOutlookChromeState(state=loadOutlookChromeState()){
+    document.body.classList.toggle("ribbon-auto-hide",!!state.ribbonAutoHide)
+    document.body.classList.remove("navigation-auto-hide")
+    updateOutlookChromeButtons()
+}
+
+function updateOutlookChromeButtons(){
+    const ribbonHidden = document.body.classList.contains("ribbon-auto-hide")
+    const navHidden = document.body.classList.contains("navigation-auto-hide")
+    const ribbonButton = document.getElementById("ribbonPinButton")
+    const navButton = document.getElementById("navPanePinButton")
+
+    if(ribbonButton){
+        ribbonButton.classList.toggle("is-unpinned",ribbonHidden)
+        ribbonButton.setAttribute("aria-pressed",String(!ribbonHidden))
+        ribbonButton.setAttribute("aria-label",ribbonHidden ? "Keep ribbon shown" : "Auto-hide ribbon")
+        ribbonButton.title = ribbonHidden ? "Keep ribbon shown" : "Auto-hide ribbon"
+    }
+
+    if(navButton){
+        navButton.classList.toggle("is-unpinned",navHidden)
+        navButton.setAttribute("aria-pressed",String(!navHidden))
+        navButton.setAttribute("aria-label",navHidden ? "Keep navigation pane shown" : "Auto-hide navigation pane")
+        navButton.title = navHidden ? "Keep navigation pane shown" : "Auto-hide navigation pane"
+    }
+}
+
+function toggleRibbonAutoHide(){
+    document.body.classList.toggle("ribbon-auto-hide")
+    if(!document.body.classList.contains("ribbon-auto-hide")) hideRibbonPeek()
+    if(document.body.classList.contains("ribbon-auto-hide")) closeOpenFileMenus()
+    updateOutlookChromeButtons()
+    saveOutlookChromeState()
+}
+
+function toggleNavigationPaneAutoHide(){
+    document.body.classList.remove("navigation-auto-hide")
+    updateOutlookChromeButtons()
+    saveOutlookChromeState()
+    cachedTimelineHeight = null
+}
+
+function revealRibbon(){
+    if(!document.body.classList.contains("ribbon-auto-hide")) return
+    document.querySelector(".outlook-topbar")?.classList.add("ribbon-peek")
+}
+
+function hideRibbonPeek(){
+    document.querySelector(".outlook-topbar")?.classList.remove("ribbon-peek","ribbon-menu-open")
+}
+
+function setActiveRibbonTab(tab){
+    if(!tab) return
+    document.querySelectorAll(".outlook-ribbon-tab").forEach(button=>{
+        let active = button === tab
+        button.classList.toggle("is-active",active)
+        button.setAttribute("aria-selected",String(active))
+    })
+}
+
+function showRibbonFromTab(tab=null){
+    setActiveRibbonTab(tab)
+    revealRibbon()
+}
+
 // INIT
 updateAppViewportMetrics()
 syncInputCapabilityClasses()
@@ -5366,6 +5486,7 @@ loadDefaultPlannerView()
 loadAutosavePreference()
 loadToolbarCustomization()
 rebuildToolbar()
+applyOutlookChromeState()
 polishControlLabels()
 buildTimeline()
 applyTimelineZoom()
