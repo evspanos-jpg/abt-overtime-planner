@@ -15,11 +15,11 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=97">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=99">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="{{ url_for('static', filename='pwa.js') }}?v=1" defer></script>
+    <script src="{{ url_for('static', filename='pwa.js') }}?v=2" defer></script>
 </head>
 
 <body>
@@ -2287,6 +2287,7 @@ function rebuildToolbar(){
             wrap.classList.toggle("is-open",!wasOpen)
             trigger.setAttribute("aria-expanded",String(!wasOpen))
             document.querySelector(".outlook-topbar")?.classList.toggle("ribbon-menu-open",!wasOpen)
+            if(!wasOpen) enforceRibbonFlyout(menu,trigger)
         })
         wrap.appendChild(trigger)
 
@@ -5473,14 +5474,54 @@ function setActiveRibbonTab(tab){
 function openRibbonMenu(menuButtonId){
     const trigger = document.getElementById(menuButtonId)
     const wrap = trigger?.closest(".file-menu-wrap")
-    if(!trigger || !wrap) return
+    const menu = trigger?.nextElementSibling
+    if(!trigger || !wrap || !menu) return
 
     revealRibbon()
     closeOpenFileMenus()
     wrap.classList.add("is-open")
     trigger.setAttribute("aria-expanded","true")
     document.querySelector(".outlook-topbar")?.classList.add("ribbon-menu-open")
+    enforceRibbonFlyout(menu,trigger)
     trigger.focus({preventScroll:true})
+}
+
+function enforceRibbonFlyout(menu,trigger=null){
+    if(!menu) return
+    const isFolderMenu = menu.classList.contains("file-backstage-menu")
+    const width = isFolderMenu ? "min(520px, calc(100vw - 24px))" : "min(420px, calc(100vw - 24px))"
+    const columns = isFolderMenu ? "repeat(2, minmax(150px, 1fr))" : "repeat(2, minmax(145px, 1fr))"
+
+    Object.assign(menu.style,{
+        position:"absolute",
+        top:"calc(100% + 8px)",
+        bottom:"auto",
+        left:"0",
+        right:"auto",
+        transform:"none",
+        width,
+        maxWidth:"calc(100vw - 24px)",
+        maxHeight:"none",
+        overflow:"visible",
+        overflowX:"visible",
+        overflowY:"visible",
+        scrollbarWidth:"none",
+        gridTemplateColumns:columns,
+        margin:"0"
+    })
+
+    requestAnimationFrame(()=>{
+        const rect = menu.getBoundingClientRect()
+        if(rect.right > window.innerWidth - 8){
+            menu.style.left = "auto"
+            menu.style.right = "0"
+        }
+        if(rect.left < 8){
+            menu.style.left = "0"
+            menu.style.right = "auto"
+        }
+        trigger?.setAttribute("aria-expanded","true")
+    })
 }
 
 function showRibbonFromTab(tab=null,event=null){
