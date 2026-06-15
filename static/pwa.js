@@ -1,9 +1,15 @@
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/service-worker.js", { updateViaCache: "none" }).then(registration => {
-            registration.update()
-        }).catch(() => {
-            // The app still works in the browser when service workers are unavailable.
-        })
+        navigator.serviceWorker.getRegistrations()
+            .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
+            .catch(() => {})
+    })
+}
+
+if ("caches" in window) {
+    window.addEventListener("load", () => {
+        caches.keys()
+            .then(keys => Promise.all(keys.filter(key => key.startsWith("abt-planner")).map(key => caches.delete(key))))
+            .catch(() => {})
     })
 }

@@ -15,11 +15,11 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=99">
+    <link rel="stylesheet" href="static/style.css?v=100">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="static/pwa.js?v=2" defer></script>
+    <script src="static/pwa.js?v=3" defer></script>
 </head>
 
 <body>
@@ -2120,6 +2120,7 @@ function closeOpenFileMenus(){
         menu.querySelector("[aria-expanded]")?.setAttribute("aria-expanded","false")
     })
     document.querySelector(".outlook-topbar")?.classList.remove("ribbon-menu-open")
+    resetRibbonFlyoutOverflow()
 }
 
 function closeMobileSheet(){
@@ -5488,6 +5489,7 @@ function openRibbonMenu(menuButtonId){
 
 function enforceRibbonFlyout(menu,trigger=null){
     if(!menu) return
+    enableRibbonFlyoutOverflow()
     const isFolderMenu = menu.classList.contains("file-backstage-menu")
     const width = isFolderMenu ? "min(520px, calc(100vw - 24px))" : "min(420px, calc(100vw - 24px))"
     const columns = isFolderMenu ? "repeat(2, minmax(150px, 1fr))" : "repeat(2, minmax(145px, 1fr))"
@@ -5521,6 +5523,26 @@ function enforceRibbonFlyout(menu,trigger=null){
             menu.style.right = "auto"
         }
         trigger?.setAttribute("aria-expanded","true")
+    })
+}
+
+function enableRibbonFlyoutOverflow(){
+    ;[".outlook-topbar",".outlook-topbar .toolbar","#controls"].forEach(selector=>{
+        const node = document.querySelector(selector)
+        if(!node) return
+        node.style.overflow = "visible"
+        node.style.overflowX = "visible"
+        node.style.overflowY = "visible"
+    })
+}
+
+function resetRibbonFlyoutOverflow(){
+    ;[".outlook-topbar",".outlook-topbar .toolbar","#controls"].forEach(selector=>{
+        const node = document.querySelector(selector)
+        if(!node) return
+        node.style.overflow = ""
+        node.style.overflowX = ""
+        node.style.overflowY = ""
     })
 }
 
