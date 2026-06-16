@@ -8768,3 +8768,108 @@ body.ribbon-auto-hide .outlook-topbar .file-backstage-menu {
         height: 16px !important;
     }
 }
+
+/* Landscape touch layout keeps navigation visible without falling back to desktop chrome. */
+@media (max-width: 1180px) and (pointer: coarse) and (orientation: landscape) {
+    .calendar-workspace,
+    body.navigation-auto-hide .calendar-workspace {
+        display: grid !important;
+        grid-template-columns: minmax(170px, 26vw) minmax(0, 1fr) !important;
+        gap: 8px !important;
+        align-items: stretch !important;
+        height: calc(100dvh - 126px) !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+    }
+
+    .calendar-rail,
+    body.navigation-auto-hide .calendar-rail {
+        display: grid !important;
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        position: relative !important;
+        top: auto !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
+        overflow: auto !important;
+        padding: 8px !important;
+    }
+
+    .workspace-resizer,
+    .workspace-resizer-left,
+    .workspace-resizer-right,
+    body.navigation-auto-hide .workspace-resizer-left {
+        display: none !important;
+    }
+
+    .calendar-main {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+
+    .timeline-panel,
+    .month-panel {
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    #timeline-container {
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
+        overflow: auto !important;
+    }
+
+    .agenda-pane {
+        position: fixed !important;
+        right: max(8px, env(safe-area-inset-right)) !important;
+        bottom: calc(58px + max(6px, env(safe-area-inset-bottom))) !important;
+        left: max(8px, env(safe-area-inset-left)) !important;
+        z-index: 720 !important;
+        max-height: min(calc(var(--app-vh) * 70), 520px) !important;
+    }
+
+    .rail-date-card {
+        grid-template-columns: 1fr !important;
+        text-align: center !important;
+    }
+
+    .rail-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .mini-month {
+        display: grid !important;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) and (pointer: coarse) and (orientation: portrait) {
+    .calendar-workspace,
+    body.navigation-auto-hide .calendar-workspace {
+        grid-template-columns: minmax(190px, 26vw) minmax(0, 1fr) !important;
+        gap: 8px !important;
+        overflow: hidden !important;
+    }
+
+    .calendar-rail,
+    body.navigation-auto-hide .calendar-rail {
+        display: grid !important;
+        grid-column: 1 !important;
+        width: auto !important;
+        max-width: none !important;
+        overflow: auto !important;
+    }
+
+    .calendar-main {
+        grid-column: 2 !important;
+    }
+}
