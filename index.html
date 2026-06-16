@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=100">
+    <link rel="stylesheet" href="static/style.css?v=106">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2137,7 +2137,7 @@ function openMobileSheet(sheet){
     document.body.classList.add("mobile-agenda-open")
     updateOutlookPanels({forceAgenda:true})
     updateMobileNav()
-    setTimeout(()=>document.getElementById("agendaSearchInput")?.focus({preventScroll:true}),80)
+    if(!isMobileLayout()) setTimeout(()=>document.getElementById("agendaSearchInput")?.focus({preventScroll:true}),80)
 }
 
 function updateMobileNav(){
@@ -3500,7 +3500,7 @@ function resetLayoutPreferences(){
     }catch(error){
         console.warn("Timeline layout mode could not be saved.",error)
     }
-    saveWorkspaceLayout({rail:220,agenda:270})
+    saveWorkspaceLayout({rail:220,agenda:460})
     applyTimelineLayoutMode()
     applyTimelineZoom()
     syncSettingsControls()
@@ -4139,6 +4139,7 @@ function renderFullSearchResults(){
         item.addEventListener("click",()=>openFullSearchBlock(block))
 
         let title = document.createElement("strong")
+        title.className = "agenda-title"
         title.textContent = block.title || "Block"
         item.appendChild(title)
 
@@ -4269,6 +4270,7 @@ function updateOutlookPanels(options={}){
     }
 
     let mobileLayout = isMobileLayout()
+    let agendaSheetLayout = isPhoneLayout()
     if(!mobileLayout) renderMiniMonth()
 
     if(mobileView){
@@ -4299,7 +4301,7 @@ function updateOutlookPanels(options={}){
     updateMobileNav()
 
     if(!agendaList) return
-    if(mobileLayout && !options.forceAgenda && !document.body.classList.contains("mobile-agenda-open")) return
+    if(agendaSheetLayout && !options.forceAgenda && !document.body.classList.contains("mobile-agenda-open")) return
     agendaList.innerHTML = ""
 
     let blocks = visibleAgendaBlocks()
@@ -4339,6 +4341,7 @@ function updateOutlookPanels(options={}){
         item.appendChild(time)
 
         let title = document.createElement("strong")
+        title.className = "agenda-title"
         title.textContent = block.title || "Block"
         item.appendChild(title)
 
@@ -5314,7 +5317,7 @@ function isDesktopWorkspaceLayout(){
 function clampWorkspaceLayout(layout){
     return {
         rail:Math.min(Math.max(Number(layout?.rail) || 220,170),360),
-        agenda:Math.min(Math.max(Number(layout?.agenda) || 270,210),430)
+        agenda:Math.min(Math.max(Number(layout?.agenda) || 460,420),720)
     }
 }
 
@@ -5484,11 +5487,34 @@ function openRibbonMenu(menuButtonId){
     trigger.setAttribute("aria-expanded","true")
     document.querySelector(".outlook-topbar")?.classList.add("ribbon-menu-open")
     enforceRibbonFlyout(menu,trigger)
-    trigger.focus({preventScroll:true})
+    if(!isMobileLayout()) trigger.focus({preventScroll:true})
 }
 
 function enforceRibbonFlyout(menu,trigger=null){
     if(!menu) return
+    if(isMobileLayout()){
+        resetRibbonFlyoutOverflow()
+        const isPhone = isPhoneLayout()
+        Object.assign(menu.style,{
+            position:"fixed",
+            top:"auto",
+            right:"max(6px, env(safe-area-inset-right))",
+            bottom:"calc(64px + max(6px, env(safe-area-inset-bottom)))",
+            left:"max(6px, env(safe-area-inset-left))",
+            transform:"none",
+            width:"auto",
+            maxWidth:"none",
+            maxHeight:"min(calc(var(--app-vh) * 58), 460px)",
+            overflow:"auto",
+            overflowX:"hidden",
+            overflowY:"auto",
+            scrollbarWidth:"thin",
+            gridTemplateColumns:isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))",
+            margin:"0"
+        })
+        trigger?.setAttribute("aria-expanded","true")
+        return
+    }
     enableRibbonFlyoutOverflow()
     const isFolderMenu = menu.classList.contains("file-backstage-menu")
     const width = isFolderMenu ? "min(520px, calc(100vw - 24px))" : "min(420px, calc(100vw - 24px))"
