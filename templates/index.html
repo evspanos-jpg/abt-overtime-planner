@@ -15,7 +15,7 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=106">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=107">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2117,8 +2117,10 @@ function triggerCalendarFilePicker(){
 function closeOpenFileMenus(){
     document.querySelectorAll(".toolbar-menu-wrap.is-open, .file-menu-wrap.is-open").forEach(menu=>{
         menu.classList.remove("is-open")
+        menu.querySelector(".file-menu, .toolbar-menu")?.classList.remove("is-mobile-open")
         menu.querySelector("[aria-expanded]")?.setAttribute("aria-expanded","false")
     })
+    document.querySelectorAll(".file-menu.is-mobile-open, .toolbar-menu.is-mobile-open").forEach(menu=>menu.classList.remove("is-mobile-open"))
     document.querySelector(".outlook-topbar")?.classList.remove("ribbon-menu-open")
     resetRibbonFlyoutOverflow()
 }
@@ -5484,6 +5486,7 @@ function openRibbonMenu(menuButtonId){
     revealRibbon()
     closeOpenFileMenus()
     wrap.classList.add("is-open")
+    if(isMobileLayout()) menu.classList.add("is-mobile-open")
     trigger.setAttribute("aria-expanded","true")
     document.querySelector(".outlook-topbar")?.classList.add("ribbon-menu-open")
     enforceRibbonFlyout(menu,trigger)
@@ -5495,6 +5498,7 @@ function enforceRibbonFlyout(menu,trigger=null){
     if(isMobileLayout()){
         resetRibbonFlyoutOverflow()
         const isPhone = isPhoneLayout()
+        menu.classList.add("is-mobile-open")
         Object.assign(menu.style,{
             position:"fixed",
             top:"auto",

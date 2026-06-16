@@ -8492,6 +8492,16 @@ body.ribbon-auto-hide .outlook-topbar .file-backstage-menu {
         transform: none !important;
     }
 
+    .outlook-topbar .file-menu.is-mobile-open,
+    .outlook-topbar .toolbar-menu.is-mobile-open,
+    .outlook-topbar .file-backstage-menu.is-mobile-open,
+    .outlook-topbar .ribbon-window-menu.is-mobile-open {
+        display: grid !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        visibility: visible !important;
+    }
+
     .agenda-pane {
         gap: 8px;
         max-height: min(calc(var(--app-vh) * 78), 680px);
