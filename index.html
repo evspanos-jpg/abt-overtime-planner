@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=109">
+    <link rel="stylesheet" href="static/style.css?v=110">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -246,6 +246,10 @@
     <div class="mobile-sheet-backdrop" id="mobileSheetBackdrop" role="presentation" onclick="closeMobileSheet()"></div>
 
     <nav class="mobile-bottom-nav" aria-label="Mobile calendar navigation">
+        <button type="button" class="mobile-nav-button" data-mobile-nav="menu" onclick="openRibbonMenu('fileMenuButton')">
+            <span class="mobile-nav-icon icon-file-menu" aria-hidden="true"></span>
+            <span>Menu</span>
+        </button>
         <button type="button" class="mobile-nav-button" data-mobile-nav="today" onclick="goToCurrentWeek(); closeMobileSheet()">
             <span class="mobile-nav-icon icon-current-week" aria-hidden="true"></span>
             <span>Today</span>

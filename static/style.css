@@ -8873,3 +8873,90 @@ body.ribbon-auto-hide .outlook-topbar .file-backstage-menu {
         grid-column: 2 !important;
     }
 }
+
+/* Final mobile correction: menu and navigation are always reachable. */
+@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
+    .mobile-bottom-nav {
+        grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+    }
+
+    .mobile-nav-button {
+        font-size: 8px !important;
+    }
+
+    .mobile-nav-icon {
+        width: 17px !important;
+        height: 17px !important;
+    }
+}
+
+@media (max-width: 760px) and (orientation: portrait) {
+    .calendar-workspace,
+    body.navigation-auto-hide .calendar-workspace {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 8px !important;
+        overflow: visible !important;
+    }
+
+    .calendar-rail,
+    body.navigation-auto-hide .calendar-rail {
+        display: grid !important;
+        grid-column: 1 !important;
+        grid-row: auto !important;
+        position: relative !important;
+        top: auto !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        padding: 8px !important;
+    }
+
+    .calendar-main {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+    }
+
+    .rail-date-card {
+        grid-template-columns: auto 1fr auto !important;
+        text-align: left !important;
+    }
+
+    .rail-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    .mini-month {
+        display: none !important;
+    }
+}
+
+@media (max-width: 760px) and (orientation: landscape) {
+    .calendar-workspace,
+    body.navigation-auto-hide .calendar-workspace {
+        grid-template-columns: minmax(148px, 28vw) minmax(0, 1fr) !important;
+        height: calc(100dvh - 118px) !important;
+        gap: 6px !important;
+    }
+
+    .calendar-rail,
+    body.navigation-auto-hide .calendar-rail {
+        display: grid !important;
+        padding: 6px !important;
+    }
+
+    .rail-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .rail-action-button {
+        min-height: 34px !important;
+        font-size: 10px !important;
+    }
+
+    .mini-month {
+        display: none !important;
+    }
+}
