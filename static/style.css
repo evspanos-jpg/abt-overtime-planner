@@ -8665,3 +8665,106 @@ body.ribbon-auto-hide .outlook-topbar .file-backstage-menu {
             minmax(380px, var(--workspace-agenda-width)) !important;
     }
 }
+
+/* Authoritative phone and tablet-touch layout. Keep after desktop overrides. */
+@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
+    body {
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        padding-bottom: calc(82px + max(10px, env(safe-area-inset-bottom))) !important;
+    }
+
+    .app-shell {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow: visible !important;
+    }
+
+    .mobile-calendar-bar {
+        display: grid !important;
+        grid-template-columns: 50px 38px 38px minmax(0, 1fr) 38px 44px !important;
+        top: max(4px, env(safe-area-inset-top)) !important;
+        z-index: 880 !important;
+    }
+
+    .mobile-menu-button,
+    .mobile-period-button,
+    .mobile-add-button {
+        min-width: 0 !important;
+        min-height: 44px !important;
+    }
+
+    .calendar-workspace,
+    body.navigation-auto-hide .calendar-workspace {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-rows: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        padding: 0 !important;
+    }
+
+    .workspace-resizer,
+    .calendar-rail {
+        display: none !important;
+    }
+
+    .calendar-main {
+        display: block !important;
+        grid-column: 1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .mobile-bottom-nav {
+        display: grid !important;
+        grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+        z-index: 900 !important;
+    }
+
+    .mobile-nav-button {
+        min-width: 0 !important;
+        font-size: 9px !important;
+    }
+
+    .agenda-pane {
+        grid-column: auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }
+}
+
+@media (max-width: 1180px) and (pointer: coarse) and (orientation: landscape) {
+    body {
+        padding-bottom: calc(66px + max(6px, env(safe-area-inset-bottom))) !important;
+    }
+
+    .mobile-calendar-bar {
+        grid-template-columns: 46px 36px 36px minmax(0, 1fr) 36px 42px !important;
+        gap: 5px !important;
+        padding: 5px !important;
+    }
+
+    .mobile-bottom-nav {
+        right: max(6px, env(safe-area-inset-right)) !important;
+        bottom: max(6px, env(safe-area-inset-bottom)) !important;
+        left: max(6px, env(safe-area-inset-left)) !important;
+        gap: 3px !important;
+        padding: 5px !important;
+    }
+
+    .mobile-nav-button {
+        min-height: 42px !important;
+        padding: 4px 2px !important;
+    }
+
+    .mobile-nav-icon {
+        width: 16px !important;
+        height: 16px !important;
+    }
+}

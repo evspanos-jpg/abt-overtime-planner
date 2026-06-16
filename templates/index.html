@@ -15,7 +15,7 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=107">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=108">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -113,6 +113,9 @@
         <button type="button" class="secondary mobile-today-chip" onclick="goToCurrentWeek()">
             <span id="mobileMonthLabel">Today</span>
             <strong id="mobileDateLabel">--</strong>
+        </button>
+        <button type="button" class="secondary icon-button mobile-menu-button" onclick="openRibbonMenu('fileMenuButton')" aria-label="Open menu">
+            <span class="button-icon icon-file-menu" aria-hidden="true"></span>
         </button>
         <button type="button" class="secondary icon-button mobile-period-button" onclick="changeMobilePeriod(-1)" aria-label="Previous period">
             <span class="button-icon icon-prev" aria-hidden="true"></span>
