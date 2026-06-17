@@ -15,7 +15,7 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=121">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=122">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -5823,8 +5823,8 @@ function isDesktopWorkspaceLayout(){
 
 function clampWorkspaceLayout(layout){
     return {
-        rail:Math.min(Math.max(Number(layout?.rail) || 220,170),360),
-        agenda:Math.min(Math.max(Number(layout?.agenda) || 460,420),720)
+        rail:Math.min(Math.max(Number(layout?.rail) || 196,160),320),
+        agenda:Math.min(Math.max(Number(layout?.agenda) || 360,300),560)
     }
 }
 

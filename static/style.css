@@ -8,8 +8,8 @@
 :root {
     color-scheme: dark;
     --app-vh: 1vh;
-    --workspace-rail-width: 220px;
-    --workspace-agenda-width: 460px;
+    --workspace-rail-width: 196px;
+    --workspace-agenda-width: 360px;
     --timeline-zoom: 1;
     --timeline-height: 1300px;
     --scrollbar-track: rgba(255, 252, 244, 0.1);
@@ -9816,4 +9816,98 @@ textarea:focus-visible {
         border-color: #24303b !important;
         box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34) !important;
     }
+}
+
+@media (min-width: 1181px) {
+    body {
+        padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)) !important;
+    }
+
+    .app-shell {
+        width: calc(100vw - 16px) !important;
+        max-width: none !important;
+        gap: 12px;
+    }
+
+    .calendar-workspace,
+    body.navigation-auto-hide .calendar-workspace {
+        grid-template-columns:
+            minmax(170px, min(var(--workspace-rail-width), 14vw))
+            6px
+            minmax(0, 1fr)
+            6px
+            minmax(300px, min(var(--workspace-agenda-width), 19vw)) !important;
+        gap: 10px !important;
+    }
+
+    .calendar-main,
+    .timeline-panel,
+    #timeline-container,
+    #timeline,
+    .week-grid-body {
+        min-width: 0 !important;
+    }
+
+    #timeline {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .week-grid-header {
+        grid-template-columns: 64px repeat(7, minmax(112px, 1fr)) !important;
+    }
+
+    .week-grid-body {
+        grid-template-columns: 64px minmax(0, 1fr) !important;
+    }
+
+    #dayColumns {
+        grid-template-columns: repeat(7, minmax(112px, 1fr)) !important;
+    }
+
+    .day-column {
+        min-width: 0 !important;
+    }
+}
+
+:root[data-theme="light"] .event {
+    border-color: rgba(26, 115, 232, 0.24) !important;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.04) 34%),
+        #dbe8fb !important;
+    box-shadow: 0 10px 24px rgba(26, 115, 232, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+:root[data-theme="light"] .event::after {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent 40%),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02), transparent 24%, transparent 76%, rgba(11, 47, 89, 0.06)) !important;
+}
+
+:root[data-theme="light"] .event::before,
+:root[data-theme="light"] .resize-handle::before {
+    background: rgba(15, 47, 87, 0.34) !important;
+}
+
+:root[data-theme="light"] .label,
+:root[data-theme="light"] .event-title,
+:root[data-theme="light"] .event-meta,
+:root[data-theme="light"] .event-detail {
+    color: #0f2f57 !important;
+    text-shadow: none !important;
+}
+
+:root[data-theme="light"] .event-meta {
+    color: #1b4f82 !important;
+}
+
+:root[data-theme="light"] .event-detail {
+    color: #335f87 !important;
+}
+
+:root[data-theme="light"] .event-edit-button {
+    background: rgba(255, 255, 255, 0.92) !important;
+    color: #0f2f57 !important;
+    box-shadow: 0 6px 18px rgba(26, 115, 232, 0.18) !important;
+    backdrop-filter: none;
 }
