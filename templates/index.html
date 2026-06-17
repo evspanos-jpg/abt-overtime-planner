@@ -15,7 +15,7 @@
     <link rel="manifest" href="{{ url_for('webmanifest') }}">
     <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=123">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=126">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -4227,6 +4227,7 @@ function loadWeekFromMonth(key,options={}){
     updateWeekHeader()
     if(importedEventCount) importSummaryText = buildImportSummary(importedEventCount)
     updateImportSummary()
+    applyThemeMode(themeMode)
     savePlannerState()
 }
 
@@ -5442,6 +5443,7 @@ function importICS(){
             importSummaryText = buildImportSummary()
             showAppToast(importedCount+" calendar event"+(importedCount===1 ? "" : "s")+" imported")
             setPlannerView("month")
+            applyThemeMode(themeMode)
             return
         }
 
@@ -5581,6 +5583,7 @@ function importICS(){
         importSummaryText = buildImportSummary()
         showAppToast(importedCount+" calendar event"+(importedCount===1 ? "" : "s")+" imported")
         setPlannerView("month")
+        applyThemeMode(themeMode)
     }
 
     reader.onerror = function(){
@@ -5824,7 +5827,7 @@ function isDesktopWorkspaceLayout(){
 function clampWorkspaceLayout(layout){
     return {
         rail:Math.min(Math.max(Number(layout?.rail) || 208,160),360),
-        agenda:Math.min(Math.max(Number(layout?.agenda) || 380,300),680)
+        agenda:Math.min(Math.max(Number(layout?.agenda) || 380,260),760)
     }
 }
 
@@ -5871,6 +5874,9 @@ function initWorkspaceResizers(){
             let startX = event.clientX
             let start = currentWorkspaceLayout()
             let pane = handle.dataset.resizePane
+            handle.setAttribute("aria-valuemin",pane === "agenda" ? "260" : "160")
+            handle.setAttribute("aria-valuemax",pane === "agenda" ? "760" : "360")
+            handle.setAttribute("aria-valuenow",String(Math.round(pane === "agenda" ? start.agenda : start.rail)))
 
             function onMove(moveEvent){
                 let dx = moveEvent.clientX - startX
@@ -5878,6 +5884,8 @@ function initWorkspaceResizers(){
                 if(pane === "rail") next.rail = start.rail + dx
                 if(pane === "agenda") next.agenda = start.agenda - dx
                 applyWorkspaceLayout(next)
+                let current = currentWorkspaceLayout()
+                handle.setAttribute("aria-valuenow",String(Math.round(pane === "agenda" ? current.agenda : current.rail)))
             }
 
             function onUp(){
