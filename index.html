@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=110">
+    <link rel="stylesheet" href="static/style.css?v=119">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -26,75 +26,8 @@
 
 <div class="app-shell">
     <header class="outlook-topbar" aria-label="Planner command bar">
-    <section class="toolbar" aria-label="Planner ribbon">
-        <div class="outlook-ribbon-tabs-row">
-            <div class="outlook-ribbon-tabs" role="tablist" aria-label="Ribbon tabs">
-                <button type="button" class="outlook-ribbon-tab is-active" role="tab" aria-selected="true" data-ribbon-target="home" onclick="showRibbonFromTab(this,event)">Home</button>
-                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" data-ribbon-target="calendarMenuButton" onclick="showRibbonFromTab(this,event)">Send / Receive</button>
-                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" data-ribbon-target="fileMenuButton" onclick="showRibbonFromTab(this,event)">Folder</button>
-                <button type="button" class="outlook-ribbon-tab" role="tab" aria-selected="false" data-ribbon-target="viewMenuButton" onclick="showRibbonFromTab(this,event)">View</button>
-            </div>
-            <button type="button" class="secondary icon-button outlook-ribbon-pin" id="ribbonPinButton" onclick="toggleRibbonAutoHide()" aria-label="Auto-hide ribbon" title="Auto-hide ribbon">
-                <span class="button-icon icon-ribbon-pin" aria-hidden="true"></span>
-            </button>
-        </div>
-        <div id="controls">
-            <div class="tool-group">
-                <button type="button" class="primary" onclick="addBlock()">➕ Add Block</button>
-                <button type="button" class="secondary" id="undoButton" onclick="undoLastChange()" disabled>↶ Undo</button>
-                <button type="button" class="danger" onclick="resetAll()">🗑 Reset</button>
-            </div>
-
-            <div class="tool-group">
-                <button type="button" class="secondary" onclick="selectAllBlocks()">☑ Select All</button>
-                <button type="button" class="secondary" onclick="clearSelection()">⬚ Clear</button>
-                <button type="button" class="secondary" onclick="editSelectedBlock()">✎ Edit</button>
-                <button type="button" class="secondary" onclick="copySelectedBlock()">📋 Copy</button>
-                <button type="button" class="secondary" onclick="cutSelectedBlock()">✂️ Cut</button>
-                <button type="button" class="secondary" onclick="pasteBlock()">📌 Paste</button>
-            </div>
-
-            <div class="tool-group calendar-tools">
-                <label class="file-picker">
-                    <span>Calendar file</span>
-                    <input type="file" id="fileInput" accept=".ics,.ical,.ifb,.cal,.csv,text/calendar,text/csv" onchange="importICS()">
-                </label>
-
-                <button type="button" class="primary" onclick="importICS()">📥 Import Calendar</button>
-                <button type="button" class="secondary" onclick="openImportFilterEditor()">⚙ Filters</button>
-                <label class="export-scope">
-                    <span>Export</span>
-                    <select id="exportScope" onchange="savePlannerState()">
-                        <option value="week">Selected week</option>
-                        <option value="month">Full month</option>
-                    </select>
-                </label>
-                <button type="button" class="secondary" onclick="exportICS()">📤 Export Calendar</button>
-                <button type="button" class="secondary" onclick="exportPDF()">🧾 PDF</button>
-            </div>
-
-            <div class="tool-group save-tools">
-                <button type="button" class="primary" onclick="saveProject()">Save</button>
-                <button type="button" class="secondary" onclick="saveProjectAs()">Save As</button>
-                <label class="file-picker project-file-picker">
-                    <span>Open</span>
-                    <input type="file" id="projectFileInput" accept=".abt-planner.json,.json,application/json" onchange="openProjectFile()">
-                </label>
-                <button type="button" class="secondary" onclick="importProjectFromCloud('onedrive')">Import OneDrive</button>
-                <button type="button" class="secondary" onclick="importProjectFromCloud('google')">Import Google Drive</button>
-                <button type="button" class="secondary" onclick="uploadProjectToCloud('onedrive')">OneDrive</button>
-                <button type="button" class="secondary" onclick="uploadProjectToCloud('google')">Google Drive</button>
-                <span class="save-status" id="saveStatus">Autosaved locally</span>
-            </div>
-
-            <div class="tool-group view-tools">
-                <button type="button" class="secondary" onclick="goToCurrentWeek()">Current Week</button>
-                <button type="button" class="secondary active-view" id="weekViewButton" onclick="setPlannerView('week')">Week View</button>
-                <button type="button" class="secondary" id="threeDayViewButton" onclick="setPlannerView('three-day')">3 Day</button>
-                <button type="button" class="secondary" id="dayViewButton" onclick="setPlannerView('day')">Day Focus</button>
-                <button type="button" class="secondary" id="monthViewButton" onclick="setPlannerView('month')">Month View</button>
-            </div>
-        </div>
+    <section class="toolbar" aria-label="Planner menu bar">
+        <div id="controls" class="top-menu-bar" role="menubar" aria-label="Planner menus"></div>
     </section>
 
         <div class="earnings-summary" aria-label="Pay totals">
@@ -109,27 +42,12 @@
         </div>
     </header>
 
-    <section class="mobile-calendar-bar" aria-label="Mobile calendar controls">
-        <button type="button" class="secondary mobile-today-chip" onclick="goToCurrentWeek()">
-            <span id="mobileMonthLabel">Today</span>
-            <strong id="mobileDateLabel">--</strong>
-        </button>
-        <button type="button" class="secondary icon-button mobile-menu-button" onclick="openRibbonMenu('fileMenuButton')" aria-label="Open menu">
-            <span class="button-icon icon-file-menu" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="secondary icon-button mobile-period-button" onclick="changeMobilePeriod(-1)" aria-label="Previous period">
-            <span class="button-icon icon-prev" aria-hidden="true"></span>
-        </button>
-        <div class="mobile-period-title">
-            <strong id="mobileViewLabel">Week</strong>
-            <span id="mobileRangeLabel">Selected week</span>
-        </div>
-        <button type="button" class="secondary icon-button mobile-period-button" onclick="changeMobilePeriod(1)" aria-label="Next period">
-            <span class="button-icon icon-next" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="primary icon-button mobile-add-button" onclick="addBlock()" aria-label="Add block">
-            <span class="button-icon icon-add" aria-hidden="true"></span>
-        </button>
+    <section class="tablet-toolbar" aria-label="Tablet planner controls">
+        <button type="button" class="secondary" onclick="goToCurrentWeek()">Today</button>
+        <button type="button" class="secondary" onclick="setPlannerView('week')">Week</button>
+        <button type="button" class="secondary" onclick="setPlannerView('month')">Month</button>
+        <button type="button" class="secondary" onclick="openFullSearch()">Search</button>
+        <button type="button" class="secondary" onclick="openSettings()">Settings</button>
     </section>
 
     <section class="calendar-workspace" aria-label="Calendar workspace">
@@ -233,52 +151,33 @@
             <header class="agenda-header">
                 <span>Agenda</span>
                 <strong id="agendaRangeLabel">Selected week</strong>
-                <button type="button" class="secondary icon-button mobile-sheet-close" onclick="closeMobileSheet()" aria-label="Close agenda">&times;</button>
             </header>
+            <div class="agenda-search-toolbar">
+                <label class="export-scope agenda-filter">
+                    <span>Filter</span>
+                    <select id="agendaOvertimeFilter" onchange="setDayVisibilityFilter(this.value)">
+                        <option value="all">All Days</option>
+                        <option value="overtime">OT Only</option>
+                    </select>
+                </label>
+                <label class="export-scope agenda-filter">
+                    <span>Field</span>
+                    <select id="agendaSearchFieldFilter" onchange="setAgendaSearchFieldFilter(this.value)">
+                        <option value="all">All Fields</option>
+                        <option value="title">Title</option>
+                        <option value="location">Location</option>
+                        <option value="notes">Notes</option>
+                        <option value="time">Time</option>
+                    </select>
+                </label>
+            </div>
             <label class="agenda-search">
                 <span>Search agenda</span>
-                <input type="search" id="agendaSearchInput" placeholder="Search title, time, or location" oninput="updateOutlookPanels()">
+                <input type="search" id="agendaSearchInput" placeholder="Search title, time, location, or overtime" oninput="updateOutlookPanels()">
             </label>
             <div class="agenda-list" id="agendaList"></div>
         </aside>
     </section>
-
-    <div class="mobile-sheet-backdrop" id="mobileSheetBackdrop" role="presentation" onclick="closeMobileSheet()"></div>
-
-    <nav class="mobile-bottom-nav" aria-label="Mobile calendar navigation">
-        <button type="button" class="mobile-nav-button" data-mobile-nav="menu" onclick="openRibbonMenu('fileMenuButton')">
-            <span class="mobile-nav-icon icon-file-menu" aria-hidden="true"></span>
-            <span>Menu</span>
-        </button>
-        <button type="button" class="mobile-nav-button" data-mobile-nav="today" onclick="goToCurrentWeek(); closeMobileSheet()">
-            <span class="mobile-nav-icon icon-current-week" aria-hidden="true"></span>
-            <span>Today</span>
-        </button>
-        <button type="button" class="mobile-nav-button" data-mobile-nav="week" onclick="setPlannerView('week'); closeMobileSheet()">
-            <span class="mobile-nav-icon icon-week-view" aria-hidden="true"></span>
-            <span>Week</span>
-        </button>
-        <button type="button" class="mobile-nav-button" data-mobile-nav="day" onclick="setPlannerView('day'); closeMobileSheet()">
-            <span class="mobile-nav-icon icon-week-view" aria-hidden="true"></span>
-            <span>Day</span>
-        </button>
-        <button type="button" class="mobile-nav-button" data-mobile-nav="month" onclick="setPlannerView('month'); closeMobileSheet()">
-            <span class="mobile-nav-icon icon-month-view" aria-hidden="true"></span>
-            <span>Month</span>
-        </button>
-        <button type="button" class="mobile-nav-button" data-mobile-nav="agenda" onclick="openMobileSheet('agenda')">
-            <span class="mobile-nav-icon icon-calendar" aria-hidden="true"></span>
-            <span>Agenda</span>
-        </button>
-        <button type="button" class="mobile-nav-button" data-mobile-nav="search" onclick="openFullSearch()">
-            <span class="mobile-nav-icon icon-search" aria-hidden="true"></span>
-            <span>Search</span>
-        </button>
-        <button type="button" class="mobile-nav-button" data-mobile-nav="settings" onclick="openSettings()">
-            <span class="mobile-nav-icon icon-settings" aria-hidden="true"></span>
-            <span>Settings</span>
-        </button>
-    </nav>
 
     <p class="import-summary is-hidden" id="importSummary"></p>
     <div class="app-toast is-hidden" id="appToast" role="status" aria-live="polite"></div>
@@ -405,10 +304,27 @@
             </header>
 
             <div class="full-search-body">
-                <label class="full-search-field block-editor-wide">
-                    <span>Search all calendar data</span>
-                    <input type="search" id="fullSearchInput" placeholder="Search title, notes, location, date, or time" oninput="renderFullSearchResults()">
-                </label>
+                <div class="full-search-toolbar block-editor-wide">
+                    <label class="full-search-field">
+                        <span>Search all calendar data</span>
+                        <input type="search" id="fullSearchInput" placeholder="Search title, notes, location, date, or time" oninput="renderFullSearchResults()">
+                    </label>
+                    <label class="export-scope overtime-filter full-search-filter">
+                        <span>Filter</span>
+                        <select id="overtimeDayFilter" onchange="setDayVisibilityFilter(this.value)">
+                            <option value="all">All Days</option>
+                            <option value="overtime">OT Only</option>
+                        </select>
+                    </label>
+                    <label class="export-scope overtime-filter full-search-filter">
+                        <span>Scope</span>
+                        <select id="searchScopeFilter" onchange="setSearchScopeFilter(this.value)">
+                            <option value="all">All Data</option>
+                            <option value="week">Week</option>
+                            <option value="month">Month</option>
+                        </select>
+                    </label>
+                </div>
 
                 <div class="full-search-summary" id="fullSearchSummary">Search saved blocks and imported calendar events.</div>
                 <div class="full-search-results" id="fullSearchResults"></div>
@@ -510,11 +426,14 @@ const WORKSPACE_LAYOUT_KEY = "abtOvertimePlannerWorkspaceLayout"
 const TIMELINE_ZOOM_KEY = "abtOvertimePlannerTimelineZoom"
 const TIMELINE_LAYOUT_MODE_KEY = "abtOvertimePlannerTimelineLayoutMode"
 const DEFAULT_VIEW_KEY = "abtOvertimePlannerDefaultView"
+const DAY_VISIBILITY_FILTER_KEY = "abtOvertimePlannerDayVisibilityFilter"
+const SEARCH_SCOPE_FILTER_KEY = "abtOvertimePlannerSearchScopeFilter"
+const AGENDA_SEARCH_FIELD_FILTER_KEY = "abtOvertimePlannerAgendaSearchFieldFilter"
 const TIMELINE_ZOOM_MIN = 0.75
 const TIMELINE_ZOOM_MAX = 1.5
 const TIMELINE_ZOOM_STEP = 0.125
-const MOBILE_LAYOUT_QUERY = "(max-width: 760px), (max-width: 1180px) and (pointer: coarse)"
-const DESKTOP_LAYOUT_QUERY = "(min-width: 1181px)"
+const MOBILE_LAYOUT_QUERY = "(max-width: 760px)"
+const DESKTOP_LAYOUT_QUERY = "(min-width: 761px)"
 const TOUCH_CAPABLE_QUERY = "(any-pointer: coarse), (pointer: coarse)"
 const PROJECT_FILE_VERSION = 1
 const PROJECT_FILE_TYPE = "abt-overtime-planner"
@@ -616,6 +535,9 @@ let themeMode = "dark"
 let timelineZoom = 1
 let timelineLayoutMode = "fit"
 let defaultPlannerView = "week"
+let dayVisibilityFilter = "all"
+let searchScopeFilter = "all"
+let agendaSearchFieldFilter = "all"
 let toastTimer = null
 
 //--------------------------------
@@ -776,6 +698,222 @@ function visibleTimelineDays(view=plannerView){
     }
     if(view === "day") return [DAY_ORDER[currentDayIndex()]]
     return DAY_ORDER
+}
+
+function normalizeDayVisibilityFilter(value){
+    return value === "overtime" ? "overtime" : "all"
+}
+
+function normalizeSearchScopeFilter(value){
+    return ["all","week","month"].includes(value) ? value : "all"
+}
+
+function normalizeAgendaSearchFieldFilter(value){
+    return ["all","title","location","notes","time"].includes(value) ? value : "all"
+}
+
+function calculateOvertimeSummary(schedule){
+    let blocks = (schedule || [])
+        .map(block=>({
+            start:Number(block.start) || 0,
+            duration:Number(block.duration ?? block.dur) || 0
+        }))
+        .filter(block=>block.duration > 0)
+        .sort((a,b)=>a.start - b.start)
+
+    let totalWorkedHours = blocks.reduce((total,block)=>total + block.duration,0)
+    if(totalWorkedHours <= 4){
+        return {type:"SAFE", hours:0, rate:0, pay:0}
+    }
+
+    let continuousHours = 0
+    let dailyHours = 0
+    let lastEnd = null
+    let continuousOtHours = 0
+    let dailyOt65 = 0
+    let doubleOt90 = 0
+
+    blocks.forEach(block=>{
+        let start = block.start
+        let duration = block.duration
+        let end = start + duration
+
+        if(lastEnd !== null){
+            let gap = start - lastEnd
+            if(gap >= CONTINUOUS_RESET_BREAK_HOURS) continuousHours = 0
+            if(gap >= DAILY_RESET_BREAK_HOURS) dailyHours = 0
+        }
+
+        let continuousBefore = continuousHours
+        let continuousAfter = continuousHours + duration
+        if(continuousAfter > DAILY_REGULAR_HOURS){
+            continuousOtHours += continuousAfter - Math.max(continuousBefore,DAILY_REGULAR_HOURS)
+        }
+
+        continuousHours = continuousAfter
+
+        let dailyBefore = dailyHours
+        let dailyAfter = dailyHours + duration
+        dailyOt65 += Math.max(0,Math.min(dailyAfter,DAILY_TIER_OT_END) - Math.max(dailyBefore,DAILY_NO_OVERTIME_LIMIT))
+        doubleOt90 += Math.max(0,dailyAfter - Math.max(dailyBefore,DAILY_TIER_OT_END))
+        dailyHours = dailyAfter
+        lastEnd = end
+    })
+
+    let baseOt65 = Math.max(continuousOtHours,dailyOt65)
+    let pay = (baseOt65 * OT_RATE) + (doubleOt90 * DOUBLE_OT_RATE)
+
+    if(doubleOt90 > 0) return {type:"DOUBLE OT", hours:doubleOt90, rate:DOUBLE_OT_RATE, pay:Math.round(pay * 100) / 100}
+    if(baseOt65 > 0) return {type:"OVERTIME", hours:baseOt65, rate:OT_RATE, pay:Math.round(pay * 100) / 100}
+    return {type:"SAFE", hours:0, rate:0, pay:0}
+}
+
+function hasOvertimeForDay(day){
+    return calculateOvertimeSummary(weekData[day] || []).pay > 0
+}
+
+function hasOvertimeForDateKey(eventDateKey){
+    return calculateOvertimeSummary(monthEvents[eventDateKey] || []).pay > 0
+}
+
+function blockMatchesDayVisibilityFilter(block){
+    if(dayVisibilityFilter !== "overtime" || !block) return true
+    if(block.dateKey) return hasOvertimeForDateKey(block.dateKey)
+    return hasOvertimeForDay(block.day)
+}
+
+function updateDayVisibilityFilterControl(){
+    ;["overtimeDayFilter","agendaOvertimeFilter"].forEach(id=>{
+        let input = document.getElementById(id)
+        if(input) input.value = dayVisibilityFilter
+    })
+}
+
+function updateSearchScopeFilterControl(){
+    let input = document.getElementById("searchScopeFilter")
+    if(input) input.value = searchScopeFilter
+}
+
+function updateAgendaSearchFieldFilterControl(){
+    let input = document.getElementById("agendaSearchFieldFilter")
+    if(input) input.value = agendaSearchFieldFilter
+}
+
+function applyOvertimeFilterToTimeline(){
+    if(plannerView === "month") return
+
+    let filterEnabled = dayVisibilityFilter === "overtime" && (plannerView === "week" || plannerView === "workweek")
+    let activeDays = visibleTimelineDays().filter(day=>!filterEnabled || hasOvertimeForDay(day))
+    let header = document.querySelector(".week-grid-header")
+    let body = document.querySelector(".week-grid-body")
+    let columns = document.getElementById("dayColumns")
+    let container = document.getElementById("timeline-container")
+
+    document.querySelectorAll(".day-heading").forEach(node=>{
+        node.hidden = !activeDays.includes(node.dataset.day)
+    })
+    document.querySelectorAll(".day-column").forEach(node=>{
+        node.hidden = !activeDays.includes(node.dataset.day)
+    })
+
+    if(header) header.style.gridTemplateColumns = activeDays.length ? `72px repeat(${activeDays.length}, minmax(112px, 1fr))` : "72px"
+    if(body) body.style.gridTemplateColumns = activeDays.length ? `72px minmax(${activeDays.length * 112}px, 1fr)` : "72px 0px"
+    if(columns){
+        columns.style.gridTemplateColumns = activeDays.length ? `repeat(${activeDays.length}, minmax(112px, 1fr))` : "0px"
+        columns.style.width = activeDays.length ? "" : "0px"
+    }
+    if(container) container.classList.toggle("is-empty-overtime",filterEnabled && activeDays.length === 0)
+}
+
+function applyOvertimeFilterToMonth(){
+    let grid = document.getElementById("monthGrid")
+    if(!grid) return
+
+    let filterEnabled = dayVisibilityFilter === "overtime" && plannerView === "month"
+    let visibleCount = 0
+
+    document.querySelectorAll(".month-day").forEach(node=>{
+        let keep = !filterEnabled || hasOvertimeForDateKey(node.dataset.dateKey)
+        node.classList.toggle("is-filtered-out",!keep)
+        if(keep) visibleCount++
+    })
+
+    grid.classList.toggle("is-filtering-overtime",filterEnabled)
+    grid.classList.toggle("is-empty-overtime",filterEnabled && visibleCount === 0)
+}
+
+function applyOvertimeFilterToViews(){
+    updateDayVisibilityFilterControl()
+    updateSearchScopeFilterControl()
+    updateAgendaSearchFieldFilterControl()
+    applyOvertimeFilterToTimeline()
+    applyOvertimeFilterToMonth()
+    updateOutlookPanels({forceAgenda:true})
+    if(!document.getElementById("fullSearchBackdrop")?.classList.contains("is-hidden")){
+        renderFullSearchResults()
+    }
+}
+
+function setDayVisibilityFilter(value){
+    let next = normalizeDayVisibilityFilter(value)
+    let changed = next !== dayVisibilityFilter
+    dayVisibilityFilter = next
+    try{
+        localStorage.setItem(DAY_VISIBILITY_FILTER_KEY,dayVisibilityFilter)
+    }catch(error){
+        console.warn("Day visibility filter could not be saved.",error)
+    }
+    applyOvertimeFilterToViews()
+    if(changed) showAppToast(dayVisibilityFilter === "overtime" ? "Showing overtime days only" : "Showing all days")
+}
+
+function loadDayVisibilityFilter(){
+    try{
+        dayVisibilityFilter = normalizeDayVisibilityFilter(localStorage.getItem(DAY_VISIBILITY_FILTER_KEY))
+    }catch(error){
+        dayVisibilityFilter = "all"
+    }
+    updateDayVisibilityFilterControl()
+}
+
+function setSearchScopeFilter(value){
+    searchScopeFilter = normalizeSearchScopeFilter(value)
+    try{
+        localStorage.setItem(SEARCH_SCOPE_FILTER_KEY,searchScopeFilter)
+    }catch(error){
+        console.warn("Search scope filter could not be saved.",error)
+    }
+    updateSearchScopeFilterControl()
+    renderFullSearchResults()
+}
+
+function loadSearchScopeFilter(){
+    try{
+        searchScopeFilter = normalizeSearchScopeFilter(localStorage.getItem(SEARCH_SCOPE_FILTER_KEY))
+    }catch(error){
+        searchScopeFilter = "all"
+    }
+    updateSearchScopeFilterControl()
+}
+
+function setAgendaSearchFieldFilter(value){
+    agendaSearchFieldFilter = normalizeAgendaSearchFieldFilter(value)
+    try{
+        localStorage.setItem(AGENDA_SEARCH_FIELD_FILTER_KEY,agendaSearchFieldFilter)
+    }catch(error){
+        console.warn("Agenda search field filter could not be saved.",error)
+    }
+    updateAgendaSearchFieldFilterControl()
+    updateOutlookPanels({forceAgenda:true})
+}
+
+function loadAgendaSearchFieldFilter(){
+    try{
+        agendaSearchFieldFilter = normalizeAgendaSearchFieldFilter(localStorage.getItem(AGENDA_SEARCH_FIELD_FILTER_KEY))
+    }catch(error){
+        agendaSearchFieldFilter = "all"
+    }
+    updateAgendaSearchFieldFilterControl()
 }
 
 function plannerViewLabel(view=plannerView){
@@ -1759,6 +1897,7 @@ function renderWeek(){
     })
 
     update()
+    applyOvertimeFilterToViews()
 }
 
 //--------------------------------
@@ -3638,6 +3777,25 @@ async function saveProject(options={}){
             return
         }
 
+        if(typeof navigator.share === "function" && typeof File !== "undefined"){
+            let shareFile = new File([text],normalizeProjectFileName(currentProjectName),{type:"application/json"})
+            if(!navigator.canShare || navigator.canShare({files:[shareFile]})){
+                try{
+                    await navigator.share({
+                        files:[shareFile],
+                        title:"ABT Overtime Planner",
+                        text:"Choose where to save this planner file."
+                    })
+                    savePlannerState()
+                    setSaveStatus(plannerStatusLabel("Shared to Files"))
+                    return
+                }catch(error){
+                    if(error?.name === "AbortError") return
+                    console.warn("Share save fallback failed.",error)
+                }
+            }
+        }
+
         if(saveAs){
             currentProjectName = normalizeProjectFileName(prompt("Save as",currentProjectName) || currentProjectName)
             saveProjectName()
@@ -3658,6 +3816,9 @@ function saveProjectAs(){
 }
 
 function chooseSaveLocation(){
+    if(!window.showSaveFilePicker && typeof navigator.share !== "function"){
+        alert("This browser does not support choosing a save location directly. Use Save As to download the planner file.")
+    }
     return saveProject({saveAs:true})
 }
 
@@ -3965,12 +4126,29 @@ function matchesSearchQuery(block,query){
     return searchableBlockValues(block).some(value=>String(value || "").toLowerCase().includes(query))
 }
 
+function matchesAgendaSearchQuery(block,query){
+    if(!query) return true
+
+    let overtimeMatch = query.includes("overtime") || query === "ot"
+    if(overtimeMatch && blockMatchesDayVisibilityFilter(block)) return true
+
+    let values = []
+    if(agendaSearchFieldFilter === "title") values = [block.title]
+    else if(agendaSearchFieldFilter === "location") values = [block.location]
+    else if(agendaSearchFieldFilter === "notes") values = [block.description]
+    else if(agendaSearchFieldFilter === "time") values = [formatTime(block.start), formatTime(block.start + block.dur), block.dateKey]
+    else values = searchableBlockValues(block)
+
+    return values.some(value=>String(value || "").toLowerCase().includes(query))
+}
+
 function visibleAgendaBlocks(){
     let query = String(document.getElementById("agendaSearchInput")?.value || "").trim().toLowerCase()
     let visibleDays = new Set(visibleTimelineDays())
     return agendaScopeBlocks()
         .filter(block=>plannerView === "month" || visibleDays.has(block.day))
-        .filter(block=>matchesSearchQuery(block,query))
+        .filter(block=>blockMatchesDayVisibilityFilter(block))
+        .filter(block=>matchesAgendaSearchQuery(block,query))
 }
 
 function allSearchBlocks(){
@@ -4008,6 +4186,16 @@ function allSearchBlocks(){
         })
 
     return blocks.sort((a,b)=>a.date-b.date || a.start-b.start || String(a.title || "").localeCompare(String(b.title || "")))
+}
+
+function scopedSearchBlocks(){
+    if(searchScopeFilter === "week"){
+        return selectedWeekAgendaBlocks().map(block=>({...block, source:"Selected week"}))
+    }
+    if(searchScopeFilter === "month"){
+        return monthAgendaBlocks().map(block=>({...block, source:"Current month"}))
+    }
+    return allSearchBlocks()
 }
 
 function openFullSearch(){
@@ -4119,17 +4307,19 @@ function renderFullSearchResults(){
     if(!results) return
 
     let query = String(input?.value || "").trim().toLowerCase()
-    let matches = allSearchBlocks().filter(block=>matchesSearchQuery(block,query))
+    let matches = scopedSearchBlocks()
+        .filter(block=>blockMatchesDayVisibilityFilter(block))
+        .filter(block=>matchesSearchQuery(block,query))
     let displayMatches = query ? matches.slice(0,100) : matches.slice(0,30)
     results.innerHTML = ""
 
     if(summary){
         if(!query){
             summary.textContent = displayMatches.length
-                ? "Showing available searchable items. Type to search across titles, notes, locations, dates, and times."
+                ? "Showing "+(searchScopeFilter === "week" ? "week" : searchScopeFilter === "month" ? "month" : "all")+" search items. Type to search across titles, notes, locations, dates, and times."
                 : "No searchable calendar data is available yet."
         }else{
-            summary.textContent = matches.length+" result"+(matches.length===1 ? "" : "s")+" for \""+String(input?.value || "").trim()+"\""
+            summary.textContent = matches.length+" result"+(matches.length===1 ? "" : "s")+" for \""+String(input?.value || "").trim()+"\" in "+(searchScopeFilter === "week" ? "week" : searchScopeFilter === "month" ? "month" : "all data")
         }
     }
 
@@ -5301,7 +5491,7 @@ function polishControlLabels(){
 
     document.querySelectorAll("button[onclick]").forEach(button=>{
         const label = labels.get(button.getAttribute("onclick"))
-        if(label) button.textContent = label
+        if(label && !button.querySelector(".button-icon")) button.textContent = label
     })
 }
 
@@ -5398,6 +5588,143 @@ function initWorkspaceResizers(){
     })
 }
 
+function ensureButtonIcon(button,iconClass){
+    if(!button || !iconClass) return
+    let icon = button.querySelector(".button-icon")
+    if(!icon){
+        icon = document.createElement("span")
+        icon.className = "button-icon"
+        icon.setAttribute("aria-hidden","true")
+        button.prepend(icon)
+    }
+    icon.className = "button-icon " + iconClass
+    button.classList.add("icon-text-button")
+}
+
+function enhanceMenuIcons(){
+    const iconTargets = [
+        ["fileMenuButton","icon-folder"],
+        ["calendarMenuButton","icon-calendar"],
+        ["viewMenuButton","icon-view"],
+        ["saveMenuButton","icon-save"],
+        ["saveAsMenuButton","icon-save-as"],
+        ["openMenuButton","icon-open"],
+        ["importCalendarMenuButton","icon-import"],
+        ["exportCalendarMenuButton","icon-export"],
+        ["pdfMenuButton","icon-pdf"],
+        ["importOneDriveMenuButton","icon-cloud-download"],
+        ["importGoogleDriveMenuButton","icon-cloud-download"],
+        ["uploadOneDriveMenuButton","icon-cloud-upload"],
+        ["uploadGoogleDriveMenuButton","icon-cloud-upload"],
+        ["fullSearchMenuButton","icon-search"],
+        ["settingsMenuButton","icon-settings"],
+        ["conflictReviewMenuButton","icon-calendar-check"],
+        ["filterOvertimeMenuButton","icon-filter"],
+        ["toolbarCustomizeMenuButton","icon-view"],
+        ["autosaveMenuButton","icon-autosave"],
+        ["zoomMenuButton","icon-zoom"],
+        ["themeMenuButton","icon-theme"]
+    ]
+
+    iconTargets.forEach(([id,iconClass])=>ensureButtonIcon(document.getElementById(id),iconClass))
+
+    const byOnclick = new Map([
+        ["saveProject()","icon-save"],
+        ["saveProjectAs()","icon-save-as"],
+        ["openProjectFile()","icon-open"],
+        ["importICS()","icon-import"],
+        ["exportICS()","icon-export"],
+        ["exportPDF()","icon-pdf"],
+        ["openFullSearch()","icon-search"],
+        ["openSettings()","icon-settings"],
+        ["openConflictReview()","icon-calendar-check"],
+        ["openImportFilterEditor()","icon-filter"],
+        ["toggleAutosave()","icon-autosave"],
+        ["openToolbarCustomizer()","icon-view"],
+        ["setDayVisibilityFilter('overtime')","icon-filter"]
+    ])
+
+    document.querySelectorAll(".file-menu-item, .file-menu-button, .toolbar-menu button").forEach(button=>{
+        let onclick = button.getAttribute("onclick")
+        let iconClass = byOnclick.get(onclick) || ""
+        if(!iconClass){
+            let text = button.textContent.toLowerCase()
+            if(text.includes("search")) iconClass = "icon-search"
+            else if(text.includes("setting")) iconClass = "icon-settings"
+            else if(text.includes("filter")) iconClass = "icon-filter"
+            else if(text.includes("save as")) iconClass = "icon-save-as"
+            else if(text.includes("save")) iconClass = "icon-save"
+            else if(text.includes("open")) iconClass = "icon-open"
+            else if(text.includes("import")) iconClass = "icon-import"
+            else if(text.includes("export")) iconClass = "icon-export"
+            else if(text.includes("pdf")) iconClass = "icon-pdf"
+            else if(text.includes("onedrive")) iconClass = button.textContent.toLowerCase().includes("import") ? "icon-cloud-download" : "icon-cloud-upload"
+            else if(text.includes("google drive")) iconClass = button.textContent.toLowerCase().includes("import") ? "icon-cloud-download" : "icon-cloud-upload"
+        }
+        ensureButtonIcon(button,iconClass)
+    })
+}
+
+const DESKTOP_MENU_ORDER = [
+    {id:"fileMenuButton", label:"File", icon:"icon-folder"},
+    {id:"editMenuButton", label:"Edit", icon:"icon-edit"},
+    {id:"calendarMenuButton", label:"Calendar", icon:"icon-calendar"},
+    {id:"toolsMenuButton", label:"Tools", icon:"icon-settings"},
+    {id:"viewMenuButton", label:"View", icon:"icon-view"}
+]
+
+function findMenuButton(menu){
+    return document.getElementById(menu.id) || Array.from(document.querySelectorAll("#controls .file-menu-button"))
+        .find(button=>button.textContent.trim().toLowerCase() === menu.label.toLowerCase())
+}
+
+function enforceDesktopMenuBar(){
+    const controls = document.getElementById("controls")
+    if(!controls) return
+    if(!isDesktopLayout()){
+        controls.classList.remove("top-menu-bar")
+        return
+    }
+
+    let wraps = DESKTOP_MENU_ORDER.map(menu=>{
+        let button = findMenuButton(menu)
+        ensureButtonIcon(button,menu.icon)
+        if(button){
+            button.classList.add("desktop-menu-button")
+            let label = button.querySelector(".button-label")
+            if(label) label.textContent = menu.label
+        }
+        return button?.closest(".file-menu-wrap") || null
+    }).filter(Boolean)
+
+    if(!wraps.length) return
+
+    Array.from(controls.children).forEach(child=>{
+        if(!wraps.includes(child)) child.remove()
+    })
+
+    wraps.forEach(wrap=>controls.appendChild(wrap))
+    controls.classList.remove("optimized-controls")
+    controls.classList.add("top-menu-bar")
+}
+
+function ensureMenuBarRendered(){
+    const controls = document.getElementById("controls")
+    if(!controls) return
+    if(controls.querySelector(".file-menu-wrap")) return
+
+    toolbarSettings = cloneToolbarDefaults()
+    try{
+        localStorage.setItem(TOOLBAR_SETTINGS_KEY,JSON.stringify(toolbarSettings))
+    }catch(error){
+        console.warn("Toolbar settings fallback could not be saved.",error)
+    }
+
+    originalRebuildToolbar()
+    enforceDesktopMenuBar()
+    enhanceMenuIcons()
+}
+
 const OUTLOOK_CHROME_KEY = "abtPlannerOutlookChrome"
 
 function loadOutlookChromeState(){
@@ -5490,6 +5817,7 @@ function openRibbonMenu(menuButtonId){
     const menu = trigger?.nextElementSibling
     if(!trigger || !wrap || !menu) return
 
+    enhanceMenuIcons()
     revealRibbon()
     closeOpenFileMenus()
     wrap.classList.add("is-open")
@@ -5595,19 +5923,68 @@ function showRibbonFromTab(tab=null,event=null){
     openRibbonMenu(target)
 }
 
+function openMenuFromQueryParam(){
+    try{
+        const menu = new URLSearchParams(window.location.search).get("openMenu")
+        const byName = {
+            file:"fileMenuButton",
+            edit:"editMenuButton",
+            calendar:"calendarMenuButton",
+            tools:"toolsMenuButton",
+            view:"viewMenuButton"
+        }
+        const targetId = byName[String(menu || "").toLowerCase()]
+        if(targetId) requestAnimationFrame(()=>openRibbonMenu(targetId))
+    }catch(error){
+        console.warn("Could not open menu from query parameter.",error)
+    }
+}
+
+const originalRenderMonthView = renderMonthView
+renderMonthView = function(...args){
+    const result = originalRenderMonthView.apply(this,args)
+    applyOvertimeFilterToViews()
+    return result
+}
+
+const originalUpdate = update
+update = function(...args){
+    const result = originalUpdate.apply(this,args)
+    applyOvertimeFilterToViews()
+    return result
+}
+
+const originalRebuildToolbar = rebuildToolbar
+rebuildToolbar = function(...args){
+    const result = originalRebuildToolbar.apply(this,args)
+    enforceDesktopMenuBar()
+    enhanceMenuIcons()
+    requestAnimationFrame(()=>enhanceMenuIcons())
+    return result
+}
+
 // INIT
 updateAppViewportMetrics()
 syncInputCapabilityClasses()
 loadWorkspaceLayout()
 loadThemeMode()
+setThemeMode("light")
 loadTimelineZoom()
 loadTimelineLayoutMode()
 loadDefaultPlannerView()
+loadDayVisibilityFilter()
+loadSearchScopeFilter()
+loadAgendaSearchFieldFilter()
 loadAutosavePreference()
 loadToolbarCustomization()
 rebuildToolbar()
+enforceDesktopMenuBar()
 applyOutlookChromeState()
 polishControlLabels()
+enhanceMenuIcons()
+ensureMenuBarRendered()
+requestAnimationFrame(()=>ensureMenuBarRendered())
+openMenuFromQueryParam()
 buildTimeline()
 applyTimelineZoom()
 updateActiveDay()
