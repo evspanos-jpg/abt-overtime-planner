@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=119">
+    <link rel="stylesheet" href="static/style.css?v=120">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -161,6 +161,14 @@
                     </select>
                 </label>
                 <label class="export-scope agenda-filter">
+                    <span>Source</span>
+                    <select id="agendaSourceFilter" onchange="setAgendaSourceFilter(this.value)">
+                        <option value="all">All Sources</option>
+                        <option value="planner">Planner Only</option>
+                        <option value="imported">Imported Only</option>
+                    </select>
+                </label>
+                <label class="export-scope agenda-filter">
                     <span>Field</span>
                     <select id="agendaSearchFieldFilter" onchange="setAgendaSearchFieldFilter(this.value)">
                         <option value="all">All Fields</option>
@@ -168,12 +176,22 @@
                         <option value="location">Location</option>
                         <option value="notes">Notes</option>
                         <option value="time">Time</option>
+                        <option value="date">Date</option>
+                    </select>
+                </label>
+                <label class="export-scope agenda-filter">
+                    <span>Length</span>
+                    <select id="agendaDurationFilter" onchange="setAgendaDurationFilter(this.value)">
+                        <option value="all">Any Length</option>
+                        <option value="short">Up to 2h</option>
+                        <option value="standard">2h to 4h</option>
+                        <option value="long">4h+</option>
                     </select>
                 </label>
             </div>
             <label class="agenda-search">
                 <span>Search agenda</span>
-                <input type="search" id="agendaSearchInput" placeholder="Search title, time, location, or overtime" oninput="updateOutlookPanels()">
+                <input type="search" id="agendaSearchInput" placeholder="Search title, time, location, or use AND / OR / NOT" oninput="updateOutlookPanels()">
             </label>
             <div class="agenda-list" id="agendaList"></div>
         </aside>
@@ -307,7 +325,7 @@
                 <div class="full-search-toolbar block-editor-wide">
                     <label class="full-search-field">
                         <span>Search all calendar data</span>
-                        <input type="search" id="fullSearchInput" placeholder="Search title, notes, location, date, or time" oninput="renderFullSearchResults()">
+                        <input type="search" id="fullSearchInput" placeholder="Search title, notes, location, date, or use AND / OR / NOT" oninput="renderFullSearchResults()">
                     </label>
                     <label class="export-scope overtime-filter full-search-filter">
                         <span>Filter</span>
@@ -322,6 +340,35 @@
                             <option value="all">All Data</option>
                             <option value="week">Week</option>
                             <option value="month">Month</option>
+                        </select>
+                    </label>
+                    <label class="export-scope overtime-filter full-search-filter">
+                        <span>Source</span>
+                        <select id="searchSourceFilter" onchange="setSearchSourceFilter(this.value)">
+                            <option value="all">All Sources</option>
+                            <option value="planner">Planner Only</option>
+                            <option value="imported">Imported Only</option>
+                        </select>
+                    </label>
+                    <label class="export-scope overtime-filter full-search-filter">
+                        <span>Field</span>
+                        <select id="fullSearchFieldFilter" onchange="setFullSearchFieldFilter(this.value)">
+                            <option value="all">All Fields</option>
+                            <option value="title">Title</option>
+                            <option value="location">Location</option>
+                            <option value="notes">Notes</option>
+                            <option value="time">Time</option>
+                            <option value="date">Date</option>
+                            <option value="source">Source</option>
+                        </select>
+                    </label>
+                    <label class="export-scope overtime-filter full-search-filter">
+                        <span>Length</span>
+                        <select id="searchDurationFilter" onchange="setSearchDurationFilter(this.value)">
+                            <option value="all">Any Length</option>
+                            <option value="short">Up to 2h</option>
+                            <option value="standard">2h to 4h</option>
+                            <option value="long">4h+</option>
                         </select>
                     </label>
                 </div>
@@ -428,6 +475,11 @@ const TIMELINE_LAYOUT_MODE_KEY = "abtOvertimePlannerTimelineLayoutMode"
 const DEFAULT_VIEW_KEY = "abtOvertimePlannerDefaultView"
 const DAY_VISIBILITY_FILTER_KEY = "abtOvertimePlannerDayVisibilityFilter"
 const SEARCH_SCOPE_FILTER_KEY = "abtOvertimePlannerSearchScopeFilter"
+const SEARCH_SOURCE_FILTER_KEY = "abtOvertimePlannerSearchSourceFilter"
+const SEARCH_DURATION_FILTER_KEY = "abtOvertimePlannerSearchDurationFilter"
+const FULL_SEARCH_FIELD_FILTER_KEY = "abtOvertimePlannerFullSearchFieldFilter"
+const AGENDA_SOURCE_FILTER_KEY = "abtOvertimePlannerAgendaSourceFilter"
+const AGENDA_DURATION_FILTER_KEY = "abtOvertimePlannerAgendaDurationFilter"
 const AGENDA_SEARCH_FIELD_FILTER_KEY = "abtOvertimePlannerAgendaSearchFieldFilter"
 const TIMELINE_ZOOM_MIN = 0.75
 const TIMELINE_ZOOM_MAX = 1.5
@@ -537,6 +589,11 @@ let timelineLayoutMode = "fit"
 let defaultPlannerView = "week"
 let dayVisibilityFilter = "all"
 let searchScopeFilter = "all"
+let searchSourceFilter = "all"
+let searchDurationFilter = "all"
+let fullSearchFieldFilter = "all"
+let agendaSourceFilter = "all"
+let agendaDurationFilter = "all"
 let agendaSearchFieldFilter = "all"
 let toastTimer = null
 
@@ -708,8 +765,20 @@ function normalizeSearchScopeFilter(value){
     return ["all","week","month"].includes(value) ? value : "all"
 }
 
+function normalizeSourceFilter(value){
+    return ["all","planner","imported"].includes(value) ? value : "all"
+}
+
+function normalizeDurationFilter(value){
+    return ["all","short","standard","long"].includes(value) ? value : "all"
+}
+
+function normalizeFullSearchFieldFilter(value){
+    return ["all","title","location","notes","time","date","source"].includes(value) ? value : "all"
+}
+
 function normalizeAgendaSearchFieldFilter(value){
-    return ["all","title","location","notes","time"].includes(value) ? value : "all"
+    return ["all","title","location","notes","time","date"].includes(value) ? value : "all"
 }
 
 function calculateOvertimeSummary(schedule){
@@ -794,6 +863,31 @@ function updateSearchScopeFilterControl(){
     if(input) input.value = searchScopeFilter
 }
 
+function updateSearchSourceFilterControl(){
+    let input = document.getElementById("searchSourceFilter")
+    if(input) input.value = searchSourceFilter
+}
+
+function updateSearchDurationFilterControl(){
+    let input = document.getElementById("searchDurationFilter")
+    if(input) input.value = searchDurationFilter
+}
+
+function updateFullSearchFieldFilterControl(){
+    let input = document.getElementById("fullSearchFieldFilter")
+    if(input) input.value = fullSearchFieldFilter
+}
+
+function updateAgendaSourceFilterControl(){
+    let input = document.getElementById("agendaSourceFilter")
+    if(input) input.value = agendaSourceFilter
+}
+
+function updateAgendaDurationFilterControl(){
+    let input = document.getElementById("agendaDurationFilter")
+    if(input) input.value = agendaDurationFilter
+}
+
 function updateAgendaSearchFieldFilterControl(){
     let input = document.getElementById("agendaSearchFieldFilter")
     if(input) input.value = agendaSearchFieldFilter
@@ -845,6 +939,11 @@ function applyOvertimeFilterToMonth(){
 function applyOvertimeFilterToViews(){
     updateDayVisibilityFilterControl()
     updateSearchScopeFilterControl()
+    updateSearchSourceFilterControl()
+    updateSearchDurationFilterControl()
+    updateFullSearchFieldFilterControl()
+    updateAgendaSourceFilterControl()
+    updateAgendaDurationFilterControl()
     updateAgendaSearchFieldFilterControl()
     applyOvertimeFilterToTimeline()
     applyOvertimeFilterToMonth()
@@ -894,6 +993,106 @@ function loadSearchScopeFilter(){
         searchScopeFilter = "all"
     }
     updateSearchScopeFilterControl()
+}
+
+function setSearchSourceFilter(value){
+    searchSourceFilter = normalizeSourceFilter(value)
+    try{
+        localStorage.setItem(SEARCH_SOURCE_FILTER_KEY,searchSourceFilter)
+    }catch(error){
+        console.warn("Search source filter could not be saved.",error)
+    }
+    updateSearchSourceFilterControl()
+    renderFullSearchResults()
+}
+
+function loadSearchSourceFilter(){
+    try{
+        searchSourceFilter = normalizeSourceFilter(localStorage.getItem(SEARCH_SOURCE_FILTER_KEY))
+    }catch(error){
+        searchSourceFilter = "all"
+    }
+    updateSearchSourceFilterControl()
+}
+
+function setSearchDurationFilter(value){
+    searchDurationFilter = normalizeDurationFilter(value)
+    try{
+        localStorage.setItem(SEARCH_DURATION_FILTER_KEY,searchDurationFilter)
+    }catch(error){
+        console.warn("Search duration filter could not be saved.",error)
+    }
+    updateSearchDurationFilterControl()
+    renderFullSearchResults()
+}
+
+function loadSearchDurationFilter(){
+    try{
+        searchDurationFilter = normalizeDurationFilter(localStorage.getItem(SEARCH_DURATION_FILTER_KEY))
+    }catch(error){
+        searchDurationFilter = "all"
+    }
+    updateSearchDurationFilterControl()
+}
+
+function setFullSearchFieldFilter(value){
+    fullSearchFieldFilter = normalizeFullSearchFieldFilter(value)
+    try{
+        localStorage.setItem(FULL_SEARCH_FIELD_FILTER_KEY,fullSearchFieldFilter)
+    }catch(error){
+        console.warn("Full search field filter could not be saved.",error)
+    }
+    updateFullSearchFieldFilterControl()
+    renderFullSearchResults()
+}
+
+function loadFullSearchFieldFilter(){
+    try{
+        fullSearchFieldFilter = normalizeFullSearchFieldFilter(localStorage.getItem(FULL_SEARCH_FIELD_FILTER_KEY))
+    }catch(error){
+        fullSearchFieldFilter = "all"
+    }
+    updateFullSearchFieldFilterControl()
+}
+
+function setAgendaSourceFilter(value){
+    agendaSourceFilter = normalizeSourceFilter(value)
+    try{
+        localStorage.setItem(AGENDA_SOURCE_FILTER_KEY,agendaSourceFilter)
+    }catch(error){
+        console.warn("Agenda source filter could not be saved.",error)
+    }
+    updateAgendaSourceFilterControl()
+    updateOutlookPanels({forceAgenda:true})
+}
+
+function loadAgendaSourceFilter(){
+    try{
+        agendaSourceFilter = normalizeSourceFilter(localStorage.getItem(AGENDA_SOURCE_FILTER_KEY))
+    }catch(error){
+        agendaSourceFilter = "all"
+    }
+    updateAgendaSourceFilterControl()
+}
+
+function setAgendaDurationFilter(value){
+    agendaDurationFilter = normalizeDurationFilter(value)
+    try{
+        localStorage.setItem(AGENDA_DURATION_FILTER_KEY,agendaDurationFilter)
+    }catch(error){
+        console.warn("Agenda duration filter could not be saved.",error)
+    }
+    updateAgendaDurationFilterControl()
+    updateOutlookPanels({forceAgenda:true})
+}
+
+function loadAgendaDurationFilter(){
+    try{
+        agendaDurationFilter = normalizeDurationFilter(localStorage.getItem(AGENDA_DURATION_FILTER_KEY))
+    }catch(error){
+        agendaDurationFilter = "all"
+    }
+    updateAgendaDurationFilterControl()
 }
 
 function setAgendaSearchFieldFilter(value){
@@ -4107,6 +4306,35 @@ function agendaScopeBlocks(){
     return plannerView === "month" ? monthAgendaBlocks() : selectedWeekAgendaBlocks()
 }
 
+function blockSourceLabel(block){
+    if(block?.source) return block.source
+    return plannerView === "month" ? "Imported calendar" : "Planner blocks"
+}
+
+function enrichBlockWithFilterMetadata(block, fallbackSource="Planner blocks"){
+    return {
+        ...block,
+        source:block?.source || fallbackSource
+    }
+}
+
+function blockMatchesSourceFilter(block, filterValue){
+    if(filterValue === "all" || !block) return true
+    let source = String(block.source || "").toLowerCase()
+    if(filterValue === "planner") return source.includes("planner") || source.includes("selected week")
+    if(filterValue === "imported") return source.includes("import")
+    return true
+}
+
+function blockMatchesDurationFilter(block, filterValue){
+    if(filterValue === "all" || !block) return true
+    let duration = Number(block.duration ?? block.dur) || 0
+    if(filterValue === "short") return duration > 0 && duration <= 2
+    if(filterValue === "standard") return duration > 2 && duration <= 4
+    if(filterValue === "long") return duration > 4
+    return true
+}
+
 function searchableBlockValues(block){
     return [
         block.title,
@@ -4121,9 +4349,82 @@ function searchableBlockValues(block){
     ]
 }
 
-function matchesSearchQuery(block,query){
+function normalizedSearchValues(values=[]){
+    return values
+        .map(value=>String(value || "").toLowerCase().trim())
+        .filter(Boolean)
+}
+
+function hasBooleanSearchOperators(query=""){
+    return /\b(?:and|or|not)\b|(^|\s)-\S+/i.test(String(query || ""))
+}
+
+function unquoteSearchToken(token=""){
+    return String(token || "").replace(/^"(.*)"$/,"$1").trim().toLowerCase()
+}
+
+function booleanSearchSegments(query=""){
+    return String(query || "")
+        .trim()
+        .split(/\s+\bOR\b\s+/i)
+        .map(segment=>segment.trim())
+        .filter(Boolean)
+}
+
+function segmentMatchesBooleanSearch(values,segment){
+    let tokens = String(segment || "").match(/"[^"]+"|\S+/g) || []
+    let negateNext = false
+    let hasTerms = false
+
+    for(let token of tokens){
+        if(/^AND$/i.test(token)) continue
+        if(/^NOT$/i.test(token)){
+            negateNext = !negateNext
+            continue
+        }
+
+        let negated = negateNext || token.startsWith("-")
+        let normalizedToken = unquoteSearchToken(token.startsWith("-") ? token.slice(1) : token)
+        negateNext = false
+        if(!normalizedToken) continue
+
+        hasTerms = true
+        let matched = values.some(value=>value.includes(normalizedToken))
+        if(negated ? matched : !matched) return false
+    }
+
+    return hasTerms
+}
+
+function matchesSearchValues(values,query){
     if(!query) return true
-    return searchableBlockValues(block).some(value=>String(value || "").toLowerCase().includes(query))
+    let normalizedQuery = String(query || "").trim().toLowerCase()
+    let normalizedValuesList = normalizedSearchValues(values)
+    if(!normalizedValuesList.length) return false
+
+    if(!hasBooleanSearchOperators(normalizedQuery)){
+        return normalizedValuesList.some(value=>value.includes(normalizedQuery))
+    }
+
+    return booleanSearchSegments(normalizedQuery).some(segment=>segmentMatchesBooleanSearch(normalizedValuesList,segment))
+}
+
+function matchesSearchQuery(block,query){
+    return matchesSearchValues(searchableBlockValues(block),query)
+}
+
+function fullSearchFieldValues(block){
+    if(fullSearchFieldFilter === "title") return [block.title]
+    if(fullSearchFieldFilter === "location") return [block.location]
+    if(fullSearchFieldFilter === "notes") return [block.description]
+    if(fullSearchFieldFilter === "time") return [formatTime(block.start), formatTime(block.start + block.dur)]
+    if(fullSearchFieldFilter === "date") return [block.dateKey, block.date ? block.date.toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric", year:"numeric"}) : "", DAY_LABELS[block.day]]
+    if(fullSearchFieldFilter === "source") return [block.source]
+    return searchableBlockValues(block)
+}
+
+function matchesFullSearchQuery(block,query){
+    return matchesSearchValues(fullSearchFieldValues(block),query)
 }
 
 function matchesAgendaSearchQuery(block,query){
@@ -4137,17 +4438,21 @@ function matchesAgendaSearchQuery(block,query){
     else if(agendaSearchFieldFilter === "location") values = [block.location]
     else if(agendaSearchFieldFilter === "notes") values = [block.description]
     else if(agendaSearchFieldFilter === "time") values = [formatTime(block.start), formatTime(block.start + block.dur), block.dateKey]
+    else if(agendaSearchFieldFilter === "date") values = [block.dateKey, block.date ? block.date.toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric", year:"numeric"}) : "", DAY_LABELS[block.day]]
     else values = searchableBlockValues(block)
 
-    return values.some(value=>String(value || "").toLowerCase().includes(query))
+    return matchesSearchValues(values,query)
 }
 
 function visibleAgendaBlocks(){
     let query = String(document.getElementById("agendaSearchInput")?.value || "").trim().toLowerCase()
     let visibleDays = new Set(visibleTimelineDays())
     return agendaScopeBlocks()
+        .map(block=>enrichBlockWithFilterMetadata(block,blockSourceLabel(block)))
         .filter(block=>plannerView === "month" || visibleDays.has(block.day))
         .filter(block=>blockMatchesDayVisibilityFilter(block))
+        .filter(block=>blockMatchesSourceFilter(block,agendaSourceFilter))
+        .filter(block=>blockMatchesDurationFilter(block,agendaDurationFilter))
         .filter(block=>matchesAgendaSearchQuery(block,query))
 }
 
@@ -4190,10 +4495,10 @@ function allSearchBlocks(){
 
 function scopedSearchBlocks(){
     if(searchScopeFilter === "week"){
-        return selectedWeekAgendaBlocks().map(block=>({...block, source:"Selected week"}))
+        return selectedWeekAgendaBlocks().map(block=>({...block, source:"Planner blocks"}))
     }
     if(searchScopeFilter === "month"){
-        return monthAgendaBlocks().map(block=>({...block, source:"Current month"}))
+        return monthAgendaBlocks().map(block=>({...block, source:"Imported calendar"}))
     }
     return allSearchBlocks()
 }
@@ -4308,8 +4613,11 @@ function renderFullSearchResults(){
 
     let query = String(input?.value || "").trim().toLowerCase()
     let matches = scopedSearchBlocks()
+        .map(block=>enrichBlockWithFilterMetadata(block,block.source || "Planner blocks"))
         .filter(block=>blockMatchesDayVisibilityFilter(block))
-        .filter(block=>matchesSearchQuery(block,query))
+        .filter(block=>blockMatchesSourceFilter(block,searchSourceFilter))
+        .filter(block=>blockMatchesDurationFilter(block,searchDurationFilter))
+        .filter(block=>matchesFullSearchQuery(block,query))
     let displayMatches = query ? matches.slice(0,100) : matches.slice(0,30)
     results.innerHTML = ""
 
@@ -5974,6 +6282,11 @@ loadTimelineLayoutMode()
 loadDefaultPlannerView()
 loadDayVisibilityFilter()
 loadSearchScopeFilter()
+loadSearchSourceFilter()
+loadSearchDurationFilter()
+loadFullSearchFieldFilter()
+loadAgendaSourceFilter()
+loadAgendaDurationFilter()
 loadAgendaSearchFieldFilter()
 loadAutosavePreference()
 loadToolbarCustomization()

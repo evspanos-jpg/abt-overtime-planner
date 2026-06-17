@@ -1802,7 +1802,7 @@ body.selecting-blocks * {
 
 .full-search-toolbar {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(220px, 1.4fr) repeat(5, minmax(120px, 0.7fr));
     gap: 12px;
     align-items: end;
 }
@@ -9099,14 +9099,14 @@ body.ribbon-auto-hide .outlook-topbar .file-backstage-menu {
 ========================= */
 :root {
     color-scheme: light;
-    --bg: #f6f8fc;
+    --bg: #f8fafd;
     --surface: #ffffff;
     --surface-2: #ffffff;
-    --surface-3: #f8fafd;
+    --surface-3: #f1f3f4;
     --surface-glass: rgba(255, 255, 255, 0.96);
-    --line: #dde3ea;
-    --line-soft: rgba(95, 99, 104, 0.18);
-    --line-faint: rgba(95, 99, 104, 0.1);
+    --line: #dadce0;
+    --line-soft: rgba(95, 99, 104, 0.16);
+    --line-faint: rgba(95, 99, 104, 0.08);
     --text: #202124;
     --muted: #5f6368;
     --muted-2: #80868b;
@@ -9139,11 +9139,11 @@ body {
 
 .app-shell {
     width: min(100%, 1760px);
-    gap: 12px;
+    gap: 16px;
 }
 
 .outlook-topbar {
-    gap: 8px;
+    gap: 10px;
 }
 
 .toolbar,
@@ -9163,30 +9163,29 @@ body {
 .full-search-results,
 .agenda-day-group {
     background: #fff !important;
-    border-color: #dde3ea !important;
-    box-shadow: none !important;
+    border-color: #dadce0 !important;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.08) !important;
     color: var(--text);
 }
 
 .toolbar {
-    padding: 8px 10px;
-    border-radius: 0;
-    border-left: 0;
-    border-right: 0;
+    padding: 10px 14px;
+    border-radius: 18px;
+    border: 1px solid #dadce0;
     backdrop-filter: none;
 }
 
 #controls.top-menu-bar {
-    gap: 8px;
-    min-height: 40px;
+    gap: 6px;
+    min-height: 44px;
 }
 
 #controls.top-menu-bar .file-menu-button,
 #controls.top-menu-bar .desktop-menu-button {
-    min-height: 36px;
-    padding: 6px 12px;
+    min-height: 38px;
+    padding: 7px 14px;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: 999px;
     background: transparent;
     color: #3c4043;
     font-weight: 500;
@@ -9203,7 +9202,7 @@ body {
 .file-menu {
     width: min(360px, calc(100vw - 32px));
     padding: 8px;
-    border-radius: 14px;
+    border-radius: 18px;
     background: #fff !important;
     box-shadow: 0 8px 24px rgba(60, 64, 67, 0.18) !important;
 }
@@ -9223,7 +9222,7 @@ body {
     min-height: 38px;
     padding: 8px 12px;
     border: 1px solid transparent;
-    border-radius: 10px;
+    border-radius: 12px;
     background: transparent;
     color: #202124;
     font-weight: 500;
@@ -9237,13 +9236,13 @@ body {
 }
 
 button {
-    min-height: 38px;
-    border-radius: 8px;
+    min-height: 40px;
+    border-radius: 999px;
     border: 1px solid #dadce0;
     background: #1a73e8;
     color: #fff;
     box-shadow: none;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 button:hover {
@@ -9297,21 +9296,23 @@ button.primary:hover,
 }
 
 .earnings-card {
-    min-width: 112px;
-    padding: 10px 12px;
-    text-align: center;
-    border-radius: 10px;
+    min-width: 108px;
+    padding: 10px 14px;
+    text-align: left;
+    border-radius: 18px;
+    background: #fff !important;
 }
 
 .earnings-card span {
     color: #5f6368;
     font-size: 11px;
+    letter-spacing: 0.02em;
 }
 
 .earnings-card strong {
     margin-top: 4px;
     color: #1a73e8;
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 700;
 }
 
@@ -9322,11 +9323,12 @@ body.navigation-auto-hide .calendar-workspace {
 
 .calendar-rail,
 .agenda-pane {
-    border-radius: 16px;
+    border-radius: 24px;
+    background: #fff !important;
 }
 
 .calendar-rail {
-    padding: 12px;
+    padding: 16px;
 }
 
 .navigation-pane-header,
@@ -9348,14 +9350,16 @@ body.navigation-auto-hide .calendar-workspace {
 .navigation-pane-header,
 .timeline-header,
 .month-header {
-    border-bottom: 1px solid #eef1f4;
-    padding-bottom: 10px;
-    margin-bottom: 10px;
+    border-bottom: 1px solid #edf1f5;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
 }
 
 .rail-date-card {
-    background: #eef3fd !important;
-    border-radius: 16px;
+    background: #e8f0fe !important;
+    border: 1px solid #d2e3fc !important;
+    border-radius: 20px;
+    padding: 14px 16px;
 }
 
 .rail-date-card span,
@@ -9378,6 +9382,7 @@ body.navigation-auto-hide .calendar-workspace {
 
 .rail-action-button {
     border-radius: 999px;
+    min-height: 36px;
 }
 
 .rail-action-button[onclick*=\"setPlannerView('week')\"],
@@ -9386,8 +9391,9 @@ body.navigation-auto-hide .calendar-workspace {
 }
 
 .mini-month {
-    padding: 10px;
-    border-radius: 16px;
+    padding: 12px;
+    border-radius: 20px;
+    background: #fff !important;
 }
 
 .mini-month-header strong,
@@ -9404,38 +9410,19 @@ body.navigation-auto-hide .calendar-workspace {
     border-radius: 999px;
 }
 
+.mini-month-day {
+    border-radius: 999px;
+}
+
+.mini-month-day:hover {
+    background: #f1f3f4 !important;
+}
+
 .timeline-panel,
 .month-panel,
 .agenda-pane {
-    padding: 14px;
-    border-radius: 16px;
-}
-
-#timeline-container,
-#timeline,
-.week-grid-body,
-.week-grid-header,
-#dayColumns {
-    background: #fff;
-}
-
-.week-grid-header {
-    border-bottom: 1px solid #e8eaed;
-}
-
-.day-heading {
-    background: #fff;
-    color: #3c4043;
-    border-right: 1px solid #eef1f4;
-}
-
-.day-heading span {
-    color: #5f6368;
-    font-weight: 600;
-}
-
-.day-heading strong {
-    color: #1a73e8;
+    padding: 16px;
+    border-radius: 24px;
 }
 
 .time-line,
@@ -9443,15 +9430,9 @@ body.navigation-auto-hide .calendar-workspace {
     color: #5f6368 !important;
 }
 
-.grid-line.hour,
-.grid-line.quarter,
-.day-column {
-    border-color: #eef1f4 !important;
-}
-
 .agenda-header {
-    padding-bottom: 8px;
-    margin-bottom: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
 }
 
 .agenda-search input,
@@ -9464,7 +9445,7 @@ select {
     background: #fff !important;
     color: #202124 !important;
     border: 1px solid #dadce0 !important;
-    border-radius: 8px !important;
+    border-radius: 12px !important;
     box-shadow: none !important;
 }
 
@@ -9505,31 +9486,23 @@ textarea:focus-visible {
 
 .agenda-item,
 .full-search-result,
-.conflict-review-item,
-.month-day {
+.conflict-review-item {
     background: #fff !important;
     border: 1px solid #e8eaed !important;
     box-shadow: none !important;
 }
 
 .agenda-item:hover,
-.full-search-result:hover,
-.month-day:hover {
+.full-search-result:hover {
     background: #f8fafd !important;
     border-color: #d2e3fc !important;
 }
 
-.month-weekdays span {
-    color: #5f6368;
-}
-
-.month-grid {
-    background: #fff;
-}
-
-.month-day.is-today,
-.day-heading.is-today {
-    background: #e8f0fe !important;
+.agenda-item,
+.full-search-result,
+.conflict-review-item {
+    border-radius: 16px;
+    padding: 12px 14px;
 }
 
 .modal-backdrop {
@@ -9541,11 +9514,12 @@ textarea:focus-visible {
 .full-search-dialog,
 .conflict-review-dialog,
 .toolbar-customizer {
-    border-radius: 20px;
+    border-radius: 28px;
 }
 
 @media (min-width: 761px) and (max-width: 1180px) {
-    .toolbar {
+    .toolbar,
+    .outlook-topbar .toolbar {
         display: none !important;
     }
 
@@ -9553,7 +9527,12 @@ textarea:focus-visible {
         display: grid;
         grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 10px;
-        padding: 10px;
+        align-items: stretch;
+        grid-auto-rows: minmax(40px, auto);
+        position: relative;
+        z-index: 8;
+        padding: 12px;
+        margin-bottom: 8px;
         border: 1px solid #dde3ea;
         border-radius: 16px;
         background: #fff;
@@ -9561,6 +9540,7 @@ textarea:focus-visible {
 
     .tablet-toolbar button {
         min-height: 40px;
+        height: 100%;
     }
 
     #controls.top-menu-bar {
