@@ -8,8 +8,8 @@
 :root {
     color-scheme: dark;
     --app-vh: 1vh;
-    --workspace-rail-width: 196px;
-    --workspace-agenda-width: 360px;
+    --workspace-rail-width: 208px;
+    --workspace-agenda-width: 380px;
     --timeline-zoom: 1;
     --timeline-height: 1300px;
     --scrollbar-track: rgba(255, 252, 244, 0.1);
@@ -9867,6 +9867,49 @@ textarea:focus-visible {
 
     .day-column {
         min-width: 0 !important;
+    }
+}
+
+@media (min-width: 2200px) {
+    body {
+        padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)) !important;
+    }
+
+    .app-shell {
+        width: calc(100vw - 24px) !important;
+        gap: 16px !important;
+    }
+
+    .calendar-workspace,
+    body.navigation-auto-hide .calendar-workspace {
+        grid-template-columns:
+            minmax(196px, min(var(--workspace-rail-width), 12vw))
+            8px
+            minmax(0, 1fr)
+            8px
+            minmax(340px, min(var(--workspace-agenda-width), 18vw)) !important;
+        gap: 14px !important;
+    }
+
+    .timeline-panel,
+    #timeline-container {
+        border-radius: 28px !important;
+    }
+
+    .timeline-header {
+        padding-inline: 26px !important;
+    }
+
+    .week-grid-header {
+        grid-template-columns: 72px repeat(7, minmax(148px, 1fr)) !important;
+    }
+
+    .week-grid-body {
+        grid-template-columns: 72px minmax(0, 1fr) !important;
+    }
+
+    #dayColumns {
+        grid-template-columns: repeat(7, minmax(148px, 1fr)) !important;
     }
 }
 
