@@ -10478,14 +10478,28 @@ textarea:focus-visible {
 }
 
 :root[data-theme="light"] .month-panel,
+:root[data-theme="light"] .month-weekdays,
 :root[data-theme="light"] .month-grid,
 :root[data-theme="light"] .mini-month {
     background: #ffffff !important;
 }
 
+:root[data-theme="light"] .month-panel::before {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.96), transparent) !important;
+}
+
+:root[data-theme="light"] .month-panel::after {
+    background: linear-gradient(270deg, rgba(255, 255, 255, 0.96), transparent) !important;
+}
+
 :root[data-theme="light"] .month-header,
 :root[data-theme="light"] .month-week-total {
     border-color: #d8e2ee !important;
+}
+
+:root[data-theme="light"] .month-weekdays span {
+    border-color: #d8e2ee !important;
+    color: #6b7280 !important;
 }
 
 :root[data-theme="light"] .month-grid {
