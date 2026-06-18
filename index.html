@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=126">
+    <link rel="stylesheet" href="static/style.css?v=146">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -149,28 +149,50 @@
 
         <aside class="agenda-pane" aria-label="Agenda">
             <header class="agenda-header">
-                <span>Agenda</span>
-                <strong id="agendaRangeLabel">Selected week</strong>
+                <div class="agenda-header-copy">
+                    <span>Agenda</span>
+                    <strong id="agendaRangeLabel">Selected week</strong>
+                </div>
+                <div class="tablet-agenda-size-controls" aria-label="Adjust agenda size">
+                    <button type="button" class="secondary tablet-agenda-size-button" id="tabletAgendaCompactButton" onclick="setTabletAgendaSize('compact')">Compact</button>
+                    <button type="button" class="secondary tablet-agenda-size-button" id="tabletAgendaDefaultButton" onclick="setTabletAgendaSize('default')">Default</button>
+                    <button type="button" class="secondary tablet-agenda-size-button" id="tabletAgendaExpandedButton" onclick="setTabletAgendaSize('expanded')">Expanded</button>
+                    <label class="tablet-agenda-slider">
+                        <span>Size</span>
+                        <input type="range" id="tabletAgendaHeightSlider" min="220" max="720" step="10" value="360" oninput="setTabletAgendaHeight(this.value,false)" onchange="setTabletAgendaHeight(this.value,true)">
+                    </label>
+                </div>
             </header>
             <div class="agenda-search-toolbar">
-                <label class="export-scope agenda-filter">
+                <div class="export-scope agenda-filter agenda-filter-popup" data-agenda-filter="overtime">
                     <span>Filter</span>
-                    <select id="agendaOvertimeFilter" onchange="setDayVisibilityFilter(this.value)">
+                    <select id="agendaOvertimeFilter" class="agenda-filter-native" onchange="setDayVisibilityFilter(this.value)" tabindex="-1" aria-hidden="true">
                         <option value="all">All Days</option>
                         <option value="overtime">OT Only</option>
                     </select>
-                </label>
-                <label class="export-scope agenda-filter">
+                    <button type="button" class="agenda-filter-trigger" id="agendaOvertimeFilterButton" onclick="toggleAgendaFilterMenu('overtime')" aria-haspopup="menu" aria-expanded="false"></button>
+                    <div class="agenda-filter-menu" id="agendaOvertimeFilterMenu" role="menu">
+                        <button type="button" class="agenda-filter-option" data-value="all" onclick="selectAgendaFilterValue('overtime','all')">All Days</button>
+                        <button type="button" class="agenda-filter-option" data-value="overtime" onclick="selectAgendaFilterValue('overtime','overtime')">OT Only</button>
+                    </div>
+                </div>
+                <div class="export-scope agenda-filter agenda-filter-popup" data-agenda-filter="source">
                     <span>Source</span>
-                    <select id="agendaSourceFilter" onchange="setAgendaSourceFilter(this.value)">
+                    <select id="agendaSourceFilter" class="agenda-filter-native" onchange="setAgendaSourceFilter(this.value)" tabindex="-1" aria-hidden="true">
                         <option value="all">All Sources</option>
                         <option value="planner">Planner Only</option>
                         <option value="imported">Imported Only</option>
                     </select>
-                </label>
-                <label class="export-scope agenda-filter">
+                    <button type="button" class="agenda-filter-trigger" id="agendaSourceFilterButton" onclick="toggleAgendaFilterMenu('source')" aria-haspopup="menu" aria-expanded="false"></button>
+                    <div class="agenda-filter-menu" id="agendaSourceFilterMenu" role="menu">
+                        <button type="button" class="agenda-filter-option" data-value="all" onclick="selectAgendaFilterValue('source','all')">All Sources</button>
+                        <button type="button" class="agenda-filter-option" data-value="planner" onclick="selectAgendaFilterValue('source','planner')">Planner Only</button>
+                        <button type="button" class="agenda-filter-option" data-value="imported" onclick="selectAgendaFilterValue('source','imported')">Imported Only</button>
+                    </div>
+                </div>
+                <div class="export-scope agenda-filter agenda-filter-popup" data-agenda-filter="field">
                     <span>Field</span>
-                    <select id="agendaSearchFieldFilter" onchange="setAgendaSearchFieldFilter(this.value)">
+                    <select id="agendaSearchFieldFilter" class="agenda-filter-native" onchange="setAgendaSearchFieldFilter(this.value)" tabindex="-1" aria-hidden="true">
                         <option value="all">All Fields</option>
                         <option value="title">Title</option>
                         <option value="location">Location</option>
@@ -178,16 +200,32 @@
                         <option value="time">Time</option>
                         <option value="date">Date</option>
                     </select>
-                </label>
-                <label class="export-scope agenda-filter">
+                    <button type="button" class="agenda-filter-trigger" id="agendaSearchFieldFilterButton" onclick="toggleAgendaFilterMenu('field')" aria-haspopup="menu" aria-expanded="false"></button>
+                    <div class="agenda-filter-menu" id="agendaSearchFieldFilterMenu" role="menu">
+                        <button type="button" class="agenda-filter-option" data-value="all" onclick="selectAgendaFilterValue('field','all')">All Fields</button>
+                        <button type="button" class="agenda-filter-option" data-value="title" onclick="selectAgendaFilterValue('field','title')">Title</button>
+                        <button type="button" class="agenda-filter-option" data-value="location" onclick="selectAgendaFilterValue('field','location')">Location</button>
+                        <button type="button" class="agenda-filter-option" data-value="notes" onclick="selectAgendaFilterValue('field','notes')">Notes</button>
+                        <button type="button" class="agenda-filter-option" data-value="time" onclick="selectAgendaFilterValue('field','time')">Time</button>
+                        <button type="button" class="agenda-filter-option" data-value="date" onclick="selectAgendaFilterValue('field','date')">Date</button>
+                    </div>
+                </div>
+                <div class="export-scope agenda-filter agenda-filter-popup" data-agenda-filter="duration">
                     <span>Length</span>
-                    <select id="agendaDurationFilter" onchange="setAgendaDurationFilter(this.value)">
+                    <select id="agendaDurationFilter" class="agenda-filter-native" onchange="setAgendaDurationFilter(this.value)" tabindex="-1" aria-hidden="true">
                         <option value="all">Any Length</option>
                         <option value="short">Up to 2h</option>
                         <option value="standard">2h to 4h</option>
                         <option value="long">4h+</option>
                     </select>
-                </label>
+                    <button type="button" class="agenda-filter-trigger" id="agendaDurationFilterButton" onclick="toggleAgendaFilterMenu('duration')" aria-haspopup="menu" aria-expanded="false"></button>
+                    <div class="agenda-filter-menu" id="agendaDurationFilterMenu" role="menu">
+                        <button type="button" class="agenda-filter-option" data-value="all" onclick="selectAgendaFilterValue('duration','all')">Any Length</button>
+                        <button type="button" class="agenda-filter-option" data-value="short" onclick="selectAgendaFilterValue('duration','short')">Up to 2h</button>
+                        <button type="button" class="agenda-filter-option" data-value="standard" onclick="selectAgendaFilterValue('duration','standard')">2h to 4h</button>
+                        <button type="button" class="agenda-filter-option" data-value="long" onclick="selectAgendaFilterValue('duration','long')">4h+</button>
+                    </div>
+                </div>
             </div>
             <label class="agenda-search">
                 <span>Search agenda</span>
@@ -485,7 +523,8 @@ const TIMELINE_ZOOM_MIN = 0.75
 const TIMELINE_ZOOM_MAX = 1.5
 const TIMELINE_ZOOM_STEP = 0.125
 const MOBILE_LAYOUT_QUERY = "(max-width: 760px)"
-const DESKTOP_LAYOUT_QUERY = "(min-width: 761px)"
+const TABLET_LAYOUT_QUERY = "(min-width: 761px) and (max-width: 1366px)"
+const DESKTOP_LAYOUT_QUERY = "(min-width: 1367px)"
 const TOUCH_CAPABLE_QUERY = "(any-pointer: coarse), (pointer: coarse)"
 const PROJECT_FILE_VERSION = 1
 const PROJECT_FILE_TYPE = "abt-overtime-planner"
@@ -705,7 +744,7 @@ function isPhoneLayout(){
 }
 
 function isTabletLayout(){
-    return window.matchMedia("(min-width: 761px) and (max-width: 1180px) and (pointer: coarse)").matches
+    return window.matchMedia(TABLET_LAYOUT_QUERY).matches
 }
 
 function isDesktopLayout(){
@@ -856,6 +895,7 @@ function updateDayVisibilityFilterControl(){
         let input = document.getElementById(id)
         if(input) input.value = dayVisibilityFilter
     })
+    syncAgendaFilterMenu("overtime")
 }
 
 function updateSearchScopeFilterControl(){
@@ -881,16 +921,83 @@ function updateFullSearchFieldFilterControl(){
 function updateAgendaSourceFilterControl(){
     let input = document.getElementById("agendaSourceFilter")
     if(input) input.value = agendaSourceFilter
+    syncAgendaFilterMenu("source")
 }
 
 function updateAgendaDurationFilterControl(){
     let input = document.getElementById("agendaDurationFilter")
     if(input) input.value = agendaDurationFilter
+    syncAgendaFilterMenu("duration")
 }
 
 function updateAgendaSearchFieldFilterControl(){
     let input = document.getElementById("agendaSearchFieldFilter")
     if(input) input.value = agendaSearchFieldFilter
+    syncAgendaFilterMenu("field")
+}
+
+function agendaFilterConfig(filter){
+    return {
+        overtime:{selectId:"agendaOvertimeFilter", buttonId:"agendaOvertimeFilterButton", menuId:"agendaOvertimeFilterMenu", onSelect:setDayVisibilityFilter},
+        source:{selectId:"agendaSourceFilter", buttonId:"agendaSourceFilterButton", menuId:"agendaSourceFilterMenu", onSelect:setAgendaSourceFilter},
+        field:{selectId:"agendaSearchFieldFilter", buttonId:"agendaSearchFieldFilterButton", menuId:"agendaSearchFieldFilterMenu", onSelect:setAgendaSearchFieldFilter},
+        duration:{selectId:"agendaDurationFilter", buttonId:"agendaDurationFilterButton", menuId:"agendaDurationFilterMenu", onSelect:setAgendaDurationFilter}
+    }[filter] || null
+}
+
+function closeAgendaFilterMenus(except=""){
+    document.querySelectorAll(".agenda-filter-popup").forEach(popup=>{
+        let active = popup.dataset.agendaFilter === except
+        popup.classList.toggle("is-open",active)
+        let trigger = popup.querySelector(".agenda-filter-trigger")
+        if(trigger) trigger.setAttribute("aria-expanded",String(active))
+    })
+}
+
+function toggleAgendaFilterMenu(filter){
+    let config = agendaFilterConfig(filter)
+    if(!config) return
+    let popup = document.querySelector(`.agenda-filter-popup[data-agenda-filter="${filter}"]`)
+    if(!popup) return
+    let isOpen = popup.classList.contains("is-open")
+    closeAgendaFilterMenus(isOpen ? "" : filter)
+}
+
+function selectAgendaFilterValue(filter,value){
+    let config = agendaFilterConfig(filter)
+    if(!config) return
+    config.onSelect(value)
+    closeAgendaFilterMenus()
+}
+
+function syncAgendaFilterMenu(filter){
+    let config = agendaFilterConfig(filter)
+    if(!config) return
+    let select = document.getElementById(config.selectId)
+    let button = document.getElementById(config.buttonId)
+    let menu = document.getElementById(config.menuId)
+    if(!select || !button || !menu) return
+
+    let option = Array.from(select.options).find(item=>item.value === select.value) || select.options[0]
+    button.textContent = option?.textContent || ""
+    button.setAttribute("data-value",select.value)
+
+    menu.querySelectorAll(".agenda-filter-option").forEach(item=>{
+        let active = item.dataset.value === select.value
+        item.classList.toggle("is-selected",active)
+        item.setAttribute("aria-pressed",String(active))
+    })
+}
+
+function initAgendaFilterMenus(){
+    ;["overtime","source","field","duration"].forEach(syncAgendaFilterMenu)
+    document.addEventListener("pointerdown",event=>{
+        if(event.target.closest(".agenda-filter-popup")) return
+        closeAgendaFilterMenus()
+    })
+    document.addEventListener("keydown",event=>{
+        if(event.key === "Escape") closeAgendaFilterMenus()
+    })
 }
 
 function applyOvertimeFilterToTimeline(){
@@ -4677,6 +4784,76 @@ function agendaGroupLabel(block){
     return block.date.toLocaleDateString(undefined,{weekday:"short", month:"short", day:"numeric"})
 }
 
+const TABLET_AGENDA_SIZE_KEY = "abtPlannerTabletAgendaSize"
+const TABLET_AGENDA_HEIGHTS = {
+    compact: 260,
+    default: 360,
+    expanded: 520
+}
+const TABLET_AGENDA_HEIGHT_MIN = 220
+const TABLET_AGENDA_HEIGHT_MAX = 720
+
+function syncTabletAgendaControls(height,preset=""){
+    const slider = document.getElementById("tabletAgendaHeightSlider")
+    if(slider) slider.value = String(Math.round(height))
+
+    document.body.classList.toggle("tablet-agenda-compact",preset === "compact")
+    document.body.classList.toggle("tablet-agenda-expanded",preset === "expanded")
+
+    const states = {
+        compact: preset === "compact",
+        default: preset === "default",
+        expanded: preset === "expanded"
+    }
+    const buttons = {
+        compact: document.getElementById("tabletAgendaCompactButton"),
+        default: document.getElementById("tabletAgendaDefaultButton"),
+        expanded: document.getElementById("tabletAgendaExpandedButton")
+    }
+    Object.entries(buttons).forEach(([key,button])=>{
+        if(!button) return
+        button.classList.toggle("active-view",states[key])
+        button.setAttribute("aria-pressed",String(states[key]))
+    })
+}
+
+function setTabletAgendaHeight(value,persist=true,preset=""){
+    let height = Math.min(Math.max(Number(value) || TABLET_AGENDA_HEIGHTS.default,TABLET_AGENDA_HEIGHT_MIN),TABLET_AGENDA_HEIGHT_MAX)
+    document.documentElement.style.setProperty("--tablet-agenda-height",height + "px")
+    syncTabletAgendaControls(height,preset)
+    if(!persist) return
+
+    saveWorkspaceLayout({
+        ...currentWorkspaceLayout(),
+        agendaHeight:height
+    })
+
+    try{
+        if(preset) localStorage.setItem(TABLET_AGENDA_SIZE_KEY,preset)
+        else localStorage.removeItem(TABLET_AGENDA_SIZE_KEY)
+    }catch(error){
+        console.warn("Tablet agenda size preference could not be saved.",error)
+    }
+}
+
+function setTabletAgendaSize(size){
+    const preset = size === "compact" ? "compact" : size === "expanded" ? "expanded" : "default"
+    setTabletAgendaHeight(TABLET_AGENDA_HEIGHTS[preset],true,preset)
+}
+
+function loadTabletAgendaSize(){
+    try{
+        const preset = localStorage.getItem(TABLET_AGENDA_SIZE_KEY) || ""
+        if(preset && TABLET_AGENDA_HEIGHTS[preset]){
+            setTabletAgendaHeight(TABLET_AGENDA_HEIGHTS[preset],false,preset)
+            return
+        }
+        syncTabletAgendaControls(currentWorkspaceLayout().agendaHeight || TABLET_AGENDA_HEIGHTS.default,"")
+    }catch(error){
+        syncTabletAgendaControls(TABLET_AGENDA_HEIGHTS.default,"")
+    }
+}
+
 function openAgendaBlock(block){
     currentDay = block.day
     if(block.dateKey) selectedWeekStartKey = dateKey(startOfPlannerWeek(block.date))
@@ -5821,13 +5998,14 @@ function scheduleViewportMetricUpdate(){
 }
 
 function isDesktopWorkspaceLayout(){
-    return isDesktopLayout()
+    return !isPhoneLayout()
 }
 
 function clampWorkspaceLayout(layout){
     return {
         rail:Math.min(Math.max(Number(layout?.rail) || 208,160),360),
-        agenda:Math.min(Math.max(Number(layout?.agenda) || 380,260),760)
+        agenda:Math.min(Math.max(Number(layout?.agenda) || 380,260),760),
+        agendaHeight:Math.min(Math.max(Number(layout?.agendaHeight) || 360,220),720)
     }
 }
 
@@ -5835,6 +6013,7 @@ function applyWorkspaceLayout(layout){
     let next = clampWorkspaceLayout(layout)
     document.documentElement.style.setProperty("--workspace-rail-width",next.rail+"px")
     document.documentElement.style.setProperty("--workspace-agenda-width",next.agenda+"px")
+    document.documentElement.style.setProperty("--tablet-agenda-height",next.agendaHeight+"px")
 }
 
 function loadWorkspaceLayout(){
@@ -5859,7 +6038,8 @@ function currentWorkspaceLayout(){
     let styles = getComputedStyle(document.documentElement)
     return clampWorkspaceLayout({
         rail:parseFloat(styles.getPropertyValue("--workspace-rail-width")),
-        agenda:parseFloat(styles.getPropertyValue("--workspace-agenda-width"))
+        agenda:parseFloat(styles.getPropertyValue("--workspace-agenda-width")),
+        agendaHeight:parseFloat(styles.getPropertyValue("--tablet-agenda-height"))
     })
 }
 
@@ -5876,16 +6056,34 @@ function initWorkspaceResizers(){
             let pane = handle.dataset.resizePane
             handle.setAttribute("aria-valuemin",pane === "agenda" ? "260" : "160")
             handle.setAttribute("aria-valuemax",pane === "agenda" ? "760" : "360")
-            handle.setAttribute("aria-valuenow",String(Math.round(pane === "agenda" ? start.agenda : start.rail)))
+            handle.setAttribute("aria-valuenow",String(Math.round(
+                pane === "agenda"
+                    ? (isDesktopLayout() ? start.agenda : start.agendaHeight)
+                    : start.rail
+            )))
 
             function onMove(moveEvent){
-                let dx = moveEvent.clientX - startX
                 let next = {...start}
-                if(pane === "rail") next.rail = start.rail + dx
-                if(pane === "agenda") next.agenda = start.agenda - dx
+                if(pane === "rail"){
+                    let dx = moveEvent.clientX - startX
+                    next.rail = start.rail + dx
+                }
+                if(pane === "agenda"){
+                    if(isDesktopLayout()){
+                        let dx = moveEvent.clientX - startX
+                        next.agenda = start.agenda - dx
+                    }else{
+                        let dy = moveEvent.clientY - event.clientY
+                        next.agendaHeight = start.agendaHeight + dy
+                    }
+                }
                 applyWorkspaceLayout(next)
                 let current = currentWorkspaceLayout()
-                handle.setAttribute("aria-valuenow",String(Math.round(pane === "agenda" ? current.agenda : current.rail)))
+                if(pane === "agenda" && !isDesktopLayout()) syncTabletAgendaControls(current.agendaHeight,"")
+                let valueNow = pane === "agenda"
+                    ? (isDesktopLayout() ? current.agenda : current.agendaHeight)
+                    : current.rail
+                handle.setAttribute("aria-valuenow",String(Math.round(valueNow)))
             }
 
             function onUp(){
@@ -5920,7 +6118,9 @@ function ensureButtonIcon(button,iconClass){
 function enhanceMenuIcons(){
     const iconTargets = [
         ["fileMenuButton","icon-folder"],
+        ["editMenuButton","icon-edit"],
         ["calendarMenuButton","icon-calendar"],
+        ["toolsMenuButton","icon-settings"],
         ["viewMenuButton","icon-view"],
         ["saveMenuButton","icon-save"],
         ["saveAsMenuButton","icon-save-as"],
@@ -6256,6 +6456,18 @@ function openMenuFromQueryParam(){
     }
 }
 
+function openAgendaFilterFromQueryParam(){
+    try{
+        const filter = new URLSearchParams(window.location.search).get("openAgendaFilter")
+        const allowed = new Set(["overtime","source","field","duration"])
+        if(allowed.has(String(filter || "").toLowerCase())){
+            requestAnimationFrame(()=>toggleAgendaFilterMenu(String(filter).toLowerCase()))
+        }
+    }catch(error){
+        console.warn("Could not open agenda filter from query parameter.",error)
+    }
+}
+
 const originalRenderMonthView = renderMonthView
 renderMonthView = function(...args){
     const result = originalRenderMonthView.apply(this,args)
@@ -6297,6 +6509,8 @@ loadAgendaDurationFilter()
 loadAgendaSearchFieldFilter()
 loadAutosavePreference()
 loadToolbarCustomization()
+loadTabletAgendaSize()
+initAgendaFilterMenus()
 rebuildToolbar()
 enforceDesktopMenuBar()
 applyOutlookChromeState()
@@ -6305,6 +6519,7 @@ enhanceMenuIcons()
 ensureMenuBarRendered()
 requestAnimationFrame(()=>ensureMenuBarRendered())
 openMenuFromQueryParam()
+openAgendaFilterFromQueryParam()
 buildTimeline()
 applyTimelineZoom()
 updateActiveDay()
