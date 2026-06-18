@@ -468,6 +468,36 @@
         </section>
     </div>
 
+    <div class="modal-backdrop is-hidden" id="otDateRangeExportBackdrop" role="presentation">
+        <section class="block-editor" role="dialog" aria-modal="true" aria-labelledby="otDateRangeExportTitle">
+            <header class="block-editor-header">
+                <h3 id="otDateRangeExportTitle">Export OT Date Range</h3>
+                <button type="button" class="secondary icon-button" onclick="closeOtDateRangeExportDialog()" aria-label="Close export range dialog">&times;</button>
+            </header>
+
+            <div class="block-editor-grid">
+                <p class="import-filter-copy block-editor-wide">
+                    Choose the date range to export overtime calendar events to PDF.
+                </p>
+                <label>
+                    <span>Start date</span>
+                    <input type="date" id="otExportStartDateInput">
+                </label>
+                <label>
+                    <span>End date</span>
+                    <input type="date" id="otExportEndDateInput">
+                </label>
+            </div>
+
+            <footer class="block-editor-actions">
+                <button type="button" class="secondary" onclick="closeOtDateRangeExportDialog()">Cancel</button>
+                <div>
+                    <button type="button" class="primary" onclick="confirmOtDateRangePdfExport()">Export PDF</button>
+                </div>
+            </footer>
+        </section>
+    </div>
+
     <div class="modal-backdrop is-hidden" id="conflictReviewBackdrop" role="presentation">
         <section class="block-editor conflict-review-dialog" role="dialog" aria-modal="true" aria-labelledby="conflictReviewTitle">
             <header class="block-editor-header">
@@ -573,6 +603,7 @@ const TOOLBAR_DEFAULTS = [
     {key:"file", label:"File", visible:true},
     {key:"edit", label:"Edit", visible:true},
     {key:"calendar", label:"Calendar", visible:true},
+    {key:"search", label:"Search", visible:true},
     {key:"view", label:"View", visible:true},
     {key:"tools", label:"Tools", visible:true}
 ]
@@ -634,6 +665,8 @@ let fullSearchFieldFilter = "all"
 let agendaSourceFilter = "all"
 let agendaDurationFilter = "all"
 let agendaSearchFieldFilter = "all"
+let exportOtRangeStartKey = ""
+let exportOtRangeEndKey = ""
 let toastTimer = null
 
 //--------------------------------
@@ -1548,6 +1581,8 @@ function snapshotPlannerState(){
         currentDay,
         selectedWeekStartKey,
         monthAnchorDate:dateKey(monthAnchorDate),
+        exportOtRangeStartKey,
+        exportOtRangeEndKey,
         importSummaryText,
         importedEventCount,
         skippedNonAbtCount,
@@ -1579,6 +1614,8 @@ function restorePlannerSnapshot(state){
     currentDay = state.currentDay
     selectedWeekStartKey = state.selectedWeekStartKey
     monthAnchorDate = parseDateKey(state.monthAnchorDate)
+    exportOtRangeStartKey = state.exportOtRangeStartKey || exportOtRangeStartKey
+    exportOtRangeEndKey = state.exportOtRangeEndKey || exportOtRangeEndKey
     importSummaryText = state.importSummaryText
     importedEventCount = state.importedEventCount
     skippedNonAbtCount = state.skippedNonAbtCount
@@ -2765,7 +2802,9 @@ function rebuildToolbar(){
         exportSelect.id = "exportScope"
         ;[
             ["week","Selected week"],
-            ["month","Full month"]
+            ["month","Full month"],
+            ["selected-month-ot","Selected month OT"],
+            ["ot-date-range","OT Date Range"]
         ].forEach(([value,label])=>{
             const option = document.createElement("option")
             option.value = value
@@ -2790,15 +2829,7 @@ function rebuildToolbar(){
             menuItem(fileMenu,"Set Save Location",chooseSaveLocation,"",{iconClass:"icon-folder"})
             menuItem(fileMenu,autosaveEnabled ? "Autosave On" : "Autosave Off",toggleAutosave,"autosaveMenuButton",{iconClass:"icon-autosave"})
             menuItem(fileMenu,"Open Project",triggerProjectOpen,"",{iconClass:"icon-open"})
-
-            filePicker(fileMenu,"Calendar File","fileInput",".ics,.ical,.ifb,.cal,.csv,text/calendar,text/csv",importICS)
             filePicker(fileMenu,"Project File","projectFileInput",".abt-planner.json,.json,application/json",openProjectFile)
-
-            menuSection(fileMenu,"Calendar")
-            menuItem(fileMenu,"Import Calendar",triggerCalendarFilePicker,"",{iconClass:"icon-import"})
-            menuItem(fileMenu,"Export Calendar",exportICS,"",{iconClass:"icon-export"})
-            menuItem(fileMenu,"Export PDF",exportPDF,"",{iconClass:"icon-pdf"})
-            appendExportScope(fileMenu)
 
             menuSection(fileMenu,"Cloud")
             menuItem(fileMenu,"Import OneDrive",()=>importProjectFromCloud("onedrive"),"",{iconClass:"icon-cloud-download"})
@@ -2865,12 +2896,21 @@ function rebuildToolbar(){
         calendar(item){
             const calendarGroup = group("calendar-tools")
             const calendarMenu = menuButton(calendarGroup,item.label,"calendarMenuButton","icon-calendar")
+            menuSection(calendarMenu,"Import")
             menuItem(calendarMenu,"Import Calendar",triggerCalendarFilePicker,"",{iconClass:"icon-import"})
-            menuItem(calendarMenu,"Filters",openImportFilterEditor,"",{iconClass:"icon-filter"})
+            menuItem(calendarMenu,"Import Filters",openImportFilterEditor,"",{iconClass:"icon-filter"})
+            menuSection(calendarMenu,"Review")
             menuItem(calendarMenu,"Review Conflicts",openConflictReviewFromImport,"",{iconClass:"icon-calendar-check"})
+            menuSection(calendarMenu,"Export")
             menuItem(calendarMenu,"Export Calendar",exportICS,"",{iconClass:"icon-export"})
             menuItem(calendarMenu,"Export PDF",exportPDF,"",{iconClass:"icon-pdf"})
             appendExportScope(calendarMenu)
+        },
+        search(item){
+            const searchGroup = group("search-tools")
+            const searchMenu = menuButton(searchGroup,item.label,"searchMenuButton","icon-search")
+            menuSection(searchMenu,"Search")
+            menuItem(searchMenu,"Open Search",openFullSearch,"fullSearchButton",{iconClass:"icon-search"})
         },
         view(item){
             const viewGroup = group("view-tools")
@@ -2918,8 +2958,6 @@ function rebuildToolbar(){
         tools(item){
             const toolsGroup = group("tools-tools")
             const toolsMenu = menuButton(toolsGroup,item.label,"toolsMenuButton","icon-settings")
-            menuSection(toolsMenu,"Find")
-            menuItem(toolsMenu,"Search",openFullSearch,"fullSearchButton",{iconClass:"icon-search"})
             menuSection(toolsMenu,"Appearance")
             const darkButton = menuItem(toolsMenu,"Dark Mode",()=>setThemeMode("dark"),"",{iconClass:"icon-moon"})
             darkButton.dataset.themeMode = "dark"
@@ -3585,6 +3623,10 @@ document.getElementById("settingsBackdrop")?.addEventListener("click", event=>{
     if(event.target.id === "settingsBackdrop") closeSettings()
 })
 
+document.getElementById("otDateRangeExportBackdrop")?.addEventListener("click", event=>{
+    if(event.target.id === "otDateRangeExportBackdrop") closeOtDateRangeExportDialog()
+})
+
 document.getElementById("conflictReviewBackdrop")?.addEventListener("click", event=>{
     if(event.target.id === "conflictReviewBackdrop") closeConflictReview()
 })
@@ -3972,6 +4014,8 @@ function plannerStatePayload(){
         currentDay,
         plannerView,
         selectedWeekStartKey,
+        exportOtRangeStartKey,
+        exportOtRangeEndKey,
         importSummaryText,
         importedEventCount,
         skippedNonAbtCount,
@@ -3988,6 +4032,8 @@ function applyPlannerState(state){
     if(state.monthEvents) monthEvents = state.monthEvents
     if(state.currentDay) currentDay = state.currentDay
     if(state.selectedWeekStartKey) selectedWeekStartKey = state.selectedWeekStartKey
+    if(state.exportOtRangeStartKey) exportOtRangeStartKey = state.exportOtRangeStartKey
+    if(state.exportOtRangeEndKey) exportOtRangeEndKey = state.exportOtRangeEndKey
     importSummaryText = state.importSummaryText || ""
     importedEventCount = state.importedEventCount || 0
     skippedNonAbtCount = state.skippedNonAbtCount || 0
@@ -4246,6 +4292,8 @@ function savePlannerState(){
             currentDay,
             plannerView,
             selectedWeekStartKey,
+            exportOtRangeStartKey,
+            exportOtRangeEndKey,
             importSummaryText,
             importedEventCount,
             skippedNonAbtCount,
@@ -4279,6 +4327,8 @@ function restorePlannerState(){
         if(state.monthEvents) monthEvents = state.monthEvents
         if(state.currentDay) currentDay = state.currentDay
         if(state.selectedWeekStartKey) selectedWeekStartKey = state.selectedWeekStartKey
+        if(state.exportOtRangeStartKey) exportOtRangeStartKey = state.exportOtRangeStartKey
+        if(state.exportOtRangeEndKey) exportOtRangeEndKey = state.exportOtRangeEndKey
         if(state.importSummaryText) importSummaryText = state.importSummaryText
         if(state.importedEventCount) importedEventCount = state.importedEventCount
         if(state.skippedNonAbtCount) skippedNonAbtCount = state.skippedNonAbtCount
@@ -4562,6 +4612,22 @@ function visibleAgendaBlocks(){
         .filter(block=>blockMatchesSourceFilter(block,agendaSourceFilter))
         .filter(block=>blockMatchesDurationFilter(block,agendaDurationFilter))
         .filter(block=>matchesAgendaSearchQuery(block,query))
+}
+
+function monthAgendaFilterSummary(){
+    let summary = []
+    let overtimeLabel = dayVisibilityFilter === "overtime" ? "OT Only" : "All Days"
+    let sourceLabel = ({all:"All Sources", planner:"Planner Only", imported:"Imported Only"})[agendaSourceFilter] || "All Sources"
+    let durationLabel = ({all:"Any Length", short:"Up to 2h", standard:"2h to 4h", long:"4h+"})[agendaDurationFilter] || "Any Length"
+    let fieldLabel = ({all:"All Fields", title:"Title", location:"Location", notes:"Notes", time:"Time", date:"Date"})[agendaSearchFieldFilter] || "All Fields"
+    let query = String(document.getElementById("agendaSearchInput")?.value || "").trim()
+
+    if(dayVisibilityFilter !== "all") summary.push("Filter: "+overtimeLabel)
+    if(agendaSourceFilter !== "all") summary.push("Source: "+sourceLabel)
+    if(agendaDurationFilter !== "all") summary.push("Length: "+durationLabel)
+    if(query) summary.push("Search ("+fieldLabel+"): "+query)
+
+    return summary.length ? summary.join(" | ") : "Filters: None"
 }
 
 function allSearchBlocks(){
@@ -5053,6 +5119,74 @@ function getMonthExportBlocks(){
         })
 }
 
+function getOtExportDateRangeBounds(){
+    let keys = Object.keys(monthEvents).sort()
+    if(keys.length) return {startKey:keys[0], endKey:keys[keys.length - 1]}
+
+    let start = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth(),1)
+    let end = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth() + 1,0)
+    return {startKey:dateKey(start), endKey:dateKey(end)}
+}
+
+function syncOtDateRangeInputs(){
+    let bounds = getOtExportDateRangeBounds()
+    if(!exportOtRangeStartKey) exportOtRangeStartKey = bounds.startKey
+    if(!exportOtRangeEndKey) exportOtRangeEndKey = bounds.endKey
+
+    let startInput = document.getElementById("otExportStartDateInput")
+    let endInput = document.getElementById("otExportEndDateInput")
+    if(startInput){
+        startInput.min = bounds.startKey
+        startInput.max = bounds.endKey
+        startInput.value = exportOtRangeStartKey
+    }
+    if(endInput){
+        endInput.min = bounds.startKey
+        endInput.max = bounds.endKey
+        endInput.value = exportOtRangeEndKey
+    }
+}
+
+function readOtDateRangeInputs(){
+    let bounds = getOtExportDateRangeBounds()
+    let startInput = document.getElementById("otExportStartDateInput")
+    let endInput = document.getElementById("otExportEndDateInput")
+    let startKey = String(startInput?.value || exportOtRangeStartKey || bounds.startKey)
+    let endKey = String(endInput?.value || exportOtRangeEndKey || bounds.endKey)
+    if(startKey > endKey) [startKey,endKey] = [endKey,startKey]
+    exportOtRangeStartKey = startKey
+    exportOtRangeEndKey = endKey
+    return {startKey,endKey}
+}
+
+function getSelectedMonthOtExportBlocks(){
+    return getSelectedMonthEvents()
+        .map(({dateKey,event})=>({
+            date:parseDateKey(dateKey),
+            dateKey,
+            ...event
+        }))
+        .filter(block=>calculateBlockOvertime(block) > 0 || calculateBlockDoubleOvertime(block) > 0)
+        .sort((a,b)=>a.date-b.date || a.start-b.start)
+}
+
+function getOtDateRangeExportBlocks(startKey=exportOtRangeStartKey,endKey=exportOtRangeEndKey){
+    let bounds = getOtExportDateRangeBounds()
+    let safeStartKey = startKey || bounds.startKey
+    let safeEndKey = endKey || bounds.endKey
+    if(safeStartKey > safeEndKey) [safeStartKey,safeEndKey] = [safeEndKey,safeStartKey]
+
+    return Object.keys(monthEvents)
+        .sort()
+        .filter(key=>key >= safeStartKey && key <= safeEndKey)
+        .flatMap(key=>{
+            let date = parseDateKey(key)
+            return (monthEvents[key] || []).map(block=>({date,dateKey:key,...block}))
+        })
+        .filter(block=>calculateBlockOvertime(block) > 0 || calculateBlockDoubleOvertime(block) > 0)
+        .sort((a,b)=>a.date-b.date || a.start-b.start)
+}
+
 function getSelectedWeekExportBlocks(){
     if(selectedWeekStartKey){
         let start = parseDateKey(selectedWeekStartKey)
@@ -5175,6 +5309,88 @@ function renderMonthView(){
     }
 
     updateOutlookPanels()
+}
+
+function openOtDateRangeExportDialog(){
+    syncOtDateRangeInputs()
+    document.getElementById("otDateRangeExportBackdrop")?.classList.remove("is-hidden")
+}
+
+function closeOtDateRangeExportDialog(){
+    document.getElementById("otDateRangeExportBackdrop")?.classList.add("is-hidden")
+}
+
+function exportOtDateRangePdf(startKey,endKey){
+    const { jsPDF } = window.jspdf
+    const doc = new jsPDF()
+    let y = 20
+    let exportBlocks = getOtDateRangeExportBlocks(startKey,endKey)
+
+    doc.text("ABT Overtime Planner - OT Date Range",10,y)
+    y += 10
+    doc.setFontSize(10)
+    let rangeLabel = `${parseDateKey(startKey).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})} to ${parseDateKey(endKey).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}`
+    let summaryLines = doc.splitTextToSize("Range: "+rangeLabel+" | OT events: "+exportBlocks.length,190)
+    doc.text(summaryLines,10,y)
+    y += summaryLines.length * 5 + 3
+    doc.setFontSize(12)
+
+    if(!exportBlocks.length){
+        doc.text("No overtime events were found in this date range.",10,y)
+        doc.save("planner-ot-date-range.pdf")
+        return
+    }
+
+    let groupedEvents = new Map()
+    exportBlocks.forEach(block=>{
+        if(!groupedEvents.has(block.dateKey)) groupedEvents.set(block.dateKey,[])
+        groupedEvents.get(block.dateKey).push(block)
+    })
+
+    Array.from(groupedEvents.keys()).sort().forEach(key=>{
+        let date = parseDateKey(key)
+        let events = groupedEvents.get(key) || []
+        if(y>270){
+            doc.addPage()
+            y=20
+        }
+
+        doc.text(date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}),10,y)
+        y += 8
+
+        events.forEach(block=>{
+            if(y>270){
+                doc.addPage()
+                y=20
+            }
+            doc.text(`${block.title || "Block"} ${formatTime(block.start)} - ${formatTime(block.start+block.dur)}`,14,y)
+            y += 8
+            let overtimeHours = calculateBlockOvertime(block)
+            let doubleOvertimeHours = calculateBlockDoubleOvertime(block)
+            let detail = `OT: ${overtimeHours}h`
+            if(doubleOvertimeHours > 0) detail += ` | Double OT: ${doubleOvertimeHours}h`
+            doc.text(detail,14,y)
+            y += 8
+            if(block.location){
+                if(y>270){
+                    doc.addPage()
+                    y=20
+                }
+                doc.text(`Location: ${block.location}`,14,y)
+                y += 8
+            }
+        })
+        y += 2
+    })
+
+    doc.save("planner-ot-date-range.pdf")
+}
+
+function confirmOtDateRangePdfExport(){
+    let {startKey,endKey} = readOtDateRangeInputs()
+    closeOtDateRangeExportDialog()
+    savePlannerState()
+    exportOtDateRangePdf(startKey,endKey)
 }
 
 //--------------------------------
@@ -5777,10 +5993,23 @@ function exportICS(){
 
     saveDay()
 
-    let exportBlocks = getExportScope()==="month" ? getMonthExportBlocks() : getSelectedWeekExportBlocks()
+    let scope = getExportScope()
+    let exportBlocks = scope==="month"
+        ? getMonthExportBlocks()
+        : scope==="selected-month-ot"
+            ? getSelectedMonthOtExportBlocks()
+            : scope==="ot-date-range"
+                ? getOtDateRangeExportBlocks()
+            : getSelectedWeekExportBlocks()
 
     if(exportBlocks.length===0){
-        alert("There are no events to export.")
+        alert(
+            scope==="selected-month-ot"
+                ? "There are no selected overtime month events to export."
+                : scope==="ot-date-range"
+                    ? "There are no overtime events in the selected export date range."
+                    : "There are no events to export."
+        )
         return
     }
 
@@ -5822,7 +6051,13 @@ function exportICS(){
     let blob=new Blob([ics],{type:"text/calendar"})
     let link=document.createElement("a")
     link.href=URL.createObjectURL(blob)
-    link.download=getExportScope()==="month" ? "abt-overtime-planner-month.ics" : "abt-overtime-planner-week.ics"
+    link.download=scope==="month"
+        ? "abt-overtime-planner-month.ics"
+        : scope==="selected-month-ot"
+            ? "abt-overtime-planner-selected-month-ot.ics"
+            : scope==="ot-date-range"
+                ? "abt-overtime-planner-ot-date-range.ics"
+            : "abt-overtime-planner-week.ics"
     link.click()
 }
 
@@ -5902,42 +6137,139 @@ function escapeIcsText(value){
 // PDF
 //--------------------------------
 function exportPDF(){
+    saveDay()
+    let scope = getExportScope()
+
+    if(scope === "ot-date-range"){
+        openOtDateRangeExportDialog()
+        return
+    }
+
     const { jsPDF } = window.jspdf
     const doc=new jsPDF()
 
     let y=20
-    saveDay()
-    let scope = getExportScope()
 
-    if(scope === "month"){
-        doc.text("ABT Overtime Planner - "+monthName(monthAnchorDate),10,y)
+    if(scope === "selected-month-ot"){
+        let exportBlocks = getSelectedMonthOtExportBlocks()
+
+        doc.text("ABT Overtime Planner - Selected Month OT",10,y)
         y+=10
+        doc.setFontSize(10)
+        let selectionSummary = "Selected OT events: "+exportBlocks.length
+        let selectionLines = doc.splitTextToSize(selectionSummary,190)
+        doc.text(selectionLines,10,y)
+        y += selectionLines.length * 5 + 3
+        doc.setFontSize(12)
 
-        Object.keys(monthEvents).sort().forEach(key=>{
+        if(!exportBlocks.length){
+            doc.text("No selected overtime month events match this export.",10,y)
+            doc.save("planner-selected-month-ot.pdf")
+            return
+        }
+
+        let groupedEvents = new Map()
+        exportBlocks.forEach(block=>{
+            if(!groupedEvents.has(block.dateKey)) groupedEvents.set(block.dateKey,[])
+            groupedEvents.get(block.dateKey).push(block)
+        })
+
+        Array.from(groupedEvents.keys()).sort().forEach(key=>{
             let date = parseDateKey(key)
-            let events = monthEvents[key] || []
-            if(events.length===0) return
+            let events = groupedEvents.get(key) || []
+
+            if(y>270){
+                doc.addPage()
+                y=20
+            }
 
             doc.text(date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}),10,y)
             y+=8
 
-            events.slice().sort((a,b)=>a.start-b.start).forEach(b=>{
-                doc.text(`${b.title || "Block"} ${formatTime(b.start)} - ${formatTime(b.start+b.dur)}`,14,y)
-                y+=8
-                if(b.location){
-                    doc.text(`Location: ${b.location}`,14,y)
-                    y+=8
-                }
-
+            events.forEach(block=>{
                 if(y>270){
                     doc.addPage()
                     y=20
+                }
+                doc.text(`${block.title || "Block"} ${formatTime(block.start)} - ${formatTime(block.start+block.dur)}`,14,y)
+                y+=8
+                let overtimeHours = calculateBlockOvertime(block)
+                let doubleOvertimeHours = calculateBlockDoubleOvertime(block)
+                let detail = `OT: ${overtimeHours}h`
+                if(doubleOvertimeHours > 0) detail += ` | Double OT: ${doubleOvertimeHours}h`
+                doc.text(detail,14,y)
+                y+=8
+                if(block.location){
+                    if(y>270){
+                        doc.addPage()
+                        y=20
+                    }
+                    doc.text(`Location: ${block.location}`,14,y)
+                    y+=8
                 }
             })
             y+=2
         })
 
-        doc.save("planner-month.pdf")
+        doc.save("planner-selected-month-ot.pdf")
+        return
+    }
+
+    if(scope === "month"){
+        doc.text("ABT Overtime Planner - "+monthName(monthAnchorDate),10,y)
+        y+=10
+        doc.setFontSize(10)
+        let filterSummary = monthAgendaFilterSummary()
+        let filterLines = doc.splitTextToSize(filterSummary,190)
+        doc.text(filterLines,10,y)
+        y += filterLines.length * 5 + 3
+        doc.setFontSize(12)
+
+        let groupedEvents = new Map()
+        visibleAgendaBlocks().forEach(block=>{
+            if(!block?.dateKey) return
+            if(!groupedEvents.has(block.dateKey)) groupedEvents.set(block.dateKey,[])
+            groupedEvents.get(block.dateKey).push(block)
+        })
+
+        if(!groupedEvents.size){
+            doc.text("No agenda items match the selected month filter.",10,y)
+            doc.save("planner-month-agenda.pdf")
+            return
+        }
+
+        Array.from(groupedEvents.keys()).sort().forEach(key=>{
+            let date = parseDateKey(key)
+            let events = groupedEvents.get(key) || []
+
+            if(y>270){
+                doc.addPage()
+                y=20
+            }
+
+            doc.text(date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}),10,y)
+            y+=8
+
+            events.slice().sort((a,b)=>a.start-b.start).forEach(b=>{
+                if(y>270){
+                    doc.addPage()
+                    y=20
+                }
+                doc.text(`${b.title || "Block"} ${formatTime(b.start)} - ${formatTime(b.start+b.dur)}`,14,y)
+                y+=8
+                if(b.location){
+                    if(y>270){
+                        doc.addPage()
+                        y=20
+                    }
+                    doc.text(`Location: ${b.location}`,14,y)
+                    y+=8
+                }
+            })
+            y+=2
+        })
+
+        doc.save("planner-month-agenda.pdf")
         return
     }
 
@@ -5972,7 +6304,7 @@ function polishControlLabels(){
         ["cutSelectedBlock()","Cut"],
         ["pasteBlock()","Paste"],
         ["importICS()","Import Calendar"],
-        ["openImportFilterEditor()","Filters"],
+        ["openImportFilterEditor()","Import Filters"],
         ["exportICS()","Export Calendar"],
         ["exportPDF()","PDF"]
     ])
@@ -6132,7 +6464,7 @@ function enhanceMenuIcons(){
         ["importGoogleDriveMenuButton","icon-cloud-download"],
         ["uploadOneDriveMenuButton","icon-cloud-upload"],
         ["uploadGoogleDriveMenuButton","icon-cloud-upload"],
-        ["fullSearchMenuButton","icon-search"],
+        ["searchMenuButton","icon-search"],
         ["settingsMenuButton","icon-settings"],
         ["conflictReviewMenuButton","icon-calendar-check"],
         ["filterOvertimeMenuButton","icon-filter"],
@@ -6185,6 +6517,7 @@ const DESKTOP_MENU_ORDER = [
     {id:"fileMenuButton", label:"File", icon:"icon-folder"},
     {id:"editMenuButton", label:"Edit", icon:"icon-edit"},
     {id:"calendarMenuButton", label:"Calendar", icon:"icon-calendar"},
+    {id:"searchMenuButton", label:"Search", icon:"icon-search"},
     {id:"toolsMenuButton", label:"Tools", icon:"icon-settings"},
     {id:"viewMenuButton", label:"View", icon:"icon-view"}
 ]
