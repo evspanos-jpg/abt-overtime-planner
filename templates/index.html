@@ -237,6 +237,8 @@
 
     <p class="import-summary is-hidden" id="importSummary"></p>
     <div class="app-toast is-hidden" id="appToast" role="status" aria-live="polite"></div>
+    <input type="file" id="fileInput" accept=".ics,.ical,.ifb,.cal,.csv,text/calendar,text/csv" hidden onchange="importICS()">
+    <input type="file" id="projectFileInput" accept=".abt-planner.json,.json,application/json" hidden onchange="openProjectFile()">
 
     <div class="modal-backdrop is-hidden" id="blockEditorBackdrop" role="presentation">
         <section class="block-editor" role="dialog" aria-modal="true" aria-labelledby="blockEditorTitle">
@@ -2596,11 +2598,31 @@ function closeSettings(){
 }
 
 function triggerProjectOpen(){
-    document.getElementById("projectFileInput")?.click()
+    let input = document.createElement("input")
+    input.type = "file"
+    input.accept = ".abt-planner.json,.json,application/json"
+    input.addEventListener("change",()=>openProjectFile(input.files?.[0] || null),{once:true})
+    if(typeof input.showPicker === "function"){
+        try{
+            input.showPicker()
+            return
+        }catch(error){}
+    }
+    input.click()
 }
 
 function triggerCalendarFilePicker(){
-    document.getElementById("fileInput")?.click()
+    let input = document.createElement("input")
+    input.type = "file"
+    input.accept = ".ics,.ical,.ifb,.cal,.csv,text/calendar,text/csv"
+    input.addEventListener("change",()=>importICS(input.files?.[0] || null),{once:true})
+    if(typeof input.showPicker === "function"){
+        try{
+            input.showPicker()
+            return
+        }catch(error){}
+    }
+    input.click()
 }
 
 function closeOpenFileMenus(){
@@ -2829,7 +2851,6 @@ function rebuildToolbar(){
             menuItem(fileMenu,"Set Save Location",chooseSaveLocation,"",{iconClass:"icon-folder"})
             menuItem(fileMenu,autosaveEnabled ? "Autosave On" : "Autosave Off",toggleAutosave,"autosaveMenuButton",{iconClass:"icon-autosave"})
             menuItem(fileMenu,"Open Project",triggerProjectOpen,"",{iconClass:"icon-open"})
-            filePicker(fileMenu,"Project File","projectFileInput",".abt-planner.json,.json,application/json",openProjectFile)
 
             menuSection(fileMenu,"Cloud")
             menuItem(fileMenu,"Import OneDrive",()=>importProjectFromCloud("onedrive"),"",{iconClass:"icon-cloud-download"})
@@ -4232,9 +4253,9 @@ async function openProjectBlob(file,sourceName=""){
     setSaveStatus("Opened " + currentProjectName + (sourceName ? " from " + sourceName : ""))
 }
 
-async function openProjectFile(){
+async function openProjectFile(fileOverride=null){
     let input = document.getElementById("projectFileInput")
-    let file = input?.files?.[0]
+    let file = fileOverride || input?.files?.[0]
     if(!file) return
 
     try{
@@ -5396,9 +5417,10 @@ function confirmOtDateRangePdfExport(){
 //--------------------------------
 // ✅ ICS IMPORT (FIXED)
 //--------------------------------
-function importICS(){
+function importICS(fileOverride=null){
 
-    const file = document.getElementById("fileInput").files[0]
+    const input = document.getElementById("fileInput")
+    const file = fileOverride || input?.files?.[0]
     if(!file){
         alert("Select an .ics file first")
         return
@@ -5837,6 +5859,7 @@ function importICS(){
             showAppToast(importedCount+" calendar event"+(importedCount===1 ? "" : "s")+" imported")
             setPlannerView("month")
             applyThemeMode(themeMode)
+            if(input) input.value = ""
             return
         }
 
@@ -5977,9 +6000,11 @@ function importICS(){
         showAppToast(importedCount+" calendar event"+(importedCount===1 ? "" : "s")+" imported")
         setPlannerView("month")
         applyThemeMode(themeMode)
+        if(input) input.value = ""
     }
 
     reader.onerror = function(){
+        if(input) input.value = ""
         alert("Could not read that .ics file.")
     }
 
