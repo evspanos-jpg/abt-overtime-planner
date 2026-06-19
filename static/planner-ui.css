@@ -1,0 +1,197 @@
+.pane-dock-controls{
+    display:none;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+}
+
+.tablet-agenda-size-controls{
+    display:none;
+}
+
+body.ipad-device .pane-dock-controls,
+body.ipad-device .tablet-agenda-size-controls{
+    display:flex;
+}
+
+.device-mode-badge{
+    position:fixed;
+    right:12px;
+    bottom:12px;
+    z-index:120;
+    display:none;
+    align-items:center;
+    gap:8px;
+    padding:8px 10px;
+    border:1px solid rgba(148,163,184,0.45);
+    border-radius:999px;
+    background:rgba(15,23,42,0.9);
+    color:#f8fafc;
+    font:600 12px/1.2 "Segoe UI",sans-serif;
+    box-shadow:0 10px 28px rgba(15,23,42,0.28);
+    backdrop-filter:blur(10px);
+}
+
+body.show-mode-badge .device-mode-badge{
+    display:flex;
+}
+
+.device-mode-badge strong{
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:#86efac;
+}
+
+.device-mode-badge span{
+    opacity:0.9;
+}
+
+.pane-dock-controls .secondary{
+    min-width:34px;
+    padding:6px 10px;
+    font-size:12px;
+}
+
+.pane-dock-controls .secondary.is-active{
+    background:#0f766e;
+    border-color:#0f766e;
+    color:#fff;
+}
+
+.settings-diagnostics{
+    display:grid;
+    gap:10px;
+}
+
+.settings-diagnostics > div{
+    display:grid;
+    grid-template-columns:minmax(0,108px) minmax(0,1fr);
+    gap:10px;
+    align-items:start;
+    font-size:13px;
+    line-height:1.45;
+}
+
+.settings-diagnostics strong{
+    color:#475569;
+}
+
+.settings-diagnostics span{
+    color:#0f172a;
+    word-break:break-word;
+}
+
+@media (min-width: 761px){
+    .calendar-workspace{
+        display:grid !important;
+        align-items:stretch;
+        min-height:0;
+    }
+
+    .calendar-rail{grid-area:rail;}
+    .workspace-resizer-left{grid-area:railResizer;}
+    .calendar-main{grid-area:main; min-width:0; min-height:0;}
+    .workspace-resizer-right{grid-area:agendaResizer;}
+    .agenda-pane{grid-area:agenda; min-width:0; min-height:0;}
+
+    .calendar-workspace[data-rail-dock="left"][data-agenda-dock="right"]{
+        grid-template-columns: var(--workspace-rail-width) 12px minmax(0,1fr) 12px minmax(260px,var(--workspace-agenda-width));
+        grid-template-rows: minmax(0,1fr);
+        grid-template-areas: "rail railResizer main agendaResizer agenda";
+    }
+
+    .calendar-workspace[data-rail-dock="left"][data-agenda-dock="bottom"]{
+        grid-template-columns: var(--workspace-rail-width) 12px minmax(0,1fr);
+        grid-template-rows: minmax(0,1fr) 12px minmax(220px,var(--tablet-agenda-height));
+        grid-template-areas:
+            "rail railResizer main"
+            ". . agendaResizer"
+            "agenda agenda agenda";
+    }
+
+    .calendar-workspace[data-rail-dock="right"][data-agenda-dock="left"]{
+        grid-template-columns: minmax(260px,var(--workspace-agenda-width)) 12px minmax(0,1fr) 12px var(--workspace-rail-width);
+        grid-template-rows: minmax(0,1fr);
+        grid-template-areas: "agenda agendaResizer main railResizer rail";
+    }
+
+    .calendar-workspace[data-rail-dock="right"][data-agenda-dock="bottom"]{
+        grid-template-columns: minmax(0,1fr) 12px var(--workspace-rail-width);
+        grid-template-rows: minmax(0,1fr) 12px minmax(220px,var(--tablet-agenda-height));
+        grid-template-areas:
+            "main railResizer rail"
+            ". . agendaResizer"
+            "agenda agenda agenda";
+    }
+
+    .calendar-workspace[data-agenda-dock="bottom"] .workspace-resizer-right{
+        cursor:row-resize;
+        min-height:12px;
+        width:100%;
+    }
+
+    .calendar-workspace[data-agenda-dock="bottom"] .agenda-pane{
+        width:auto;
+        max-width:none;
+        height:100%;
+    }
+
+    .calendar-workspace[data-agenda-dock="bottom"] .tablet-agenda-size-controls{
+        display:flex;
+    }
+}
+
+@media (min-width: 761px) and (max-width: 1366px){
+    body.ipad-device .calendar-workspace{
+        position:relative;
+        display:block !important;
+        min-height:calc((var(--app-vh, 1vh) * 100) - 176px);
+        overflow:hidden;
+    }
+
+    body.ipad-device .calendar-main{
+        height:100%;
+        min-height:0;
+    }
+
+    body.ipad-device .workspace-resizer{
+        display:none !important;
+    }
+
+    body.ipad-device .calendar-rail,
+    body.ipad-device .agenda-pane{
+        position:absolute;
+        z-index:30;
+        max-width:calc(100% - 16px);
+        max-height:calc(100% - 16px);
+        box-shadow:0 20px 48px rgba(15,23,42,0.28);
+    }
+
+    body.ipad-device .calendar-rail{
+        left:var(--workspace-rail-left, 12px);
+        top:var(--workspace-rail-top, 12px);
+        width:min(var(--workspace-rail-width), calc(100% - 16px));
+        overflow:auto;
+    }
+
+    body.ipad-device .agenda-pane{
+        left:var(--workspace-agenda-left, calc(100% - var(--workspace-agenda-width) - 12px));
+        top:var(--workspace-agenda-top, 12px);
+        width:min(var(--workspace-agenda-width), calc(100% - 16px));
+        height:min(var(--tablet-agenda-height), calc(100% - 16px));
+        overflow:auto;
+    }
+
+    body.ipad-device .navigation-pane-header,
+    body.ipad-device .agenda-header{
+        cursor:grab;
+        touch-action:none;
+        user-select:none;
+    }
+
+    body.ipad-device.dragging-floating-pane .navigation-pane-header,
+    body.ipad-device.dragging-floating-pane .agenda-header{
+        cursor:grabbing;
+    }
+}

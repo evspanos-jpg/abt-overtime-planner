@@ -16,160 +16,11 @@
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
     <link rel="stylesheet" href="static/style.css?v=147">
-    <style>
-        .pane-dock-controls{
-            display:none;
-            align-items:center;
-            gap:6px;
-            flex-wrap:wrap;
-        }
-        .tablet-agenda-size-controls{
-            display:none;
-        }
-        body.ipad-device .pane-dock-controls,
-        body.ipad-device .tablet-agenda-size-controls{
-            display:flex;
-        }
-        .device-mode-badge{
-            position:fixed;
-            right:12px;
-            bottom:12px;
-            z-index:120;
-            display:none;
-            align-items:center;
-            gap:8px;
-            padding:8px 10px;
-            border:1px solid rgba(148,163,184,0.45);
-            border-radius:999px;
-            background:rgba(15,23,42,0.9);
-            color:#f8fafc;
-            font:600 12px/1.2 "Segoe UI",sans-serif;
-            box-shadow:0 10px 28px rgba(15,23,42,0.28);
-            backdrop-filter:blur(10px);
-        }
-        body.show-mode-badge .device-mode-badge{
-            display:flex;
-        }
-        .device-mode-badge strong{
-            font-size:11px;
-            letter-spacing:0.08em;
-            text-transform:uppercase;
-            color:#86efac;
-        }
-        .device-mode-badge span{
-            opacity:0.9;
-        }
-        .pane-dock-controls .secondary{
-            min-width:34px;
-            padding:6px 10px;
-            font-size:12px;
-        }
-        .pane-dock-controls .secondary.is-active{
-            background:#0f766e;
-            border-color:#0f766e;
-            color:#fff;
-        }
-        @media (min-width: 761px){
-            .calendar-workspace{
-                display:grid !important;
-                align-items:stretch;
-                min-height:0;
-            }
-            .calendar-rail{grid-area:rail;}
-            .workspace-resizer-left{grid-area:railResizer;}
-            .calendar-main{grid-area:main; min-width:0; min-height:0;}
-            .workspace-resizer-right{grid-area:agendaResizer;}
-            .agenda-pane{grid-area:agenda; min-width:0; min-height:0;}
-            .calendar-workspace[data-rail-dock="left"][data-agenda-dock="right"]{
-                grid-template-columns: var(--workspace-rail-width) 12px minmax(0,1fr) 12px minmax(260px,var(--workspace-agenda-width));
-                grid-template-rows: minmax(0,1fr);
-                grid-template-areas: "rail railResizer main agendaResizer agenda";
-            }
-            .calendar-workspace[data-rail-dock="left"][data-agenda-dock="bottom"]{
-                grid-template-columns: var(--workspace-rail-width) 12px minmax(0,1fr);
-                grid-template-rows: minmax(0,1fr) 12px minmax(220px,var(--tablet-agenda-height));
-                grid-template-areas:
-                    "rail railResizer main"
-                    ". . agendaResizer"
-                    "agenda agenda agenda";
-            }
-            .calendar-workspace[data-rail-dock="right"][data-agenda-dock="left"]{
-                grid-template-columns: minmax(260px,var(--workspace-agenda-width)) 12px minmax(0,1fr) 12px var(--workspace-rail-width);
-                grid-template-rows: minmax(0,1fr);
-                grid-template-areas: "agenda agendaResizer main railResizer rail";
-            }
-            .calendar-workspace[data-rail-dock="right"][data-agenda-dock="bottom"]{
-                grid-template-columns: minmax(0,1fr) 12px var(--workspace-rail-width);
-                grid-template-rows: minmax(0,1fr) 12px minmax(220px,var(--tablet-agenda-height));
-                grid-template-areas:
-                    "main railResizer rail"
-                    ". . agendaResizer"
-                    "agenda agenda agenda";
-            }
-            .calendar-workspace[data-agenda-dock="bottom"] .workspace-resizer-right{
-                cursor:row-resize;
-                min-height:12px;
-                width:100%;
-            }
-            .calendar-workspace[data-agenda-dock="bottom"] .agenda-pane{
-                width:auto;
-                max-width:none;
-                height:100%;
-            }
-            .calendar-workspace[data-agenda-dock="bottom"] .tablet-agenda-size-controls{
-                display:flex;
-            }
-        }
-        @media (min-width: 761px) and (max-width: 1366px){
-            body.ipad-device .calendar-workspace{
-                position:relative;
-                display:block !important;
-                min-height:calc((var(--app-vh, 1vh) * 100) - 176px);
-                overflow:hidden;
-            }
-            body.ipad-device .calendar-main{
-                height:100%;
-                min-height:0;
-            }
-            body.ipad-device .workspace-resizer{
-                display:none !important;
-            }
-            body.ipad-device .calendar-rail,
-            body.ipad-device .agenda-pane{
-                position:absolute;
-                z-index:30;
-                max-width:calc(100% - 16px);
-                max-height:calc(100% - 16px);
-                box-shadow:0 20px 48px rgba(15,23,42,0.28);
-            }
-            body.ipad-device .calendar-rail{
-                left:var(--workspace-rail-left, 12px);
-                top:var(--workspace-rail-top, 12px);
-                width:min(var(--workspace-rail-width), calc(100% - 16px));
-                overflow:auto;
-            }
-            body.ipad-device .agenda-pane{
-                left:var(--workspace-agenda-left, calc(100% - var(--workspace-agenda-width) - 12px));
-                top:var(--workspace-agenda-top, 12px);
-                width:min(var(--workspace-agenda-width), calc(100% - 16px));
-                height:min(var(--tablet-agenda-height), calc(100% - 16px));
-                overflow:auto;
-            }
-            body.ipad-device .navigation-pane-header,
-            body.ipad-device .agenda-header{
-                cursor:grab;
-                touch-action:none;
-                user-select:none;
-            }
-            body.ipad-device.dragging-floating-pane .navigation-pane-header,
-            body.ipad-device.dragging-floating-pane .agenda-header{
-                cursor:grabbing;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="static/planner-ui.css?v=1">
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="static/planner-ui.js?v=1"></script>
     <script src="static/pwa.js?v=4" defer></script>
 </head>
 
@@ -631,6 +482,18 @@
                     <button type="button" class="secondary" onclick="resetWorkspaceLayoutPreferences()">Reset Workspace</button>
                     <button type="button" class="secondary" onclick="resetLayoutPreferences()">Reset Layout + Zoom</button>
                 </section>
+
+                <section class="settings-card">
+                    <h4>Diagnostics</h4>
+                    <div class="settings-diagnostics" aria-live="polite">
+                        <div><strong>Mode</strong><span id="settingsModeValue">desktop</span></div>
+                        <div><strong>Touch</strong><span id="settingsTouchValue">no</span></div>
+                        <div><strong>Viewport</strong><span id="settingsViewportValue">0 x 0</span></div>
+                        <div><strong>Workspace</strong><span id="settingsWorkspaceValue">rail 0 / agenda 0</span></div>
+                        <div><strong>PWA</strong><span id="settingsPwaValue">browser</span></div>
+                        <div><strong>User Agent</strong><span id="settingsUserAgentValue">-</span></div>
+                    </div>
+                </section>
             </div>
         </section>
     </div>
@@ -820,7 +683,7 @@ let penTimelineTap = null
 let cachedTimelineHeight = null
 let resizeUpdateTimer = null
 let viewportUpdateTimer = null
-let modeBadgeVisible = false
+window.modeBadgeVisible = false
 let projectFileHandle = null
 let currentProjectName = "abt-overtime-planner.abt-planner.json"
 let pendingCloudImportProvider = ""
@@ -962,41 +825,8 @@ function isTouchCapable(){
     return window.matchMedia(TOUCH_CAPABLE_QUERY).matches || navigator.maxTouchPoints > 0
 }
 
-function isIpadDevice(){
-    let platform = String(navigator.platform || "")
-    let userAgent = String(navigator.userAgent || "")
-    return /iPad/i.test(userAgent) || (platform === "MacIntel" && navigator.maxTouchPoints > 1)
-}
-
-function isFloatingTabletLayout(){
-    return isTabletLayout() && isIpadDevice()
-}
-
-function currentDeviceMode(){
-    if(isPhoneLayout()) return "phone"
-    if(isFloatingTabletLayout()) return "ipad"
-    return "desktop"
-}
-
 function isDesktopTouchLayout(){
     return isDesktopLayout() && isTouchCapable()
-}
-
-function syncInputCapabilityClasses(){
-    let ipad = isIpadDevice()
-    let mode = currentDeviceMode()
-    document.body.classList.toggle("touch-capable",isTouchCapable())
-    document.body.classList.toggle("desktop-touch",isDesktopTouchLayout())
-    document.body.classList.toggle("ipad-device",ipad)
-    document.body.classList.toggle("mode-phone",mode === "phone")
-    document.body.classList.toggle("mode-ipad",mode === "ipad")
-    document.body.classList.toggle("mode-desktop",mode === "desktop")
-    document.body.dataset.deviceMode = mode
-    document.body.classList.toggle("show-mode-badge",modeBadgeVisible)
-    document.querySelectorAll(".pane-dock-controls, .tablet-agenda-size-controls").forEach(node=>{
-        node.hidden = !ipad
-    })
-    updateDeviceModeBadge()
 }
 
 function timelineBaseHeight(){
@@ -2775,33 +2605,6 @@ function setDefaultPlannerView(view){
     syncSettingsControls()
 }
 
-function loadModeBadgePreference(){
-    try{
-        modeBadgeVisible = localStorage.getItem(MODE_BADGE_VISIBLE_KEY) === "true"
-    }catch(error){
-        modeBadgeVisible = false
-    }
-}
-
-function setModeBadgeVisible(value){
-    modeBadgeVisible = Boolean(value)
-    try{
-        localStorage.setItem(MODE_BADGE_VISIBLE_KEY,String(modeBadgeVisible))
-    }catch(error){
-        console.warn("Mode badge preference could not be saved.",error)
-    }
-    syncInputCapabilityClasses()
-}
-
-function updateDeviceModeBadge(){
-    let label = document.getElementById("deviceModeBadgeLabel")
-    let meta = document.getElementById("deviceModeBadgeMeta")
-    if(!label || !meta) return
-    let mode = currentDeviceMode()
-    label.textContent = mode.toUpperCase()
-    meta.textContent = "touch "+(isTouchCapable() ? "yes" : "no")+" • width "+Math.round(window.innerWidth || document.documentElement.clientWidth || 0)
-}
-
 function syncSettingsControls(){
     updateThemeButtons()
     updateTimelineZoomControls()
@@ -2811,8 +2614,8 @@ function syncSettingsControls(){
     let defaultView = document.getElementById("settingsDefaultViewInput")
     if(defaultView) defaultView.value = defaultPlannerView
     let modeBadge = document.getElementById("settingsModeBadgeInput")
-    if(modeBadge) modeBadge.checked = modeBadgeVisible
-    updateDeviceModeBadge()
+    if(modeBadge) modeBadge.checked = Boolean(window.modeBadgeVisible)
+    if(typeof syncDeviceDiagnostics === "function") syncDeviceDiagnostics()
 }
 
 function openSettings(){
@@ -4255,19 +4058,6 @@ function resetLayoutPreferences(){
     applyTimelineZoom()
     syncSettingsControls()
     showAppToast("Layout reset")
-}
-
-function resetWorkspaceLayoutPreferences(showToast=true){
-    saveWorkspaceLayout({
-        rail:220,
-        agenda:460,
-        agendaHeight:360,
-        railDock:"left",
-        agendaDock:"right"
-    })
-    syncTabletAgendaControls(currentWorkspaceLayout().agendaHeight,"")
-    cachedTimelineHeight = null
-    if(showToast) showAppToast("Workspace reset")
 }
 
 function plannerStatePayload(){
@@ -6812,54 +6602,6 @@ function setPaneDock(pane,dock){
     saveWorkspaceLayout(next)
     syncTabletAgendaControls(currentWorkspaceLayout().agendaHeight,"")
     cachedTimelineHeight = null
-}
-
-function initFloatingPaneDrag(){
-    const paneConfigs = [
-        {pane:"rail", selector:".navigation-pane-header"},
-        {pane:"agenda", selector:".agenda-header"}
-    ]
-
-    paneConfigs.forEach(config=>{
-        let handle = document.querySelector(config.selector)
-        if(!handle) return
-        handle.addEventListener("pointerdown",event=>{
-            if(!isFloatingTabletLayout()) return
-            if(event.target.closest("button,input,select,textarea,label,a")) return
-            event.preventDefault()
-
-            let start = currentWorkspaceLayout()
-            let startX = event.clientX
-            let startY = event.clientY
-            document.body.classList.add("dragging-floating-pane")
-
-            function onMove(moveEvent){
-                let next = {...start}
-                let dx = moveEvent.clientX - startX
-                let dy = moveEvent.clientY - startY
-                if(config.pane === "rail"){
-                    next.railX = start.railX + dx
-                    next.railY = start.railY + dy
-                }else{
-                    next.agendaX = start.agendaX + dx
-                    next.agendaY = start.agendaY + dy
-                }
-                applyWorkspaceLayout(next)
-            }
-
-            function onUp(){
-                document.body.classList.remove("dragging-floating-pane")
-                document.removeEventListener("pointermove",onMove)
-                document.removeEventListener("pointerup",onUp)
-                document.removeEventListener("pointercancel",onUp)
-                saveWorkspaceLayout(currentWorkspaceLayout())
-            }
-
-            document.addEventListener("pointermove",onMove)
-            document.addEventListener("pointerup",onUp)
-            document.addEventListener("pointercancel",onUp)
-        })
-    })
 }
 
 function initWorkspaceResizers(){
