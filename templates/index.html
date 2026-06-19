@@ -18,10 +18,17 @@
     <link rel="stylesheet" href="static/style.css?v=147">
     <style>
         .pane-dock-controls{
-            display:flex;
+            display:none;
             align-items:center;
             gap:6px;
             flex-wrap:wrap;
+        }
+        .tablet-agenda-size-controls{
+            display:none;
+        }
+        body.ipad-device .pane-dock-controls,
+        body.ipad-device .tablet-agenda-size-controls{
+            display:flex;
         }
         .pane-dock-controls .secondary{
             min-width:34px;
@@ -85,48 +92,48 @@
             }
         }
         @media (min-width: 761px) and (max-width: 1366px){
-            .calendar-workspace{
+            body.ipad-device .calendar-workspace{
                 position:relative;
                 display:block !important;
                 min-height:calc((var(--app-vh, 1vh) * 100) - 176px);
                 overflow:hidden;
             }
-            .calendar-main{
+            body.ipad-device .calendar-main{
                 height:100%;
                 min-height:0;
             }
-            .workspace-resizer{
+            body.ipad-device .workspace-resizer{
                 display:none !important;
             }
-            .calendar-rail,
-            .agenda-pane{
+            body.ipad-device .calendar-rail,
+            body.ipad-device .agenda-pane{
                 position:absolute;
                 z-index:30;
                 max-width:calc(100% - 16px);
                 max-height:calc(100% - 16px);
                 box-shadow:0 20px 48px rgba(15,23,42,0.28);
             }
-            .calendar-rail{
+            body.ipad-device .calendar-rail{
                 left:var(--workspace-rail-left, 12px);
                 top:var(--workspace-rail-top, 12px);
                 width:min(var(--workspace-rail-width), calc(100% - 16px));
                 overflow:auto;
             }
-            .agenda-pane{
+            body.ipad-device .agenda-pane{
                 left:var(--workspace-agenda-left, calc(100% - var(--workspace-agenda-width) - 12px));
                 top:var(--workspace-agenda-top, 12px);
                 width:min(var(--workspace-agenda-width), calc(100% - 16px));
                 height:min(var(--tablet-agenda-height), calc(100% - 16px));
                 overflow:auto;
             }
-            .navigation-pane-header,
-            .agenda-header{
+            body.ipad-device .navigation-pane-header,
+            body.ipad-device .agenda-header{
                 cursor:grab;
                 touch-action:none;
                 user-select:none;
             }
-            body.dragging-floating-pane .navigation-pane-header,
-            body.dragging-floating-pane .agenda-header{
+            body.ipad-device.dragging-floating-pane .navigation-pane-header,
+            body.ipad-device.dragging-floating-pane .agenda-header{
                 cursor:grabbing;
             }
         }
@@ -169,7 +176,7 @@
         <aside class="calendar-rail" aria-label="Calendar navigation">
             <div class="navigation-pane-header">
                 <strong>Navigation</strong>
-                <div class="pane-dock-controls" aria-label="Move navigation pane">
+                <div class="pane-dock-controls" aria-label="Move navigation pane" hidden>
                     <button type="button" class="secondary" id="railDockLeftButton" data-dock-target="rail" data-dock-value="left" onclick="setPaneDock('rail','left')" aria-pressed="true">Left</button>
                     <button type="button" class="secondary" id="railDockRightButton" data-dock-target="rail" data-dock-value="right" onclick="setPaneDock('rail','right')" aria-pressed="false">Right</button>
                     <button type="button" class="secondary icon-button nav-pane-pin" id="navPanePinButton" onclick="toggleNavigationPaneAutoHide()" aria-label="Auto-hide navigation pane" title="Auto-hide navigation pane">
@@ -272,12 +279,12 @@
                     <span>Agenda</span>
                     <strong id="agendaRangeLabel">Selected week</strong>
                 </div>
-                <div class="pane-dock-controls" aria-label="Move agenda pane">
+                <div class="pane-dock-controls" aria-label="Move agenda pane" hidden>
                     <button type="button" class="secondary" id="agendaDockLeftButton" data-dock-target="agenda" data-dock-value="left" onclick="setPaneDock('agenda','left')" aria-pressed="false">Left</button>
                     <button type="button" class="secondary" id="agendaDockRightButton" data-dock-target="agenda" data-dock-value="right" onclick="setPaneDock('agenda','right')" aria-pressed="true">Right</button>
                     <button type="button" class="secondary" id="agendaDockBottomButton" data-dock-target="agenda" data-dock-value="bottom" onclick="setPaneDock('agenda','bottom')" aria-pressed="false">Bottom</button>
                 </div>
-                <div class="tablet-agenda-size-controls" aria-label="Adjust agenda size">
+                <div class="tablet-agenda-size-controls" aria-label="Adjust agenda size" hidden>
                     <button type="button" class="secondary tablet-agenda-size-button" id="tabletAgendaCompactButton" onclick="setTabletAgendaSize('compact')">Compact</button>
                     <button type="button" class="secondary tablet-agenda-size-button" id="tabletAgendaDefaultButton" onclick="setTabletAgendaSize('default')">Default</button>
                     <button type="button" class="secondary tablet-agenda-size-button" id="tabletAgendaExpandedButton" onclick="setTabletAgendaSize('expanded')">Expanded</button>
@@ -914,13 +921,28 @@ function isTouchCapable(){
     return window.matchMedia(TOUCH_CAPABLE_QUERY).matches || navigator.maxTouchPoints > 0
 }
 
+function isIpadDevice(){
+    let platform = String(navigator.platform || "")
+    let userAgent = String(navigator.userAgent || "")
+    return /iPad/i.test(userAgent) || (platform === "MacIntel" && navigator.maxTouchPoints > 1)
+}
+
+function isFloatingTabletLayout(){
+    return isTabletLayout() && isIpadDevice()
+}
+
 function isDesktopTouchLayout(){
     return isDesktopLayout() && isTouchCapable()
 }
 
 function syncInputCapabilityClasses(){
+    let ipad = isIpadDevice()
     document.body.classList.toggle("touch-capable",isTouchCapable())
     document.body.classList.toggle("desktop-touch",isDesktopTouchLayout())
+    document.body.classList.toggle("ipad-device",ipad)
+    document.querySelectorAll(".pane-dock-controls, .tablet-agenda-size-controls").forEach(node=>{
+        node.hidden = !ipad
+    })
 }
 
 function timelineBaseHeight(){
@@ -5175,7 +5197,7 @@ function updateOutlookPanels(options={}){
     if(mobileView){
         mobileView.textContent = plannerView === "month"
             ? monthName(monthAnchorDate)
-            : (plannerView === "three-day" && isTabletLayout() ? "Week" : plannerViewLabel())
+            : (plannerView === "three-day" && isFloatingTabletLayout() ? "Week" : plannerViewLabel())
     }
     if(mobileRange){
         mobileRange.textContent = plannerView === "month"
@@ -6654,7 +6676,7 @@ function syncPaneDockControls(layout=currentWorkspaceLayout()){
 
 function setPaneDock(pane,dock){
     let next = currentWorkspaceLayout()
-    if(isTabletLayout()){
+    if(isFloatingTabletLayout()){
         let viewport = currentViewportBounds()
         let margin = 12
         if(pane === "rail"){
@@ -6705,7 +6727,7 @@ function initFloatingPaneDrag(){
         let handle = document.querySelector(config.selector)
         if(!handle) return
         handle.addEventListener("pointerdown",event=>{
-            if(!isTabletLayout()) return
+            if(!isFloatingTabletLayout()) return
             if(event.target.closest("button,input,select,textarea,label,a")) return
             event.preventDefault()
 
