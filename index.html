@@ -16,10 +16,125 @@
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
     <link rel="stylesheet" href="static/style.css?v=147">
+    <style>
+        .pane-dock-controls{
+            display:flex;
+            align-items:center;
+            gap:6px;
+            flex-wrap:wrap;
+        }
+        .pane-dock-controls .secondary{
+            min-width:34px;
+            padding:6px 10px;
+            font-size:12px;
+        }
+        .pane-dock-controls .secondary.is-active{
+            background:#0f766e;
+            border-color:#0f766e;
+            color:#fff;
+        }
+        @media (min-width: 761px){
+            .calendar-workspace{
+                display:grid !important;
+                align-items:stretch;
+                min-height:0;
+            }
+            .calendar-rail{grid-area:rail;}
+            .workspace-resizer-left{grid-area:railResizer;}
+            .calendar-main{grid-area:main; min-width:0; min-height:0;}
+            .workspace-resizer-right{grid-area:agendaResizer;}
+            .agenda-pane{grid-area:agenda; min-width:0; min-height:0;}
+            .calendar-workspace[data-rail-dock="left"][data-agenda-dock="right"]{
+                grid-template-columns: var(--workspace-rail-width) 12px minmax(0,1fr) 12px minmax(260px,var(--workspace-agenda-width));
+                grid-template-rows: minmax(0,1fr);
+                grid-template-areas: "rail railResizer main agendaResizer agenda";
+            }
+            .calendar-workspace[data-rail-dock="left"][data-agenda-dock="bottom"]{
+                grid-template-columns: var(--workspace-rail-width) 12px minmax(0,1fr);
+                grid-template-rows: minmax(0,1fr) 12px minmax(220px,var(--tablet-agenda-height));
+                grid-template-areas:
+                    "rail railResizer main"
+                    ". . agendaResizer"
+                    "agenda agenda agenda";
+            }
+            .calendar-workspace[data-rail-dock="right"][data-agenda-dock="left"]{
+                grid-template-columns: minmax(260px,var(--workspace-agenda-width)) 12px minmax(0,1fr) 12px var(--workspace-rail-width);
+                grid-template-rows: minmax(0,1fr);
+                grid-template-areas: "agenda agendaResizer main railResizer rail";
+            }
+            .calendar-workspace[data-rail-dock="right"][data-agenda-dock="bottom"]{
+                grid-template-columns: minmax(0,1fr) 12px var(--workspace-rail-width);
+                grid-template-rows: minmax(0,1fr) 12px minmax(220px,var(--tablet-agenda-height));
+                grid-template-areas:
+                    "main railResizer rail"
+                    ". . agendaResizer"
+                    "agenda agenda agenda";
+            }
+            .calendar-workspace[data-agenda-dock="bottom"] .workspace-resizer-right{
+                cursor:row-resize;
+                min-height:12px;
+                width:100%;
+            }
+            .calendar-workspace[data-agenda-dock="bottom"] .agenda-pane{
+                width:auto;
+                max-width:none;
+                height:100%;
+            }
+            .calendar-workspace[data-agenda-dock="bottom"] .tablet-agenda-size-controls{
+                display:flex;
+            }
+        }
+        @media (min-width: 761px) and (max-width: 1366px){
+            .calendar-workspace{
+                position:relative;
+                display:block !important;
+                min-height:calc((var(--app-vh, 1vh) * 100) - 176px);
+                overflow:hidden;
+            }
+            .calendar-main{
+                height:100%;
+                min-height:0;
+            }
+            .workspace-resizer{
+                display:none !important;
+            }
+            .calendar-rail,
+            .agenda-pane{
+                position:absolute;
+                z-index:30;
+                max-width:calc(100% - 16px);
+                max-height:calc(100% - 16px);
+                box-shadow:0 20px 48px rgba(15,23,42,0.28);
+            }
+            .calendar-rail{
+                left:var(--workspace-rail-left, 12px);
+                top:var(--workspace-rail-top, 12px);
+                width:min(var(--workspace-rail-width), calc(100% - 16px));
+                overflow:auto;
+            }
+            .agenda-pane{
+                left:var(--workspace-agenda-left, calc(100% - var(--workspace-agenda-width) - 12px));
+                top:var(--workspace-agenda-top, 12px);
+                width:min(var(--workspace-agenda-width), calc(100% - 16px));
+                height:min(var(--tablet-agenda-height), calc(100% - 16px));
+                overflow:auto;
+            }
+            .navigation-pane-header,
+            .agenda-header{
+                cursor:grab;
+                touch-action:none;
+                user-select:none;
+            }
+            body.dragging-floating-pane .navigation-pane-header,
+            body.dragging-floating-pane .agenda-header{
+                cursor:grabbing;
+            }
+        }
+    </style>
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="static/pwa.js?v=3" defer></script>
+    <script src="static/pwa.js?v=4" defer></script>
 </head>
 
 <body>
@@ -54,9 +169,13 @@
         <aside class="calendar-rail" aria-label="Calendar navigation">
             <div class="navigation-pane-header">
                 <strong>Navigation</strong>
-                <button type="button" class="secondary icon-button nav-pane-pin" id="navPanePinButton" onclick="toggleNavigationPaneAutoHide()" aria-label="Auto-hide navigation pane" title="Auto-hide navigation pane">
-                    <span class="button-icon icon-pane-pin" aria-hidden="true"></span>
-                </button>
+                <div class="pane-dock-controls" aria-label="Move navigation pane">
+                    <button type="button" class="secondary" id="railDockLeftButton" data-dock-target="rail" data-dock-value="left" onclick="setPaneDock('rail','left')" aria-pressed="true">Left</button>
+                    <button type="button" class="secondary" id="railDockRightButton" data-dock-target="rail" data-dock-value="right" onclick="setPaneDock('rail','right')" aria-pressed="false">Right</button>
+                    <button type="button" class="secondary icon-button nav-pane-pin" id="navPanePinButton" onclick="toggleNavigationPaneAutoHide()" aria-label="Auto-hide navigation pane" title="Auto-hide navigation pane">
+                        <span class="button-icon icon-pane-pin" aria-hidden="true"></span>
+                    </button>
+                </div>
             </div>
 
             <div class="rail-date-card">
@@ -152,6 +271,11 @@
                 <div class="agenda-header-copy">
                     <span>Agenda</span>
                     <strong id="agendaRangeLabel">Selected week</strong>
+                </div>
+                <div class="pane-dock-controls" aria-label="Move agenda pane">
+                    <button type="button" class="secondary" id="agendaDockLeftButton" data-dock-target="agenda" data-dock-value="left" onclick="setPaneDock('agenda','left')" aria-pressed="false">Left</button>
+                    <button type="button" class="secondary" id="agendaDockRightButton" data-dock-target="agenda" data-dock-value="right" onclick="setPaneDock('agenda','right')" aria-pressed="true">Right</button>
+                    <button type="button" class="secondary" id="agendaDockBottomButton" data-dock-target="agenda" data-dock-value="bottom" onclick="setPaneDock('agenda','bottom')" aria-pressed="false">Bottom</button>
                 </div>
                 <div class="tablet-agenda-size-controls" aria-label="Adjust agenda size">
                     <button type="button" class="secondary tablet-agenda-size-button" id="tabletAgendaCompactButton" onclick="setTabletAgendaSize('compact')">Compact</button>
@@ -865,7 +989,7 @@ function calculateOvertimeSummary(schedule){
         .sort((a,b)=>a.start - b.start)
 
     let totalWorkedHours = blocks.reduce((total,block)=>total + block.duration,0)
-    if(totalWorkedHours <= 4){
+    if(totalWorkedHours <= DAILY_NO_OVERTIME_LIMIT + 0.0001){
         return {type:"SAFE", hours:0, rate:0, pay:0}
     }
 
@@ -912,7 +1036,9 @@ function calculateOvertimeSummary(schedule){
 }
 
 function hasOvertimeForDay(day){
-    return calculateOvertimeSummary(weekData[day] || []).pay > 0
+    let schedule = getSchedule(day)
+    if(!schedule.length) schedule = storedSchedule(day)
+    return calculateOvertimeSummary(schedule).pay > 0
 }
 
 function hasOvertimeForDateKey(eventDateKey){
@@ -3657,6 +3783,7 @@ window.addEventListener("resize",()=>{
     cachedTimelineHeight = null
     clearTimeout(resizeUpdateTimer)
     resizeUpdateTimer = setTimeout(()=>{
+        applyWorkspaceLayout(currentWorkspaceLayout())
         applyTimelineZoom({render:false})
         if(!isMobileLayout()) closeMobileSheet()
         renderWeek()
@@ -5181,14 +5308,12 @@ function readOtDateRangeInputs(){
 }
 
 function getSelectedMonthOtExportBlocks(){
-    return getSelectedMonthEvents()
-        .map(({dateKey,event})=>({
-            date:parseDateKey(dateKey),
-            dateKey,
-            ...event
-        }))
-        .filter(block=>calculateBlockOvertime(block) > 0 || calculateBlockDoubleOvertime(block) > 0)
-        .sort((a,b)=>a.date-b.date || a.start-b.start)
+    let groupedEvents = new Map()
+    getSelectedMonthEvents().forEach(({dateKey,event})=>{
+        if(!groupedEvents.has(dateKey)) groupedEvents.set(dateKey,[])
+        groupedEvents.get(dateKey).push({...event})
+    })
+    return collectOtExportBlocksFromDateEntries(Array.from(groupedEvents.entries()))
 }
 
 function getOtDateRangeExportBlocks(startKey=exportOtRangeStartKey,endKey=exportOtRangeEndKey){
@@ -5197,15 +5322,10 @@ function getOtDateRangeExportBlocks(startKey=exportOtRangeStartKey,endKey=export
     let safeEndKey = endKey || bounds.endKey
     if(safeStartKey > safeEndKey) [safeStartKey,safeEndKey] = [safeEndKey,safeStartKey]
 
-    return Object.keys(monthEvents)
+    return collectOtExportBlocksFromDateEntries(Object.keys(monthEvents)
         .sort()
         .filter(key=>key >= safeStartKey && key <= safeEndKey)
-        .flatMap(key=>{
-            let date = parseDateKey(key)
-            return (monthEvents[key] || []).map(block=>({date,dateKey:key,...block}))
-        })
-        .filter(block=>calculateBlockOvertime(block) > 0 || calculateBlockDoubleOvertime(block) > 0)
-        .sort((a,b)=>a.date-b.date || a.start-b.start)
+        .map(key=>[key,(monthEvents[key] || []).map(block=>({...block}))]))
 }
 
 function getSelectedWeekExportBlocks(){
@@ -5342,69 +5462,17 @@ function closeOtDateRangeExportDialog(){
 }
 
 function exportOtDateRangePdf(startKey,endKey){
-    const { jsPDF } = window.jspdf
-    const doc = new jsPDF()
-    let y = 20
     let exportBlocks = getOtDateRangeExportBlocks(startKey,endKey)
-
-    doc.text("ABT Overtime Planner - OT Date Range",10,y)
-    y += 10
-    doc.setFontSize(10)
+    let totals = calculatePdfOtTotals(exportBlocks)
+    const { jsPDF } = window.jspdf
+    let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
     let rangeLabel = `${parseDateKey(startKey).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})} to ${parseDateKey(endKey).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}`
-    let summaryLines = doc.splitTextToSize("Range: "+rangeLabel+" | OT events: "+exportBlocks.length,190)
-    doc.text(summaryLines,10,y)
-    y += summaryLines.length * 5 + 3
-    doc.setFontSize(12)
-
-    if(!exportBlocks.length){
-        doc.text("No overtime events were found in this date range.",10,y)
-        doc.save("planner-ot-date-range.pdf")
-        return
-    }
-
-    let groupedEvents = new Map()
-    exportBlocks.forEach(block=>{
-        if(!groupedEvents.has(block.dateKey)) groupedEvents.set(block.dateKey,[])
-        groupedEvents.get(block.dateKey).push(block)
+    renderAgendaPdfBlocks(doc,exportBlocks,{
+        title:"ABT Overtime Planner - OT Date Range",
+        summary:"Range: "+rangeLabel+" | OT events: "+exportBlocks.length+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours,
+        filename:"planner-ot-date-range.pdf",
+        emptyMessage:"No overtime events were found in this date range."
     })
-
-    Array.from(groupedEvents.keys()).sort().forEach(key=>{
-        let date = parseDateKey(key)
-        let events = groupedEvents.get(key) || []
-        if(y>270){
-            doc.addPage()
-            y=20
-        }
-
-        doc.text(date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}),10,y)
-        y += 8
-
-        events.forEach(block=>{
-            if(y>270){
-                doc.addPage()
-                y=20
-            }
-            doc.text(`${block.title || "Block"} ${formatTime(block.start)} - ${formatTime(block.start+block.dur)}`,14,y)
-            y += 8
-            let overtimeHours = calculateBlockOvertime(block)
-            let doubleOvertimeHours = calculateBlockDoubleOvertime(block)
-            let detail = `OT: ${overtimeHours}h`
-            if(doubleOvertimeHours > 0) detail += ` | Double OT: ${doubleOvertimeHours}h`
-            doc.text(detail,14,y)
-            y += 8
-            if(block.location){
-                if(y>270){
-                    doc.addPage()
-                    y=20
-                }
-                doc.text(`Location: ${block.location}`,14,y)
-                y += 8
-            }
-        })
-        y += 2
-    })
-
-    doc.save("planner-ot-date-range.pdf")
 }
 
 function confirmOtDateRangePdfExport(){
@@ -6158,6 +6226,223 @@ function escapeIcsText(value){
         .replace(/;/g, "\\;")
 }
 
+function pdfAgendaDateLabel(date){
+    return date.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric",year:"numeric"})
+}
+
+function formatCurrencyAmount(value){
+    return "$"+(Math.round((Number(value) || 0) * 100) / 100).toFixed(2)
+}
+
+function otSummaryLabel(block){
+    let overtimeHours = Number(block.overtimeHours || 0)
+    let doubleOvertimeHours = Number(block.doubleOvertimeHours || 0)
+    let pay = calculateBlockPay(block)
+    if(doubleOvertimeHours > 0 && overtimeHours > 0) return overtimeHours+"h OT / "+doubleOvertimeHours+"h Double | "+formatCurrencyAmount(pay)
+    if(doubleOvertimeHours > 0) return doubleOvertimeHours+"h Double | "+formatCurrencyAmount(pay)
+    if(overtimeHours > 0) return overtimeHours+"h OT | "+formatCurrencyAmount(pay)
+    return "OT day | "+formatCurrencyAmount(pay)
+}
+
+function calculatePdfOtTotals(blocks){
+    let grouped = new Map()
+    ;(blocks || []).forEach(block=>{
+        if(!block?.dateKey) return
+        if(!grouped.has(block.dateKey)) grouped.set(block.dateKey,[])
+        grouped.get(block.dateKey).push({
+            start:Number(block.start) || START_HOUR,
+            dur:Number(block.dur) || 0,
+            title:block.title || "Block",
+            location:block.location || "",
+            description:block.description || ""
+        })
+    })
+
+    let totalPay = 0
+    let totalOvertimeHours = 0
+    let totalDoubleHours = 0
+
+    grouped.forEach(schedule=>{
+        applyDailyOvertime(schedule)
+        schedule.forEach(block=>{
+            totalPay += calculateBlockPay(block)
+            totalOvertimeHours += Number(block.overtimeHours || 0)
+            totalDoubleHours += Number(block.doubleOvertimeHours || 0)
+        })
+    })
+
+    return {
+        pay:Math.round(totalPay * 100) / 100,
+        overtimeHours:Math.round(totalOvertimeHours * 100) / 100,
+        doubleHours:Math.round(totalDoubleHours * 100) / 100
+    }
+}
+
+function getWeekPdfExportBlocks(){
+    let grouped = new Map()
+    getSelectedWeekExportBlocks().forEach(block=>{
+        let key = dateKey(block.date)
+        if(!grouped.has(key)) grouped.set(key,[])
+        grouped.get(key).push({
+            start:Number(block.start) || START_HOUR,
+            dur:Number(block.dur) || 0,
+            title:block.title || "Block",
+            location:block.location || "",
+            description:block.description || ""
+        })
+    })
+
+    return Array.from(grouped.entries())
+        .sort((a,b)=>String(a[0]).localeCompare(String(b[0])))
+        .flatMap(([dateKey,events])=>{
+            let schedule = events.map(event=>({...event}))
+            applyDailyOvertime(schedule)
+            let date = parseDateKey(dateKey)
+            return schedule
+                .sort((a,b)=>a.start-b.start)
+                .map(block=>({date,dateKey,...block}))
+        })
+}
+
+function collectOtExportBlocksFromDateEntries(entries){
+    return (entries || [])
+        .sort((a,b)=>String(a[0]).localeCompare(String(b[0])))
+        .flatMap(([dateKey,events])=>{
+            let schedule = (events || []).map(event=>({
+                start:Number(event.start) || START_HOUR,
+                dur:Number(event.dur) || 0,
+                title:event.title || "Imported Event",
+                location:event.location || "",
+                description:event.description || ""
+            }))
+            let pay = calculateDailyPay(schedule)
+            if(pay <= 0) return []
+            let date = parseDateKey(dateKey)
+            return schedule
+                .sort((a,b)=>a.start-b.start)
+                .map(block=>({date,dateKey,...block}))
+        })
+}
+
+function renderAgendaPdfBlocks(doc,blocks,{title,summary,filename,emptyMessage="No agenda items match this export."}){
+    let pageWidth = doc.internal.pageSize.getWidth()
+    let pageHeight = doc.internal.pageSize.getHeight()
+    let margin = 12
+    let contentWidth = pageWidth - (margin * 2)
+    let y = 16
+
+    doc.setFont("helvetica","bold")
+    doc.setFontSize(18)
+    doc.text(title,margin,y)
+    y += 8
+
+    doc.setFont("helvetica","normal")
+    doc.setFontSize(10)
+    let summaryLines = doc.splitTextToSize(summary,contentWidth)
+    doc.text(summaryLines,margin,y)
+    y += summaryLines.length * 5 + 4
+
+    if(!blocks.length){
+        doc.setFontSize(12)
+        doc.text(emptyMessage,margin,y)
+        doc.save(filename)
+        return
+    }
+
+    let groupedEvents = new Map()
+    blocks.forEach(block=>{
+        if(!block?.dateKey) return
+        if(!groupedEvents.has(block.dateKey)) groupedEvents.set(block.dateKey,[])
+        groupedEvents.get(block.dateKey).push(block)
+    })
+
+    Array.from(groupedEvents.keys()).sort().forEach(key=>{
+        let date = parseDateKey(key)
+        let events = (groupedEvents.get(key) || []).slice().sort((a,b)=>a.start-b.start)
+        let dailyPay = Math.round(events.reduce((sum,block)=>sum + calculateBlockPay(block),0) * 100) / 100
+        let columns = [
+            {key:"time",label:"Time",width:34},
+            {key:"title",label:"Title / Name",width:52},
+            {key:"location",label:"Location",width:48},
+            {key:"ot",label:"OT / Amount",width:46},
+            {key:"notes",label:"Notes",width:contentWidth - 180}
+        ]
+
+        if(y > pageHeight - 32){
+            doc.addPage()
+            y = 16
+        }
+
+        doc.setDrawColor(32,43,56)
+        doc.setFillColor(242,245,247)
+        doc.roundedRect(margin,y,contentWidth,10,3,3,"FD")
+        doc.setFont("helvetica","bold")
+        doc.setFontSize(11)
+        doc.text(pdfAgendaDateLabel(date),margin + 4,y + 6.5)
+        doc.setFont("helvetica","normal")
+        doc.setFontSize(10)
+        doc.text("Day OT: "+formatCurrencyAmount(dailyPay),pageWidth - margin - 4,y + 6.5,{align:"right"})
+        y += 14
+
+        doc.setFillColor(248,250,252)
+        doc.setDrawColor(215,221,228)
+        doc.rect(margin,y,contentWidth,8,"FD")
+        doc.setFont("helvetica","bold")
+        doc.setFontSize(9)
+        let headerX = margin
+        columns.forEach(column=>{
+            doc.text(column.label,headerX + 2,y + 5.2)
+            headerX += column.width
+        })
+        y += 8
+
+        events.forEach(block=>{
+            let cellValues = {
+                time:formatTime(block.start)+" - "+formatTime(block.start + block.dur),
+                title:block.title || "Block",
+                location:block.location || " ",
+                ot:otSummaryLabel(block),
+                notes:block.description || " "
+            }
+            let wrappedCells = columns.map(column=>doc.splitTextToSize(String(cellValues[column.key] || " "),Math.max(column.width - 4,12)))
+            let rowLineCount = wrappedCells.reduce((maxCount,lines)=>Math.max(maxCount,lines.length || 1),1)
+            let rowHeight = Math.max(8,rowLineCount * 4.2 + 3)
+
+            if(y + rowHeight > pageHeight - 12){
+                doc.addPage()
+                y = 16
+                doc.setFillColor(248,250,252)
+                doc.setDrawColor(215,221,228)
+                doc.rect(margin,y,contentWidth,8,"FD")
+                doc.setFont("helvetica","bold")
+                doc.setFontSize(9)
+                let restartX = margin
+                columns.forEach(column=>{
+                    doc.text(column.label,restartX + 2,y + 5.2)
+                    restartX += column.width
+                })
+                y += 8
+            }
+
+            doc.setDrawColor(201,209,217)
+            doc.setFillColor(255,255,255)
+            doc.rect(margin,y,contentWidth,rowHeight,"FD")
+            doc.setFont("helvetica","normal")
+            doc.setFontSize(9)
+            let cellX = margin
+            columns.forEach((column,index)=>{
+                if(index > 0) doc.line(cellX,y,cellX,y + rowHeight)
+                doc.text(wrappedCells[index],cellX + 2,y + 4.5)
+                cellX += column.width
+            })
+            y += rowHeight
+        })
+        y += 4
+    })
+
+    doc.save(filename)
+}
+
 //--------------------------------
 // PDF
 //--------------------------------
@@ -6170,151 +6455,48 @@ function exportPDF(){
         return
     }
 
-    const { jsPDF } = window.jspdf
-    const doc=new jsPDF()
-
-    let y=20
-
     if(scope === "selected-month-ot"){
         let exportBlocks = getSelectedMonthOtExportBlocks()
-
-        doc.text("ABT Overtime Planner - Selected Month OT",10,y)
-        y+=10
-        doc.setFontSize(10)
-        let selectionSummary = "Selected OT events: "+exportBlocks.length
-        let selectionLines = doc.splitTextToSize(selectionSummary,190)
-        doc.text(selectionLines,10,y)
-        y += selectionLines.length * 5 + 3
-        doc.setFontSize(12)
-
-        if(!exportBlocks.length){
-            doc.text("No selected overtime month events match this export.",10,y)
-            doc.save("planner-selected-month-ot.pdf")
-            return
-        }
-
-        let groupedEvents = new Map()
-        exportBlocks.forEach(block=>{
-            if(!groupedEvents.has(block.dateKey)) groupedEvents.set(block.dateKey,[])
-            groupedEvents.get(block.dateKey).push(block)
+        let totals = calculatePdfOtTotals(exportBlocks)
+        const { jsPDF } = window.jspdf
+        let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
+        renderAgendaPdfBlocks(doc,exportBlocks,{
+            title:"ABT Overtime Planner - Selected Month OT",
+            summary:"Selected OT events: "+exportBlocks.length+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours,
+            filename:"planner-selected-month-ot.pdf",
+            emptyMessage:"No selected overtime month events match this export."
         })
-
-        Array.from(groupedEvents.keys()).sort().forEach(key=>{
-            let date = parseDateKey(key)
-            let events = groupedEvents.get(key) || []
-
-            if(y>270){
-                doc.addPage()
-                y=20
-            }
-
-            doc.text(date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}),10,y)
-            y+=8
-
-            events.forEach(block=>{
-                if(y>270){
-                    doc.addPage()
-                    y=20
-                }
-                doc.text(`${block.title || "Block"} ${formatTime(block.start)} - ${formatTime(block.start+block.dur)}`,14,y)
-                y+=8
-                let overtimeHours = calculateBlockOvertime(block)
-                let doubleOvertimeHours = calculateBlockDoubleOvertime(block)
-                let detail = `OT: ${overtimeHours}h`
-                if(doubleOvertimeHours > 0) detail += ` | Double OT: ${doubleOvertimeHours}h`
-                doc.text(detail,14,y)
-                y+=8
-                if(block.location){
-                    if(y>270){
-                        doc.addPage()
-                        y=20
-                    }
-                    doc.text(`Location: ${block.location}`,14,y)
-                    y+=8
-                }
-            })
-            y+=2
-        })
-
-        doc.save("planner-selected-month-ot.pdf")
         return
     }
 
     if(scope === "month"){
-        doc.text("ABT Overtime Planner - "+monthName(monthAnchorDate),10,y)
-        y+=10
-        doc.setFontSize(10)
         let filterSummary = monthAgendaFilterSummary()
-        let filterLines = doc.splitTextToSize(filterSummary,190)
-        doc.text(filterLines,10,y)
-        y += filterLines.length * 5 + 3
-        doc.setFontSize(12)
-
-        let groupedEvents = new Map()
-        visibleAgendaBlocks().forEach(block=>{
-            if(!block?.dateKey) return
-            if(!groupedEvents.has(block.dateKey)) groupedEvents.set(block.dateKey,[])
-            groupedEvents.get(block.dateKey).push(block)
+        let exportBlocks = visibleAgendaBlocks()
+        let totals = calculatePdfOtTotals(exportBlocks)
+        const { jsPDF } = window.jspdf
+        let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
+        renderAgendaPdfBlocks(doc,exportBlocks,{
+            title:"ABT Overtime Planner - "+monthName(monthAnchorDate),
+            summary:filterSummary+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours,
+            filename:"planner-month-agenda.pdf",
+            emptyMessage:"No agenda items match the selected month filter."
         })
-
-        if(!groupedEvents.size){
-            doc.text("No agenda items match the selected month filter.",10,y)
-            doc.save("planner-month-agenda.pdf")
-            return
-        }
-
-        Array.from(groupedEvents.keys()).sort().forEach(key=>{
-            let date = parseDateKey(key)
-            let events = groupedEvents.get(key) || []
-
-            if(y>270){
-                doc.addPage()
-                y=20
-            }
-
-            doc.text(date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}),10,y)
-            y+=8
-
-            events.slice().sort((a,b)=>a.start-b.start).forEach(b=>{
-                if(y>270){
-                    doc.addPage()
-                    y=20
-                }
-                doc.text(`${b.title || "Block"} ${formatTime(b.start)} - ${formatTime(b.start+b.dur)}`,14,y)
-                y+=8
-                if(b.location){
-                    if(y>270){
-                        doc.addPage()
-                        y=20
-                    }
-                    doc.text(`Location: ${b.location}`,14,y)
-                    y+=8
-                }
-            })
-            y+=2
-        })
-
-        doc.save("planner-month-agenda.pdf")
         return
     }
 
-    DAY_ORDER.forEach(day=>{
-        doc.text(DAY_LABELS[day],10,y)
-        y+=8
-        getSchedule(day).forEach(b=>{
-            doc.text(`${b.title || "Block"} ${formatTime(b.start)} - ${formatTime(b.start+b.dur)}`,14,y)
-            y+=8
-            if(b.location){
-                doc.text(`Location: ${b.location}`,14,y)
-                y+=8
-            }
-        })
-        y+=2
+    let exportBlocks = getWeekPdfExportBlocks()
+    let totals = calculatePdfOtTotals(exportBlocks)
+    const { jsPDF } = window.jspdf
+    let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
+    let weekLabel = selectedWeekStartKey
+        ? weekRangeLabel(parseDateKey(selectedWeekStartKey))
+        : "Current week"
+    renderAgendaPdfBlocks(doc,exportBlocks,{
+        title:"ABT Overtime Planner - Week",
+        summary:"Week: "+weekLabel+" | Daily total: "+document.getElementById("daily").innerText+" | Weekly total: "+document.getElementById("weekly").innerText+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours,
+        filename:"planner.pdf",
+        emptyMessage:"No scheduled blocks were found in the selected week."
     })
-
-    doc.text("Daily: "+document.getElementById("daily").innerText,10,y+10)
-    doc.text("Weekly: "+document.getElementById("weekly").innerText,10,y+18)
-    doc.save("planner.pdf")
 }
 
 function polishControlLabels(){
@@ -6346,10 +6528,18 @@ function updateAppViewportMetrics(){
     syncInputCapabilityClasses()
 }
 
+function currentViewportBounds(){
+    return {
+        width:window.innerWidth || document.documentElement.clientWidth || 1024,
+        height:window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 768
+    }
+}
+
 function scheduleViewportMetricUpdate(){
     clearTimeout(viewportUpdateTimer)
     viewportUpdateTimer = setTimeout(()=>{
         updateAppViewportMetrics()
+        applyWorkspaceLayout(currentWorkspaceLayout())
         applyTimelineZoom({render:false})
     },120)
 }
@@ -6359,18 +6549,62 @@ function isDesktopWorkspaceLayout(){
 }
 
 function clampWorkspaceLayout(layout){
+    let viewport = currentViewportBounds()
+    let margin = 12
+    let railWidth = Math.min(Math.max(Number(layout?.rail) || 208,160),Math.max(220,viewport.width - (margin * 2)))
+    let agendaWidth = Math.min(Math.max(Number(layout?.agenda) || 380,260),Math.max(280,viewport.width - (margin * 2)))
+    let agendaHeight = Math.min(Math.max(Number(layout?.agendaHeight) || 360,220),Math.max(240,viewport.height - (margin * 2)))
+    let railDock = ["left","right"].includes(layout?.railDock) ? layout.railDock : "left"
+    let agendaDock = ["left","right","bottom"].includes(layout?.agendaDock) ? layout.agendaDock : "right"
+    if(agendaDock !== "bottom" && agendaDock === railDock){
+        agendaDock = railDock === "left" ? "right" : "left"
+    }
+    let railDefaultX = railDock === "right"
+        ? Math.max(margin,viewport.width - railWidth - margin)
+        : margin
+    let railDefaultY = margin
+    let agendaDefaultX = agendaDock === "left"
+        ? margin
+        : Math.max(margin,viewport.width - agendaWidth - margin)
+    let agendaDefaultY = agendaDock === "bottom"
+        ? Math.max(margin,viewport.height - agendaHeight - margin)
+        : margin
+    let railX = Math.min(Math.max(Number(layout?.railX),margin),Math.max(margin,viewport.width - railWidth - margin))
+    let railY = Math.min(Math.max(Number(layout?.railY),margin),Math.max(margin,viewport.height - 180))
+    let agendaX = Math.min(Math.max(Number(layout?.agendaX),margin),Math.max(margin,viewport.width - agendaWidth - margin))
+    let agendaY = Math.min(Math.max(Number(layout?.agendaY),margin),Math.max(margin,viewport.height - agendaHeight - margin))
+    if(!Number.isFinite(railX)) railX = railDefaultX
+    if(!Number.isFinite(railY)) railY = railDefaultY
+    if(!Number.isFinite(agendaX)) agendaX = agendaDefaultX
+    if(!Number.isFinite(agendaY)) agendaY = agendaDefaultY
     return {
-        rail:Math.min(Math.max(Number(layout?.rail) || 208,160),360),
-        agenda:Math.min(Math.max(Number(layout?.agenda) || 380,260),760),
-        agendaHeight:Math.min(Math.max(Number(layout?.agendaHeight) || 360,220),720)
+        rail:railWidth,
+        agenda:agendaWidth,
+        agendaHeight:agendaHeight,
+        railDock,
+        agendaDock,
+        railX,
+        railY,
+        agendaX,
+        agendaY
     }
 }
 
 function applyWorkspaceLayout(layout){
     let next = clampWorkspaceLayout(layout)
+    let workspace = document.querySelector(".calendar-workspace")
     document.documentElement.style.setProperty("--workspace-rail-width",next.rail+"px")
     document.documentElement.style.setProperty("--workspace-agenda-width",next.agenda+"px")
     document.documentElement.style.setProperty("--tablet-agenda-height",next.agendaHeight+"px")
+    document.documentElement.style.setProperty("--workspace-rail-left",next.railX+"px")
+    document.documentElement.style.setProperty("--workspace-rail-top",next.railY+"px")
+    document.documentElement.style.setProperty("--workspace-agenda-left",next.agendaX+"px")
+    document.documentElement.style.setProperty("--workspace-agenda-top",next.agendaY+"px")
+    if(workspace){
+        workspace.dataset.railDock = next.railDock
+        workspace.dataset.agendaDock = next.agendaDock
+    }
+    syncPaneDockControls(next)
 }
 
 function loadWorkspaceLayout(){
@@ -6393,10 +6627,119 @@ function saveWorkspaceLayout(layout){
 
 function currentWorkspaceLayout(){
     let styles = getComputedStyle(document.documentElement)
+    let workspace = document.querySelector(".calendar-workspace")
     return clampWorkspaceLayout({
         rail:parseFloat(styles.getPropertyValue("--workspace-rail-width")),
         agenda:parseFloat(styles.getPropertyValue("--workspace-agenda-width")),
-        agendaHeight:parseFloat(styles.getPropertyValue("--tablet-agenda-height"))
+        agendaHeight:parseFloat(styles.getPropertyValue("--tablet-agenda-height")),
+        railX:parseFloat(styles.getPropertyValue("--workspace-rail-left")),
+        railY:parseFloat(styles.getPropertyValue("--workspace-rail-top")),
+        agendaX:parseFloat(styles.getPropertyValue("--workspace-agenda-left")),
+        agendaY:parseFloat(styles.getPropertyValue("--workspace-agenda-top")),
+        railDock:workspace?.dataset.railDock,
+        agendaDock:workspace?.dataset.agendaDock
+    })
+}
+
+function syncPaneDockControls(layout=currentWorkspaceLayout()){
+    let next = clampWorkspaceLayout(layout)
+    document.querySelectorAll("[data-dock-target]").forEach(button=>{
+        let target = button.dataset.dockTarget
+        let value = button.dataset.dockValue
+        let active = (target === "rail" ? next.railDock : next.agendaDock) === value
+        button.classList.toggle("is-active",active)
+        button.setAttribute("aria-pressed",String(active))
+    })
+}
+
+function setPaneDock(pane,dock){
+    let next = currentWorkspaceLayout()
+    if(isTabletLayout()){
+        let viewport = currentViewportBounds()
+        let margin = 12
+        if(pane === "rail"){
+            next.railDock = ["left","right"].includes(dock) ? dock : next.railDock
+            next.railX = dock === "right" ? Math.max(margin,viewport.width - next.rail - margin) : margin
+            next.railY = margin
+        }
+        if(pane === "agenda"){
+            next.agendaDock = ["left","right","bottom"].includes(dock) ? dock : next.agendaDock
+            if(dock === "left") next.agendaX = margin
+            if(dock === "right") next.agendaX = Math.max(margin,viewport.width - next.agenda - margin)
+            if(dock === "bottom"){
+                next.agendaX = Math.max(margin,viewport.width - next.agenda - margin)
+                next.agendaY = Math.max(margin,viewport.height - next.agendaHeight - margin)
+            }else{
+                next.agendaY = margin
+            }
+        }
+        saveWorkspaceLayout(next)
+        syncTabletAgendaControls(currentWorkspaceLayout().agendaHeight,"")
+        cachedTimelineHeight = null
+        return
+    }
+    if(pane === "rail"){
+        next.railDock = ["left","right"].includes(dock) ? dock : next.railDock
+        if(next.agendaDock !== "bottom" && next.agendaDock === next.railDock){
+            next.agendaDock = next.railDock === "left" ? "right" : "left"
+        }
+    }
+    if(pane === "agenda"){
+        next.agendaDock = ["left","right","bottom"].includes(dock) ? dock : next.agendaDock
+        if(next.agendaDock !== "bottom" && next.agendaDock === next.railDock){
+            next.railDock = next.agendaDock === "left" ? "right" : "left"
+        }
+    }
+    saveWorkspaceLayout(next)
+    syncTabletAgendaControls(currentWorkspaceLayout().agendaHeight,"")
+    cachedTimelineHeight = null
+}
+
+function initFloatingPaneDrag(){
+    const paneConfigs = [
+        {pane:"rail", selector:".navigation-pane-header"},
+        {pane:"agenda", selector:".agenda-header"}
+    ]
+
+    paneConfigs.forEach(config=>{
+        let handle = document.querySelector(config.selector)
+        if(!handle) return
+        handle.addEventListener("pointerdown",event=>{
+            if(!isTabletLayout()) return
+            if(event.target.closest("button,input,select,textarea,label,a")) return
+            event.preventDefault()
+
+            let start = currentWorkspaceLayout()
+            let startX = event.clientX
+            let startY = event.clientY
+            document.body.classList.add("dragging-floating-pane")
+
+            function onMove(moveEvent){
+                let next = {...start}
+                let dx = moveEvent.clientX - startX
+                let dy = moveEvent.clientY - startY
+                if(config.pane === "rail"){
+                    next.railX = start.railX + dx
+                    next.railY = start.railY + dy
+                }else{
+                    next.agendaX = start.agendaX + dx
+                    next.agendaY = start.agendaY + dy
+                }
+                applyWorkspaceLayout(next)
+            }
+
+            function onUp(){
+                document.body.classList.remove("dragging-floating-pane")
+                document.removeEventListener("pointermove",onMove)
+                document.removeEventListener("pointerup",onUp)
+                document.removeEventListener("pointercancel",onUp)
+                saveWorkspaceLayout(currentWorkspaceLayout())
+            }
+
+            document.addEventListener("pointermove",onMove)
+            document.addEventListener("pointerup",onUp)
+            document.addEventListener("pointercancel",onUp)
+        })
     })
 }
 
@@ -6890,6 +7233,7 @@ setSaveStatus(autosaveEnabled ? "Autosaved locally" : "Autosave disabled")
 updateUndoButton()
 updateOutlookPanels()
 initWorkspaceResizers()
+initFloatingPaneDrag()
 </script>
 
 </body>

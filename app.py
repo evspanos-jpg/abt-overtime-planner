@@ -1,9 +1,12 @@
+import mimetypes
 import os
+from pathlib import Path
 from analyzer import simulate_schedule
-from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request, session, url_for
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+STATIC_DIR = Path(app.root_path) / "static"
 
 PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
 
@@ -14,6 +17,35 @@ def password_required():
 
 def is_logged_in():
     return not password_required() or session.get("logged_in")
+
+
+def safe_static_response(filename, mimetype=None):
+    target = (STATIC_DIR / filename).resolve()
+    static_root = STATIC_DIR.resolve()
+    if not str(target).startswith(str(static_root)) or not target.is_file():
+        abort(404)
+
+    try:
+        data = target.read_bytes()
+    except OSError as error:
+        fallback_target = None
+        if target.name == "style.css":
+            candidate = static_root / "style-fallback.css"
+            if candidate.is_file():
+                fallback_target = candidate
+        if fallback_target is None:
+            app.logger.warning("Could not read static file %s: %s", target, error)
+            abort(404)
+        try:
+            data = fallback_target.read_bytes()
+            target = fallback_target
+        except OSError as fallback_error:
+            app.logger.warning("Could not read static file %s: %s", target, error)
+            app.logger.warning("Could not read fallback static file %s: %s", fallback_target, fallback_error)
+            abort(404)
+
+    content_type = mimetype or mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+    return Response(data, mimetype=content_type)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -39,12 +71,17 @@ def index():
 
 @app.route("/manifest.webmanifest")
 def webmanifest():
-    return send_from_directory("static", "manifest.webmanifest", mimetype="application/manifest+json")
+    return safe_static_response("manifest.webmanifest", "application/manifest+json")
 
 
 @app.route("/service-worker.js")
 def service_worker():
-    return send_from_directory("static", "service-worker.js", mimetype="application/javascript")
+    return safe_static_response("service-worker.js", "application/javascript")
+
+
+@app.route("/static/<path:filename>", endpoint="static")
+def static_files(filename):
+    return safe_static_response(filename)
 
 
 @app.route("/logout")
