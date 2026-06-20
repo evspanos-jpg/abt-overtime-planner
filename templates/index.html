@@ -782,6 +782,7 @@ let agendaDurationFilter = "all"
 let agendaSearchFieldFilter = "all"
 let exportOtRangeStartKey = ""
 let exportOtRangeEndKey = ""
+let overtimeInspectorDateOverrideKey = ""
 let toastTimer = null
 
 //--------------------------------
@@ -1913,6 +1914,12 @@ function createBlock(y,h,details={}){
         e.stopPropagation()
         selectBlock(el)
         openBlockEditor(el)
+    })
+
+    el.addEventListener("contextmenu", e=>{
+        e.preventDefault()
+        e.stopPropagation()
+        openOvertimeInspectorForDay(day)
     })
 
     return el
@@ -3088,14 +3095,31 @@ function syncOvertimeRulesSettings(){
 }
 
 function currentInspectorDate(){
+    if(overtimeInspectorDateOverrideKey) return parseDateKey(overtimeInspectorDateOverrideKey)
     let index = Math.max(DAY_ORDER.indexOf(currentDay),0)
     return addDays(selectedWeekStartDate(),index)
 }
 
 function currentInspectorSchedule(){
+    if(overtimeInspectorDateOverrideKey){
+        return cloneScheduleForPay(monthDayItems(overtimeInspectorDateOverrideKey))
+    }
     let schedule = getSchedule(currentDay)
     if(!schedule.length) schedule = storedSchedule(currentDay)
     return cloneScheduleForPay(schedule)
+}
+
+function openOvertimeInspectorForDateKey(dateKeyValue){
+    if(!dateKeyValue) return
+    overtimeInspectorDateOverrideKey = dateKeyValue
+    openSettings()
+}
+
+function openOvertimeInspectorForDay(day){
+    if(!day) return
+    let index = Math.max(DAY_ORDER.indexOf(day),0)
+    overtimeInspectorDateOverrideKey = dateKey(addDays(selectedWeekStartDate(),index))
+    openSettings()
 }
 
 function calculateOvertimeDayInspector(schedule){
@@ -3218,6 +3242,7 @@ function openSettings(){
 
 function closeSettings(){
     document.getElementById("settingsBackdrop")?.classList.add("is-hidden")
+    overtimeInspectorDateOverrideKey = ""
     updateMobileNav()
 }
 
@@ -5946,6 +5971,19 @@ function renderMonthView(){
             total.className = "month-total"
             total.innerText = "$"+dailyPay.toFixed(0)
             head.appendChild(total)
+
+            if(hasOvertimeForDateKey(key)){
+                let whyButton = document.createElement("button")
+                whyButton.type = "button"
+                whyButton.className = "month-ot-explain-button"
+                whyButton.textContent = "Why OT?"
+                whyButton.setAttribute("aria-label","Explain overtime for "+key)
+                whyButton.addEventListener("click",event=>{
+                    event.stopPropagation()
+                    openOvertimeInspectorForDateKey(key)
+                })
+                head.appendChild(whyButton)
+            }
 
             cell.appendChild(head)
 
