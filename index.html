@@ -1205,10 +1205,16 @@ function applyOvertimeFilterToTimeline(){
     let container = document.getElementById("timeline-container")
 
     document.querySelectorAll(".day-heading").forEach(node=>{
-        node.hidden = !activeDays.includes(node.dataset.day)
+        let visible = activeDays.includes(node.dataset.day)
+        node.hidden = !visible
+        if(visible) node.style.removeProperty("display")
+        else node.style.display = "none"
     })
     document.querySelectorAll(".day-column").forEach(node=>{
-        node.hidden = !activeDays.includes(node.dataset.day)
+        let visible = activeDays.includes(node.dataset.day)
+        node.hidden = !visible
+        if(visible) node.style.removeProperty("display")
+        else node.style.display = "none"
     })
 
     if(header) header.style.gridTemplateColumns = activeDays.length ? `72px repeat(${activeDays.length}, minmax(112px, 1fr))` : "72px"
@@ -4581,10 +4587,27 @@ function updateActiveDay(){
 //--------------------------------
 function setPlannerView(view){
     view = mobileFriendlyView(view)
+    let previousView = plannerView
     if(plannerView !== view) clearSelection()
     if(TIMELINE_VIEWS.includes(plannerView) && document.querySelector(".event")){
         saveAllDays({persist:false})
     }
+
+    if(previousView === "month" && TIMELINE_VIEWS.includes(view) && selectedWeekStartKey){
+        weekData = buildWeekDataFromMonthEntries(parseDateKey(selectedWeekStartKey),monthEvents)
+    }
+
+    if(dayVisibilityFilter === "overtime" && TIMELINE_VIEWS.includes(view)){
+        let candidateDays = view === "workweek" ? DAY_ORDER.slice(0,6) : DAY_ORDER
+        let currentHasOvertime = candidateDays.includes(currentDay) &&
+            calculateOvertimeSummary(storedSchedule(currentDay)).pay > 0
+        if(!currentHasOvertime){
+            currentDay = candidateDays.find(day=>
+                calculateOvertimeSummary(storedSchedule(day)).pay > 0
+            ) || currentDay
+        }
+    }
+
     plannerView = view
     closeMobileSheet()
 
@@ -5383,8 +5406,10 @@ function plannerWeekItemForDateKey(eventDateKey){
 }
 
 function monthDayItems(eventDateKey){
-    let plannerItems = plannerWeekItemForDateKey(eventDateKey)
-    if(plannerItems) return plannerItems
+    if(plannerView !== "month"){
+        let plannerItems = plannerWeekItemForDateKey(eventDateKey)
+        if(plannerItems) return plannerItems
+    }
     return monthEvents[eventDateKey] || []
 }
 
