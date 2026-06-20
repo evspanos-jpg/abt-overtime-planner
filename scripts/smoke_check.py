@@ -17,6 +17,7 @@ def main() -> None:
         "/static/overtime-rules.json",
         "/static/planner-ui.js",
         "/static/planner-ui.css",
+        "/static/vendor/jspdf.umd.min.js",
     ]
     for path in targets:
         response = client.get(path)
@@ -32,6 +33,11 @@ def main() -> None:
         "otRulesRegularSpanValue",
         "otInspectorDayValue",
         "Reset Workspace",
+        "/static/vendor/jspdf.umd.min.js",
+        'previousView === "month"',
+        "!TIMELINE_VIEWS.includes(plannerView)",
+        "date.getMonth() !== monthAnchorDate.getMonth()",
+        'document.querySelectorAll(".day-column")',
     ]
     for marker in markers:
         assert marker in html, f"Missing marker: {marker}"

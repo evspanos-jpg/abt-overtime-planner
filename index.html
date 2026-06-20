@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="static/planner-ui.css?v=1">
 
     <!-- ✅ LIBRARIES -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="static/vendor/jspdf.umd.min.js"></script>
     <script src="static/overtime-rules.js?v=1"></script>
     <script src="static/planner-ui.js?v=1"></script>
     <script src="static/pwa.js?v=4" defer></script>
@@ -1197,7 +1197,7 @@ function initAgendaFilterMenus(){
 function applyOvertimeFilterToTimeline(){
     if(plannerView === "month") return
 
-    let filterEnabled = dayVisibilityFilter === "overtime" && (plannerView === "week" || plannerView === "workweek")
+    let filterEnabled = dayVisibilityFilter === "overtime" && TIMELINE_VIEWS.includes(plannerView)
     let activeDays = visibleTimelineDays().filter(day=>!filterEnabled || hasOvertimeForDay(day))
     let header = document.querySelector(".week-grid-header")
     let body = document.querySelector(".week-grid-body")
@@ -2378,6 +2378,8 @@ function saveDay(){
 }
 
 function saveAllDays(options={}){
+    if(!TIMELINE_VIEWS.includes(plannerView)) return
+
     visibleTimelineDays().forEach(day=>{
         weekData[day] = getSchedule(day).map(b=>({
             start:b.start,
@@ -2397,6 +2399,12 @@ function saveAllDays(options={}){
 }
 
 function loadDay(options={}){
+    let expectedDays = visibleTimelineDays()
+    let renderedDays = [...document.querySelectorAll(".day-column")].map(column=>column.dataset.day)
+    if(JSON.stringify(renderedDays) !== JSON.stringify(expectedDays)){
+        buildTimeline()
+        applyTimelineZoom({render:false})
+    }
     renderWeek(options)
 }
 
@@ -6112,6 +6120,8 @@ function getMonthExportBlocks(){
         .sort()
         .flatMap(key=>{
             let date = parseDateKey(key)
+            if(date.getFullYear() !== monthAnchorDate.getFullYear() ||
+               date.getMonth() !== monthAnchorDate.getMonth()) return []
             return (monthEvents[key] || []).map(block=>({date,...block}))
         })
 }
