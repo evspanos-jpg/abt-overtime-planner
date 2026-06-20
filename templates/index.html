@@ -548,9 +548,14 @@
                         <div class="ot-rule-actions">
                             <button type="button" class="secondary" onclick="validateProposedOvertimeRule()">Check Conflicts</button>
                             <button type="button" class="secondary" onclick="saveProposedOvertimeRule()">Save Exception</button>
+                            <button type="button" class="secondary" onclick="undoCustomOvertimeRuleChange()">Undo Rule Change</button>
+                            <button type="button" class="secondary" onclick="exportCustomOvertimeRules()">Export Custom Rules</button>
+                            <button type="button" class="secondary" onclick="importCustomOvertimeRules()">Import Custom Rules</button>
+                            <button type="button" class="secondary" onclick="runBrowserOvertimeRuleSelfTest()">Run OT Self-Test</button>
                             <button type="button" class="secondary" onclick="resetCustomOvertimeRules()">Reset Custom Rules</button>
                         </div>
                         <p class="ot-rule-status" id="otRuleStatusMessage">No pending OT rule validation.</p>
+                        <div class="ot-rule-self-test-results" id="otRuleSelfTestResults" hidden></div>
                     </div>
                 </section>
 
@@ -633,6 +638,7 @@ const SNAP = 0.25
 const OVERTIME_RULES = window.overtimeRules || {}
 const OVERTIME_RULES_BASE = window.overtimeRulesBase || OVERTIME_RULES
 const CUSTOM_OVERTIME_RULES_KEY = window.customOvertimeRulesStorageKey || "abtOvertimePlannerCustomOvertimeRules"
+const CUSTOM_OVERTIME_RULES_HISTORY_KEY = "abtOvertimePlannerCustomOvertimeRulesHistory"
 const OVERTIME_BASE = OVERTIME_RULES.base || {}
 const CONTINUOUS_SPAN_EXCEPTIONS = Array.isArray(OVERTIME_RULES.continuous_span_exceptions) ? OVERTIME_RULES.continuous_span_exceptions : []
 const OVERTIME_REGRESSION_CASES = Array.isArray(OVERTIME_RULES.regression_cases) ? OVERTIME_RULES.regression_cases : []
@@ -2743,12 +2749,37 @@ function normalizeCustomOvertimeRules(value){
     }
 }
 
+function normalizeCustomOvertimeRuleHistory(value){
+    return Array.isArray(value)
+        ? value.map(entry=>normalizeCustomOvertimeRules(entry))
+        : []
+}
+
 function readCustomOvertimeRulesFromStorage(){
     try{
         return normalizeCustomOvertimeRules(JSON.parse(localStorage.getItem(CUSTOM_OVERTIME_RULES_KEY) || "{}"))
     }catch(error){
         console.warn("Custom overtime rules could not be read.",error)
         return normalizeCustomOvertimeRules({})
+    }
+}
+
+function readCustomOvertimeRuleHistory(){
+    try{
+        return normalizeCustomOvertimeRuleHistory(JSON.parse(localStorage.getItem(CUSTOM_OVERTIME_RULES_HISTORY_KEY) || "[]"))
+    }catch(error){
+        console.warn("Custom overtime rule history could not be read.",error)
+        return []
+    }
+}
+
+function writeCustomOvertimeRuleHistory(history){
+    let normalizedHistory = normalizeCustomOvertimeRuleHistory(history).slice(-12)
+    try{
+        if(normalizedHistory.length) localStorage.setItem(CUSTOM_OVERTIME_RULES_HISTORY_KEY,JSON.stringify(normalizedHistory))
+        else localStorage.removeItem(CUSTOM_OVERTIME_RULES_HISTORY_KEY)
+    }catch(error){
+        console.warn("Custom overtime rule history could not be saved.",error)
     }
 }
 
@@ -2771,8 +2802,18 @@ function applyCustomOvertimeRulesState(customRules){
     OVERTIME_RULES.regression_cases = OVERTIME_REGRESSION_CASES
 }
 
-function persistCustomOvertimeRules(customRules){
+function persistCustomOvertimeRules(customRules,options={}){
     let normalized = normalizeCustomOvertimeRules(customRules)
+    if(options.recordHistory !== false){
+        let previous = normalizeCustomOvertimeRules(window.overtimeRulesCustom || {})
+        let previousJson = JSON.stringify(previous)
+        let nextJson = JSON.stringify(normalized)
+        if(previousJson !== nextJson){
+            let history = readCustomOvertimeRuleHistory()
+            history.push(previous)
+            writeCustomOvertimeRuleHistory(history)
+        }
+    }
     try{
         if(normalized.continuous_span_exceptions.length || normalized.regression_cases.length){
             localStorage.setItem(CUSTOM_OVERTIME_RULES_KEY,JSON.stringify(normalized))
@@ -2783,6 +2824,21 @@ function persistCustomOvertimeRules(customRules){
         console.warn("Custom overtime rules could not be saved.",error)
     }
     applyCustomOvertimeRulesState(normalized)
+}
+
+function undoCustomOvertimeRuleChange(){
+    let history = readCustomOvertimeRuleHistory()
+    if(!history.length){
+        setOtRuleStatus("No saved OT rule changes are available to undo.","info")
+        return
+    }
+    let previous = normalizeCustomOvertimeRules(history.pop())
+    writeCustomOvertimeRuleHistory(history)
+    persistCustomOvertimeRules(previous,{recordHistory:false})
+    setOtRuleStatus("Restored the previous OT rule set.","success")
+    syncProposedOvertimeRulePreview()
+    syncSettingsControls()
+    overtimeRulesNeedUiRefresh()
 }
 
 function overtimeRulesNeedUiRefresh(){
@@ -2955,11 +3011,84 @@ function validateOvertimeRuleCandidate(candidate){
     }
 }
 
+function validateImportedCustomOvertimeRules(customRules){
+    let normalized = normalizeCustomOvertimeRules(customRules)
+    let existingBaseNames = new Set(baseContinuousSpanExceptions().map(rule=>String(rule.name || "").trim()).filter(Boolean))
+    let importedNames = new Set()
+    let importedCaseLabels = new Set()
+
+    for(let rule of normalized.continuous_span_exceptions){
+        let name = String(rule?.name || "").trim()
+        if(!name) return {ok:false, message:"Every imported OT exception needs a rule name.", conflicts:[]}
+        if(existingBaseNames.has(name)) return {ok:false, message:"Imported OT exception duplicates a built-in rule: " + name, conflicts:[]}
+        if(importedNames.has(name)) return {ok:false, message:"Imported OT exceptions contain the same rule twice: " + name, conflicts:[]}
+        if([rule.previous_duration,rule.gap,rule.duration,rule.extra_regular_allowance].some(value=>!Number.isFinite(Number(value)) || Number(value) < 0)){
+            return {ok:false, message:"Imported OT exception has invalid numeric values: " + name, conflicts:[]}
+        }
+        importedNames.add(name)
+    }
+
+    for(let ruleCase of normalized.regression_cases){
+        let label = String(ruleCase?.label || "").trim()
+        if(!label) return {ok:false, message:"Every imported OT regression case needs a label.", conflicts:[]}
+        if(importedCaseLabels.has(label)) return {ok:false, message:"Imported OT regression cases contain the same label twice: " + label, conflicts:[]}
+        if(!Array.isArray(ruleCase?.durations) || !ruleCase.durations.length) return {ok:false, message:"Imported OT regression case is missing durations: " + label, conflicts:[]}
+        if(ruleCase.durations.some(value=>!Number.isFinite(Number(value)) || Number(value) < 0)) return {ok:false, message:"Imported OT regression case has invalid durations: " + label, conflicts:[]}
+        if(!Number.isFinite(Number(ruleCase.expected_hours)) || Number(ruleCase.expected_hours) < 0) return {ok:false, message:"Imported OT regression case has an invalid expected OT value: " + label, conflicts:[]}
+        if(!Number.isFinite(Number(ruleCase.gap || 0)) || Number(ruleCase.gap || 0) < 0) return {ok:false, message:"Imported OT regression case has an invalid break value: " + label, conflicts:[]}
+        importedCaseLabels.add(label)
+    }
+
+    let exceptions = [...baseContinuousSpanExceptions(), ...normalized.continuous_span_exceptions]
+    let cases = [...baseRegressionCases(), ...normalized.regression_cases]
+    let conflicts = []
+
+    cases.forEach(ruleCase=>{
+        let schedule = contiguousBlocksFromDurations(ruleCase.durations || [], Number(ruleCase.gap || 0))
+        let actual = calculateOvertimeSummaryWithConfig(schedule,{
+            base:OVERTIME_BASE,
+            continuous_span_exceptions:exceptions
+        }).hours
+        let expected = Number(ruleCase.expected_hours || 0)
+        if(Math.abs(actual - expected) > 0.0001){
+            conflicts.push(ruleCase.label + " expected " + formatHoursCompact(expected) + " but got " + formatHoursCompact(actual))
+        }
+    })
+
+    if(conflicts.length){
+        return {
+            ok:false,
+            message:"Imported OT rules conflict with approved examples.",
+            conflicts
+        }
+    }
+
+    return {
+        ok:true,
+        message:"Imported OT rules passed validation.",
+        conflicts:[]
+    }
+}
+
 function setOtRuleStatus(message,type="info"){
     let status = document.getElementById("otRuleStatusMessage")
     if(!status) return
     status.textContent = message
     status.dataset.status = type
+}
+
+function setOvertimeRuleSelfTestResults(lines,type="info"){
+    let results = document.getElementById("otRuleSelfTestResults")
+    if(!results) return
+    if(!lines?.length){
+        results.hidden = true
+        results.textContent = ""
+        delete results.dataset.status
+        return
+    }
+    results.hidden = false
+    results.dataset.status = type
+    results.textContent = lines.join("\n")
 }
 
 function validateProposedOvertimeRule(){
@@ -2976,6 +3105,74 @@ function validateProposedOvertimeRule(){
     let suffix = validation.conflicts.length ? " " + validation.conflicts.join(" | ") : ""
     setOtRuleStatus(validation.message + suffix, validation.ok ? "success" : "error")
     return validation.ok
+}
+
+function exportCustomOvertimeRules(){
+    let currentCustom = normalizeCustomOvertimeRules(window.overtimeRulesCustom || {})
+    let exportPayload = {
+        exported_at:new Date().toISOString(),
+        source:"ABT Overtime Planner",
+        custom_rules:currentCustom
+    }
+    downloadTextFile(JSON.stringify(exportPayload,null,2),"abt-overtime-custom-rules.json")
+    setOtRuleStatus("Custom OT rules exported as JSON.","success")
+}
+
+function importCustomOvertimeRules(){
+    let input = document.createElement("input")
+    input.type = "file"
+    input.accept = ".json,application/json"
+    input.addEventListener("change",async ()=>{
+        let file = input.files?.[0]
+        if(!file) return
+        try{
+            let raw = JSON.parse(await file.text())
+            let normalized = normalizeCustomOvertimeRules(raw?.custom_rules ?? raw)
+            let validation = validateImportedCustomOvertimeRules(normalized)
+            if(!validation.ok){
+                let suffix = validation.conflicts.length ? " " + validation.conflicts.join(" | ") : ""
+                setOtRuleStatus(validation.message + suffix,"error")
+                setOvertimeRuleSelfTestResults(validation.conflicts,"error")
+                return
+            }
+            persistCustomOvertimeRules(normalized)
+            setOtRuleStatus("Imported custom OT rules and applied them locally.","success")
+            setOvertimeRuleSelfTestResults(["Imported " + normalized.continuous_span_exceptions.length + " exceptions and " + normalized.regression_cases.length + " custom regression cases."],"success")
+            syncProposedOvertimeRulePreview()
+            syncSettingsControls()
+            overtimeRulesNeedUiRefresh()
+        }catch(error){
+            console.warn("Custom OT rules could not be imported.",error)
+            setOtRuleStatus("The selected file is not a valid OT rules JSON export.","error")
+            setOvertimeRuleSelfTestResults([String(error?.message || error)],"error")
+        }
+    },{once:true})
+    input.click()
+}
+
+function runBrowserOvertimeRuleSelfTest(){
+    let failures = []
+    let passes = []
+    OVERTIME_REGRESSION_CASES.forEach(ruleCase=>{
+        let schedule = contiguousBlocksFromDurations(ruleCase.durations || [], Number(ruleCase.gap || 0))
+        let actual = calculateOvertimeSummaryWithConfig(schedule,{
+            base:OVERTIME_BASE,
+            continuous_span_exceptions:CONTINUOUS_SPAN_EXCEPTIONS
+        }).hours
+        let expected = Number(ruleCase.expected_hours || 0)
+        if(Math.abs(actual - expected) > 0.0001) failures.push(ruleCase.label + ": expected " + formatHoursCompact(expected) + ", got " + formatHoursCompact(actual))
+        else passes.push(ruleCase.label + ": " + formatHoursCompact(actual))
+    })
+
+    if(failures.length){
+        setOtRuleStatus("Browser OT self-test found " + failures.length + " failing cases.","error")
+        setOvertimeRuleSelfTestResults(failures,"error")
+        return false
+    }
+
+    setOtRuleStatus("Browser OT self-test passed " + passes.length + " approved examples.","success")
+    setOvertimeRuleSelfTestResults(passes,"success")
+    return true
 }
 
 function saveProposedOvertimeRule(){
@@ -3000,6 +3197,7 @@ function saveProposedOvertimeRule(){
     currentCustom.regression_cases.push(candidate.regressionCase)
     persistCustomOvertimeRules(currentCustom)
     setOtRuleStatus("Custom OT exception saved locally and applied to the planner.","success")
+    setOvertimeRuleSelfTestResults([], "info")
     syncSettingsControls()
     overtimeRulesNeedUiRefresh()
 }
@@ -3012,6 +3210,7 @@ function removeCustomOvertimeRule(ruleName){
     currentCustom.regression_cases = currentCustom.regression_cases.filter(rule=>String(rule.label || "").trim() !== name+"_case")
     persistCustomOvertimeRules(currentCustom)
     setOtRuleStatus("Custom OT rule removed: " + name,"info")
+    setOvertimeRuleSelfTestResults([], "info")
     syncSettingsControls()
     overtimeRulesNeedUiRefresh()
 }
@@ -3019,6 +3218,7 @@ function removeCustomOvertimeRule(ruleName){
 function resetCustomOvertimeRules(){
     persistCustomOvertimeRules({})
     setOtRuleStatus("Custom OT rules cleared. Base planner OT rules are active again.","info")
+    setOvertimeRuleSelfTestResults([], "info")
     syncProposedOvertimeRulePreview()
     syncSettingsControls()
     overtimeRulesNeedUiRefresh()
@@ -6050,7 +6250,7 @@ function exportOtDateRangePdf(startKey,endKey){
     let rangeLabel = `${parseDateKey(startKey).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})} to ${parseDateKey(endKey).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}`
     renderAgendaPdfBlocks(doc,exportBlocks,{
         title:"ABT Overtime Planner - OT Date Range",
-        summary:"Range: "+rangeLabel+" | OT events: "+exportBlocks.length+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours,
+        summary:"Range: "+rangeLabel+" | OT events: "+exportBlocks.length+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours+"\n"+effectiveOvertimeRulesSummaryText(),
         filename:"planner-ot-date-range.pdf",
         emptyMessage:"No overtime events were found in this date range."
     })
@@ -6815,6 +7015,22 @@ function formatCurrencyAmount(value){
     return "$"+(Math.round((Number(value) || 0) * 100) / 100).toFixed(2)
 }
 
+function effectiveOvertimeRulesSummaryText(){
+    let currentCustom = normalizeCustomOvertimeRules(window.overtimeRulesCustom || {})
+    let exceptionNames = CONTINUOUS_SPAN_EXCEPTIONS
+        .map(rule=>String(rule?.name || "").trim())
+        .filter(Boolean)
+    let summary = [
+        "Rules: " + formatHoursCompact(DAILY_REGULAR_HOURS) + " regular before OT",
+        formatHoursCompact(CONTINUOUS_RESET_BREAK_HOURS) + " break resets continuous span",
+        exceptionNames.length + " exceptions"
+    ]
+    if(currentCustom.continuous_span_exceptions.length){
+        summary.push("Custom: " + currentCustom.continuous_span_exceptions.map(rule=>String(rule?.name || "").trim()).filter(Boolean).join(", "))
+    }
+    return summary.join(" | ")
+}
+
 function otSummaryLabel(block){
     let overtimeHours = Number(block.overtimeHours || 0)
     let doubleOvertimeHours = Number(block.doubleOvertimeHours || 0)
@@ -7043,7 +7259,7 @@ function exportPDF(){
         let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
         renderAgendaPdfBlocks(doc,exportBlocks,{
             title:"ABT Overtime Planner - Selected Month OT",
-            summary:"Selected OT events: "+exportBlocks.length+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours,
+            summary:"Selected OT events: "+exportBlocks.length+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours+"\n"+effectiveOvertimeRulesSummaryText(),
             filename:"planner-selected-month-ot.pdf",
             emptyMessage:"No selected overtime month events match this export."
         })
@@ -7058,7 +7274,7 @@ function exportPDF(){
         let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
         renderAgendaPdfBlocks(doc,exportBlocks,{
             title:"ABT Overtime Planner - "+monthName(monthAnchorDate),
-            summary:filterSummary+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours,
+            summary:filterSummary+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours+"\n"+effectiveOvertimeRulesSummaryText(),
             filename:"planner-month-agenda.pdf",
             emptyMessage:"No agenda items match the selected month filter."
         })
@@ -7074,7 +7290,7 @@ function exportPDF(){
         : "Current week"
     renderAgendaPdfBlocks(doc,exportBlocks,{
         title:"ABT Overtime Planner - Week",
-        summary:"Week: "+weekLabel+" | Daily total: "+document.getElementById("daily").innerText+" | Weekly total: "+document.getElementById("weekly").innerText+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours,
+        summary:"Week: "+weekLabel+" | Daily total: "+document.getElementById("daily").innerText+" | Weekly total: "+document.getElementById("weekly").innerText+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours+"\n"+effectiveOvertimeRulesSummaryText(),
         filename:"planner.pdf",
         emptyMessage:"No scheduled blocks were found in the selected week."
     })

@@ -241,6 +241,27 @@ body.show-mode-badge .device-mode-badge{
     color:#991b1b;
 }
 
+.ot-rule-self-test-results{
+    white-space:pre-wrap;
+    margin:0;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid rgba(148,163,184,0.22);
+    background:rgba(248,250,252,0.92);
+    color:#334155;
+    font:500 12px/1.5 "Segoe UI",sans-serif;
+}
+
+.ot-rule-self-test-results[data-status="success"]{
+    background:rgba(236,253,245,0.9);
+    color:#166534;
+}
+
+.ot-rule-self-test-results[data-status="error"]{
+    background:rgba(254,242,242,0.96);
+    color:#991b1b;
+}
+
 .ot-inspector-blocks{
     margin-top:12px;
 }
