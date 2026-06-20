@@ -2390,11 +2390,11 @@ function saveAllDays(options={}){
     updateOutlookPanels()
 }
 
-function loadDay(){
-    renderWeek()
+function loadDay(options={}){
+    renderWeek(options)
 }
 
-function renderWeek(){
+function renderWeek(options={}){
     clearSelection()
     timeline.querySelectorAll(".event").forEach(e=>e.remove())
 
@@ -2406,7 +2406,7 @@ function renderWeek(){
         })
     })
 
-    update()
+    update(options)
     applyOvertimeFilterToViews()
 }
 
@@ -2448,6 +2448,33 @@ function resetAll(){
     weekData[currentDay]=[]
     clearSelection()
     loadDay()
+}
+
+function removeImportedCalendar(){
+    let calendarEventCount = Object.values(monthEvents || {}).reduce((total,events)=>total + (events || []).length,0)
+    if(!calendarEventCount && !importedEventCount){
+        alert("There is no imported calendar to remove.")
+        return
+    }
+
+    let summary = "Remove "+calendarEventCount+" imported calendar event"+(calendarEventCount === 1 ? "" : "s")+"?"
+    if(!confirm(summary)) return
+
+    pushUndoState()
+    monthEvents = {}
+    weekData = emptyWeekData()
+    importSummaryText = ""
+    importedEventCount = 0
+    skippedNonAbtCount = 0
+    selectedWeekStartKey = null
+    clearSelection()
+    closeBlockEditor()
+    loadDay()
+    updateWeekHeader()
+    updateImportSummary()
+    renderMonthView()
+    savePlannerState()
+    updateUndoButton()
 }
 
 function deleteAllBlocks(){
@@ -3775,6 +3802,9 @@ function rebuildToolbar(){
             menuItem(calendarMenu,"Export Calendar",exportICS,"",{iconClass:"icon-export"})
             menuItem(calendarMenu,"Export PDF",exportPDF,"",{iconClass:"icon-pdf"})
             appendExportScope(calendarMenu)
+            menuSection(calendarMenu,"Remove")
+            menuItem(calendarMenu,"Remove Imported Calendar",removeImportedCalendar,"",{iconClass:"icon-trash",className:"danger"})
+            menuItem(calendarMenu,"Remove All Events",deleteAllBlocks,"",{iconClass:"icon-trash",className:"danger"})
         },
         search(item){
             const searchGroup = group("search-tools")
@@ -5239,10 +5269,44 @@ function selectWeekFromMonth(key){
 
 function loadWeekFromMonth(key,options={}){
     let start = parseDateKey(key)
+    let useImportedMonthEvents = Boolean(options.useImportedMonthEvents)
+    let persist = options.persist !== false
+    let selectedWeekData = useImportedMonthEvents
+        ? buildWeekDataFromMonthEntries(start,monthEvents)
+        : emptyWeekData()
+
+    if(!useImportedMonthEvents){
+        DAY_ORDER.forEach((day,index)=>{
+            let currentDateKey = dateKey(addDays(start,index))
+            let items = monthDayItems(currentDateKey)
+            selectedWeekData[day] = items
+                .map(event=>({
+                    start:event.start,
+                    dur:event.dur,
+                    title:event.title,
+                    location:event.location,
+                    description:event.description
+                }))
+        })
+    }
+
+    weekData = selectedWeekData
+    currentDay = options.currentDay || "mon"
+    loadDay({persist})
+    updateActiveDay()
+    updateWeekHeader()
+    if(importedEventCount) importSummaryText = buildImportSummary(importedEventCount)
+    updateImportSummary()
+    applyThemeMode(themeMode)
+    if(persist) savePlannerState()
+}
+
+function buildWeekDataFromMonthEntries(startDate,sourceMonthEvents=monthEvents){
     let selectedWeekData = emptyWeekData()
 
     DAY_ORDER.forEach((day,index)=>{
-        selectedWeekData[day] = monthDayItems(dateKey(addDays(start,index)))
+        let currentDateKey = dateKey(addDays(startDate,index))
+        selectedWeekData[day] = (sourceMonthEvents[currentDateKey] || [])
             .map(event=>({
                 start:event.start,
                 dur:event.dur,
@@ -5252,15 +5316,7 @@ function loadWeekFromMonth(key,options={}){
             }))
     })
 
-    weekData = selectedWeekData
-    currentDay = options.currentDay || "mon"
-    loadDay()
-    updateActiveDay()
-    updateWeekHeader()
-    if(importedEventCount) importSummaryText = buildImportSummary(importedEventCount)
-    updateImportSummary()
-    applyThemeMode(themeMode)
-    savePlannerState()
+    return selectedWeekData
 }
 
 function isDateInSelectedWeek(date){
@@ -6141,6 +6197,7 @@ function renderMonthView(){
 
             let cell = document.createElement("div")
             cell.className = "month-day"
+            cell.dataset.dateKey = key
             if(cellDate.getMonth() !== monthAnchorDate.getMonth()) cell.classList.add("outside-month")
             if(events.length) cell.classList.add("has-events")
             if(sameDate(cellDate,new Date())) cell.classList.add("today")
@@ -6434,6 +6491,44 @@ function importICS(fileOverride=null){
                 String(date.getMinutes()).padStart(2,"0")
         }
 
+        function addMonthsClamped(date, months){
+            let next = new Date(date)
+            let dayOfMonth = next.getDate()
+            next.setDate(1)
+            next.setMonth(next.getMonth() + months)
+            let lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()
+            next.setDate(Math.min(dayOfMonth, lastDay))
+            return next
+        }
+
+        function getRecurrenceRangeEnd(startDate, rule, untilDate, countLimit, interval){
+            if(untilDate) return new Date(untilDate)
+
+            if(countLimit){
+                if(rule.FREQ === "MONTHLY"){
+                    return addMonthsClamped(startDate, Math.max((countLimit - 1) * interval, 0) + 1)
+                }
+
+                let daysToAdd = rule.FREQ === "WEEKLY"
+                    ? Math.max((countLimit - 1) * interval * 7, 7)
+                    : Math.max((countLimit - 1) * interval, 1)
+                let end = new Date(startDate)
+                end.setDate(end.getDate() + daysToAdd)
+                return end
+            }
+
+            if(rule.FREQ === "MONTHLY"){
+                return addMonthsClamped(startDate, Math.max(interval * 12, 12))
+            }
+
+            let daysToAdd = rule.FREQ === "WEEKLY"
+                ? Math.max(interval * 366, 366)
+                : Math.max(interval * 366, 366)
+            let end = new Date(startDate)
+            end.setDate(end.getDate() + daysToAdd)
+            return end
+        }
+
         function parseRRule(value){
             if(!value) return null
 
@@ -6691,13 +6786,19 @@ function importICS(fileOverride=null){
                 return
             }
 
-            weekData = importedWeekData
+            weekData = emptyWeekData()
+            selectedWeekStartKey = null
             monthEvents = importedMonthEvents
             if(firstImportedDate){
                 monthAnchorDate = new Date(firstImportedDate.getFullYear(),firstImportedDate.getMonth(),1)
                 selectedWeekStartKey = dateKey(startOfPlannerWeek(firstImportedDate))
-                loadWeekFromMonth(selectedWeekStartKey)
+                weekData = buildWeekDataFromMonthEntries(parseDateKey(selectedWeekStartKey),monthEvents)
+                currentDay = firstImportedDay || currentDay || "mon"
+                loadDay({persist:false})
+                updateActiveDay()
+                updateWeekHeader()
             }else{
+                weekData = importedWeekData
                 currentDay = firstImportedDay
                 loadDay()
                 updateActiveDay()
@@ -6832,13 +6933,19 @@ function importICS(fileOverride=null){
             return
         }
 
-        weekData = importedWeekData
+        weekData = emptyWeekData()
+        selectedWeekStartKey = null
         monthEvents = importedMonthEvents
         if(firstImportedDate){
             monthAnchorDate = new Date(firstImportedDate.getFullYear(),firstImportedDate.getMonth(),1)
             selectedWeekStartKey = dateKey(startOfPlannerWeek(firstImportedDate))
-            loadWeekFromMonth(selectedWeekStartKey)
+            weekData = buildWeekDataFromMonthEntries(parseDateKey(selectedWeekStartKey),monthEvents)
+            currentDay = firstImportedDay || currentDay || "mon"
+            loadDay({persist:false})
+            updateActiveDay()
+            updateWeekHeader()
         }else{
+            weekData = importedWeekData
             currentDay = firstImportedDay
             loadDay()
             updateActiveDay()
