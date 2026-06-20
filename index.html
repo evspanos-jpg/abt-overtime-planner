@@ -6601,15 +6601,25 @@ function importICS(fileOverride=null){
             if(!firstImportedDate) firstImportedDate = new Date(eventDate.getFullYear(),eventDate.getMonth(),eventDate.getDate())
         }
 
-        function importedEventSignature(eventDate, dayKey, start, dur, title, location, description){
+        function normalizeImportedEventTitle(title){
+            return String(title || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .replace(/\([^)]*\bstudio\b[^)]*\)/g, " ")
+                .replace(/\b(?:rehearsal|performance)\b/g, " ")
+                .replace(/[^a-z0-9]+/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+        }
+
+        function importedEventSignature(eventDate, dayKey, start, dur, title){
             let eventKey = eventDate ? dateKey(eventDate) : String(dayKey || "")
             return [
                 eventKey,
                 Math.round(Number(start || 0) * 100) / 100,
                 Math.round(Number(dur || 0) * 100) / 100,
-                String(title || "").trim(),
-                String(location || "").trim(),
-                String(description || "").trim()
+                normalizeImportedEventTitle(title)
             ].join("|")
         }
 
@@ -6625,7 +6635,7 @@ function importICS(fileOverride=null){
                 return false
             }
 
-            let signature = importedEventSignature(eventDate, dayKey, visibleStart, dur, title, location, description)
+            let signature = importedEventSignature(eventDate, dayKey, visibleStart, dur, title)
             if(seenImportedEvents.has(signature)) return false
             seenImportedEvents.add(signature)
 
