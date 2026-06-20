@@ -6350,6 +6350,7 @@ function importICS(fileOverride=null){
         let skippedNonAbt = 0
         let firstImportedDay = null
         let firstImportedDate = null
+        let seenImportedEvents = new Set()
 
         function getProperty(eventText, fieldName){
             let line = eventText
@@ -6600,6 +6601,18 @@ function importICS(fileOverride=null){
             if(!firstImportedDate) firstImportedDate = new Date(eventDate.getFullYear(),eventDate.getMonth(),eventDate.getDate())
         }
 
+        function importedEventSignature(eventDate, dayKey, start, dur, title, location, description){
+            let eventKey = eventDate ? dateKey(eventDate) : String(dayKey || "")
+            return [
+                eventKey,
+                Math.round(Number(start || 0) * 100) / 100,
+                Math.round(Number(dur || 0) * 100) / 100,
+                String(title || "").trim(),
+                String(location || "").trim(),
+                String(description || "").trim()
+            ].join("|")
+        }
+
         function addImportedEvent(dayKey, start, end, title, location, description, eventDate=null){
             let visibleStart = Math.max(start, START_HOUR)
             let visibleEnd = Math.min(end, START_HOUR + HOURS)
@@ -6611,6 +6624,10 @@ function importICS(fileOverride=null){
                 skippedNonAbt++
                 return false
             }
+
+            let signature = importedEventSignature(eventDate, dayKey, visibleStart, dur, title, location, description)
+            if(seenImportedEvents.has(signature)) return false
+            seenImportedEvents.add(signature)
 
             importedWeekData[dayKey].push({
                 start: Math.round(visibleStart * 100) / 100,
