@@ -13,6 +13,8 @@ def main() -> None:
         "/manifest.webmanifest",
         "/service-worker.js",
         "/static/pwa.js",
+        "/static/overtime-rules.js",
+        "/static/overtime-rules.json",
         "/static/planner-ui.js",
         "/static/planner-ui.css",
     ]
@@ -24,8 +26,11 @@ def main() -> None:
     markers = [
         "static/planner-ui.css?v=1",
         "static/planner-ui.js?v=1",
+        "static/overtime-rules.js?v=1",
         "deviceModeBadge",
         "settingsModeValue",
+        "otRulesRegularSpanValue",
+        "otInspectorDayValue",
         "Reset Workspace",
     ]
     for marker in markers:

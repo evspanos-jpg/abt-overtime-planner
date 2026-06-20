@@ -3,9 +3,11 @@
   "short_name": "ABT Planner",
   "description": "Plan rehearsal calls and estimate overtime from a phone-friendly schedule.",
   "start_url": "/",
+  "id": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
   "background_color": "#0d1116",
   "theme_color": "#0d1116",
   "icons": [

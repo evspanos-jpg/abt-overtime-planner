@@ -20,6 +20,7 @@
 
     <!-- ✅ LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="static/overtime-rules.js?v=1"></script>
     <script src="static/planner-ui.js?v=1"></script>
     <script src="static/pwa.js?v=4" defer></script>
 </head>
@@ -494,6 +495,77 @@
                         <div><strong>User Agent</strong><span id="settingsUserAgentValue">-</span></div>
                     </div>
                 </section>
+
+                <section class="settings-card settings-card-wide">
+                    <h4>OT Rules</h4>
+                    <div class="settings-diagnostics ot-rules-overview" aria-live="polite">
+                        <div><strong>Regular Span</strong><span id="otRulesRegularSpanValue">3h before OT</span></div>
+                        <div><strong>Reset Break</strong><span id="otRulesResetBreakValue">1h resets OT span</span></div>
+                        <div><strong>Exceptions</strong><span id="otRulesExceptionCountValue">0</span></div>
+                        <div><strong>Regression Cases</strong><span id="otRulesCaseCountValue">0</span></div>
+                    </div>
+
+                    <details class="ot-rules-panel" open>
+                        <summary>Current Exceptions</summary>
+                        <div class="ot-rules-list" id="otRulesExceptionList"></div>
+                    </details>
+
+                    <details class="ot-rules-panel">
+                        <summary>Approved Examples</summary>
+                        <div class="ot-rules-list" id="otRulesRegressionList"></div>
+                    </details>
+
+                    <div class="ot-rule-proposal">
+                        <div class="ot-rule-header">
+                            <h5>Propose Exception</h5>
+                            <button type="button" class="secondary icon-button ot-rule-add-button" onclick="startNewOvertimeRule()" aria-label="Add overtime rule" title="Add overtime rule">+</button>
+                        </div>
+                        <p class="ot-rule-help">Enter the pattern you want treated differently. The planner will derive the OT adjustment automatically, then check it against all approved examples before saving.</p>
+                        <div class="ot-rule-grid">
+                            <label>
+                                <span>First block</span>
+                                <input type="number" id="otRulePreviousDurationInput" min="0" step="0.5" value="2.5" oninput="syncProposedOvertimeRulePreview()">
+                            </label>
+                            <label>
+                                <span>Break</span>
+                                <input type="number" id="otRuleGapInput" min="0" step="0.5" value="0.5" oninput="syncProposedOvertimeRulePreview()">
+                            </label>
+                            <label>
+                                <span>Second block</span>
+                                <input type="number" id="otRuleDurationInput" min="0" step="0.5" value="2.5" oninput="syncProposedOvertimeRulePreview()">
+                            </label>
+                            <label>
+                                <span>Expected OT</span>
+                                <input type="number" id="otRuleExpectedHoursInput" min="0" step="0.5" value="1.5" oninput="syncProposedOvertimeRulePreview()">
+                            </label>
+                        </div>
+                        <div class="ot-rule-quick-actions">
+                            <button type="button" class="secondary" onclick="prefillOvertimeRuleForm(2.5,0.5,2.5,1.5)">Use 2.5 + 0.5 + 2.5</button>
+                            <button type="button" class="secondary" onclick="prefillOvertimeRuleForm(3,1,1,0)">Use 3 + 1 with 1h break</button>
+                            <button type="button" class="secondary" onclick="prefillOvertimeRuleForm(2,1,2,0)">Use 2 + 2 with 1h break</button>
+                        </div>
+                        <p class="ot-rule-preview" id="otRuleDerivedPreview">Derived rule preview will appear here.</p>
+                        <div class="ot-rule-actions">
+                            <button type="button" class="secondary" onclick="validateProposedOvertimeRule()">Check Conflicts</button>
+                            <button type="button" class="secondary" onclick="saveProposedOvertimeRule()">Save Exception</button>
+                            <button type="button" class="secondary" onclick="resetCustomOvertimeRules()">Reset Custom Rules</button>
+                        </div>
+                        <p class="ot-rule-status" id="otRuleStatusMessage">No pending OT rule validation.</p>
+                    </div>
+                </section>
+
+                <section class="settings-card settings-card-wide">
+                    <h4>OT Day Inspector</h4>
+                    <div class="settings-diagnostics ot-rules-overview" aria-live="polite">
+                        <div><strong>Day</strong><span id="otInspectorDayValue">Selected day</span></div>
+                        <div><strong>Worked</strong><span id="otInspectorWorkedValue">0h</span></div>
+                        <div><strong>Billable</strong><span id="otInspectorBillableValue">0h</span></div>
+                        <div><strong>OT / Double</strong><span id="otInspectorOtValue">0h / 0h</span></div>
+                        <div><strong>Pay</strong><span id="otInspectorPayValue">$0</span></div>
+                        <div><strong>Applied Exceptions</strong><span id="otInspectorExceptionValue">None</span></div>
+                    </div>
+                    <div class="ot-rules-list ot-inspector-blocks" id="otInspectorBlockList"></div>
+                </section>
             </div>
         </section>
     </div>
@@ -558,16 +630,22 @@ const timeline = document.getElementById("timeline")
 const HOURS = 13
 const START_HOUR = 10
 const SNAP = 0.25
-const DAILY_REGULAR_HOURS = 3
-const DAILY_NO_OVERTIME_LIMIT = 4
-const DAILY_TIER_OT_START = 6
-const DAILY_TIER_OT_END = 8
-const OT_RATE = 65
-const DOUBLE_OT_RATE = 90
-const BILLING_INCREMENT = 0.5
-const WORK_BREAK_LIMIT_HOURS = 5 / 60
-const DAILY_RESET_BREAK_HOURS = 1
-const CONTINUOUS_RESET_BREAK_HOURS = DAILY_RESET_BREAK_HOURS
+const OVERTIME_RULES = window.overtimeRules || {}
+const OVERTIME_RULES_BASE = window.overtimeRulesBase || OVERTIME_RULES
+const CUSTOM_OVERTIME_RULES_KEY = window.customOvertimeRulesStorageKey || "abtOvertimePlannerCustomOvertimeRules"
+const OVERTIME_BASE = OVERTIME_RULES.base || {}
+const CONTINUOUS_SPAN_EXCEPTIONS = Array.isArray(OVERTIME_RULES.continuous_span_exceptions) ? OVERTIME_RULES.continuous_span_exceptions : []
+const OVERTIME_REGRESSION_CASES = Array.isArray(OVERTIME_RULES.regression_cases) ? OVERTIME_RULES.regression_cases : []
+const DAILY_REGULAR_HOURS = Number(OVERTIME_BASE.daily_regular_hours ?? 3)
+const DAILY_NO_OVERTIME_LIMIT = Number(OVERTIME_BASE.daily_no_overtime_limit ?? 4)
+const DAILY_TIER_OT_START = Number(OVERTIME_BASE.daily_tier_ot_start ?? 6)
+const DAILY_TIER_OT_END = Number(OVERTIME_BASE.daily_tier_ot_end ?? 8)
+const OT_RATE = Number(OVERTIME_BASE.ot_rate ?? 65)
+const DOUBLE_OT_RATE = Number(OVERTIME_BASE.double_ot_rate ?? 90)
+const BILLING_INCREMENT = Number(OVERTIME_BASE.billing_increment ?? 0.5)
+const WORK_BREAK_LIMIT_HOURS = Number(OVERTIME_BASE.work_break_limit_hours ?? (5 / 60))
+const DAILY_RESET_BREAK_HOURS = Number(OVERTIME_BASE.daily_reset_break_hours ?? 1)
+const CONTINUOUS_RESET_BREAK_HOURS = Number(OVERTIME_BASE.continuous_reset_break_hours ?? DAILY_RESET_BREAK_HOURS)
 const STORAGE_KEY = "abtOvertimePlannerState"
 const AUTOSAVE_ENABLED_KEY = "abtOvertimePlannerAutosaveEnabled"
 const TOOLBAR_SETTINGS_KEY = "abtOvertimePlannerToolbarSettings"
@@ -885,7 +963,29 @@ function normalizeAgendaSearchFieldFilter(value){
     return ["all","title","location","notes","time","date"].includes(value) ? value : "all"
 }
 
-function calculateOvertimeSummary(schedule){
+function overtimeBaseConfigFromSource(source){
+    let base = source?.base || source || {}
+    return {
+        dailyRegularHours:Number(base.daily_regular_hours ?? DAILY_REGULAR_HOURS),
+        dailyNoOvertimeLimit:Number(base.daily_no_overtime_limit ?? DAILY_NO_OVERTIME_LIMIT),
+        dailyTierOtEnd:Number(base.daily_tier_ot_end ?? DAILY_TIER_OT_END),
+        otRate:Number(base.ot_rate ?? OT_RATE),
+        doubleOtRate:Number(base.double_ot_rate ?? DOUBLE_OT_RATE),
+        continuousResetBreakHours:Number(base.continuous_reset_break_hours ?? CONTINUOUS_RESET_BREAK_HOURS),
+        dailyResetBreakHours:Number(base.daily_reset_break_hours ?? DAILY_RESET_BREAK_HOURS)
+    }
+}
+
+function continuousSpanExtraRegularAllowance(previousDuration,gap,duration,exceptions=CONTINUOUS_SPAN_EXCEPTIONS){
+    let match = (exceptions || []).find(rule=>
+        Math.abs(Number(rule.previous_duration || 0) - previousDuration) < 0.0001 &&
+        Math.abs(Number(rule.gap || 0) - gap) < 0.0001 &&
+        Math.abs(Number(rule.duration || 0) - duration) < 0.0001
+    )
+    return Number(match?.extra_regular_allowance || 0)
+}
+
+function calculateOvertimeSummaryWithConfig(schedule,ruleConfig={}){
     let blocks = (schedule || [])
         .map(block=>({
             start:Number(block.start) || 0,
@@ -894,8 +994,10 @@ function calculateOvertimeSummary(schedule){
         .filter(block=>block.duration > 0)
         .sort((a,b)=>a.start - b.start)
 
+    let base = overtimeBaseConfigFromSource(ruleConfig.base)
+    let exceptions = Array.isArray(ruleConfig.continuous_span_exceptions) ? ruleConfig.continuous_span_exceptions : CONTINUOUS_SPAN_EXCEPTIONS
     let totalWorkedHours = blocks.reduce((total,block)=>total + block.duration,0)
-    if(totalWorkedHours <= DAILY_NO_OVERTIME_LIMIT + 0.0001){
+    if(totalWorkedHours <= base.dailyNoOvertimeLimit + 0.0001){
         return {type:"SAFE", hours:0, rate:0, pay:0}
     }
 
@@ -905,40 +1007,58 @@ function calculateOvertimeSummary(schedule){
     let continuousOtHours = 0
     let dailyOt65 = 0
     let doubleOt90 = 0
+    let previousDuration = 0
 
     blocks.forEach(block=>{
         let start = block.start
         let duration = block.duration
         let end = start + duration
 
+        let extraRegularAllowance = 0
+
         if(lastEnd !== null){
             let gap = start - lastEnd
-            if(gap >= CONTINUOUS_RESET_BREAK_HOURS) continuousHours = 0
-            if(gap >= DAILY_RESET_BREAK_HOURS) dailyHours = 0
+            // Breaks under 1 hour stay in the same continuous OT span.
+            // Example: 1 + 0.5 + 0.5 + 0.5 + 0.5 + 1 + 1 = 5h total, so 2h OT.
+            // Explicit exceptions are stored in static/overtime-rules.json.
+            extraRegularAllowance = continuousSpanExtraRegularAllowance(previousDuration,gap,duration,exceptions)
+            if(gap >= base.continuousResetBreakHours) continuousHours = 0
+            if(gap >= base.dailyResetBreakHours) dailyHours = 0
         }
 
         let continuousBefore = continuousHours
         let continuousAfter = continuousHours + duration
-        if(continuousAfter > DAILY_REGULAR_HOURS){
-            continuousOtHours += continuousAfter - Math.max(continuousBefore,DAILY_REGULAR_HOURS)
+        if(continuousAfter > base.dailyRegularHours){
+            continuousOtHours += Math.max(
+                (continuousAfter - Math.max(continuousBefore,base.dailyRegularHours)) - extraRegularAllowance,
+                0
+            )
         }
 
         continuousHours = continuousAfter
 
         let dailyBefore = dailyHours
         let dailyAfter = dailyHours + duration
-        dailyOt65 += Math.max(0,Math.min(dailyAfter,DAILY_TIER_OT_END) - Math.max(dailyBefore,DAILY_NO_OVERTIME_LIMIT))
-        doubleOt90 += Math.max(0,dailyAfter - Math.max(dailyBefore,DAILY_TIER_OT_END))
+        dailyOt65 += Math.max(0,Math.min(dailyAfter,base.dailyTierOtEnd) - Math.max(dailyBefore,base.dailyNoOvertimeLimit))
+        doubleOt90 += Math.max(0,dailyAfter - Math.max(dailyBefore,base.dailyTierOtEnd))
         dailyHours = dailyAfter
         lastEnd = end
+        previousDuration = duration
     })
 
     let baseOt65 = Math.max(continuousOtHours,dailyOt65)
-    let pay = (baseOt65 * OT_RATE) + (doubleOt90 * DOUBLE_OT_RATE)
+    let pay = (baseOt65 * base.otRate) + (doubleOt90 * base.doubleOtRate)
 
-    if(doubleOt90 > 0) return {type:"DOUBLE OT", hours:doubleOt90, rate:DOUBLE_OT_RATE, pay:Math.round(pay * 100) / 100}
-    if(baseOt65 > 0) return {type:"OVERTIME", hours:baseOt65, rate:OT_RATE, pay:Math.round(pay * 100) / 100}
+    if(doubleOt90 > 0) return {type:"DOUBLE OT", hours:doubleOt90, rate:base.doubleOtRate, pay:Math.round(pay * 100) / 100}
+    if(baseOt65 > 0) return {type:"OVERTIME", hours:baseOt65, rate:base.otRate, pay:Math.round(pay * 100) / 100}
     return {type:"SAFE", hours:0, rate:0, pay:0}
+}
+
+function calculateOvertimeSummary(schedule){
+    return calculateOvertimeSummaryWithConfig(schedule,{
+        base:OVERTIME_BASE,
+        continuous_span_exceptions:CONTINUOUS_SPAN_EXCEPTIONS
+    })
 }
 
 function hasOvertimeForDay(day){
@@ -948,7 +1068,7 @@ function hasOvertimeForDay(day){
 }
 
 function hasOvertimeForDateKey(eventDateKey){
-    return calculateOvertimeSummary(monthEvents[eventDateKey] || []).pay > 0
+    return calculateOvertimeSummary(monthDayItems(eventDateKey)).pay > 0
 }
 
 function blockMatchesDayVisibilityFilter(block){
@@ -1543,7 +1663,7 @@ function getSelectedMonthEvents(){
         .map(key=>{
             let [eventDateKey,indexValue] = key.split("|")
             let index = Number(indexValue)
-            let event = monthEvents[eventDateKey]?.[index]
+            let event = monthDayItems(eventDateKey)?.[index]
             return event ? {dateKey:eventDateKey,index,event} : null
         })
         .filter(Boolean)
@@ -2605,6 +2725,473 @@ function setDefaultPlannerView(view){
     syncSettingsControls()
 }
 
+function cloneJsonValue(value){
+    return JSON.parse(JSON.stringify(value ?? {}))
+}
+
+function normalizeCustomOvertimeRules(value){
+    return {
+        continuous_span_exceptions:Array.isArray(value?.continuous_span_exceptions) ? value.continuous_span_exceptions : [],
+        regression_cases:Array.isArray(value?.regression_cases) ? value.regression_cases : []
+    }
+}
+
+function readCustomOvertimeRulesFromStorage(){
+    try{
+        return normalizeCustomOvertimeRules(JSON.parse(localStorage.getItem(CUSTOM_OVERTIME_RULES_KEY) || "{}"))
+    }catch(error){
+        console.warn("Custom overtime rules could not be read.",error)
+        return normalizeCustomOvertimeRules({})
+    }
+}
+
+function baseContinuousSpanExceptions(){
+    return Array.isArray(OVERTIME_RULES_BASE.continuous_span_exceptions) ? OVERTIME_RULES_BASE.continuous_span_exceptions : []
+}
+
+function baseRegressionCases(){
+    return Array.isArray(OVERTIME_RULES_BASE.regression_cases) ? OVERTIME_RULES_BASE.regression_cases : []
+}
+
+function applyCustomOvertimeRulesState(customRules){
+    let normalized = normalizeCustomOvertimeRules(customRules)
+    window.overtimeRulesCustom = normalized
+    let mergedExceptions = [...baseContinuousSpanExceptions(), ...normalized.continuous_span_exceptions]
+    let mergedCases = [...baseRegressionCases(), ...normalized.regression_cases]
+    CONTINUOUS_SPAN_EXCEPTIONS.splice(0,CONTINUOUS_SPAN_EXCEPTIONS.length,...mergedExceptions)
+    OVERTIME_REGRESSION_CASES.splice(0,OVERTIME_REGRESSION_CASES.length,...mergedCases)
+    OVERTIME_RULES.continuous_span_exceptions = CONTINUOUS_SPAN_EXCEPTIONS
+    OVERTIME_RULES.regression_cases = OVERTIME_REGRESSION_CASES
+}
+
+function persistCustomOvertimeRules(customRules){
+    let normalized = normalizeCustomOvertimeRules(customRules)
+    try{
+        if(normalized.continuous_span_exceptions.length || normalized.regression_cases.length){
+            localStorage.setItem(CUSTOM_OVERTIME_RULES_KEY,JSON.stringify(normalized))
+        }else{
+            localStorage.removeItem(CUSTOM_OVERTIME_RULES_KEY)
+        }
+    }catch(error){
+        console.warn("Custom overtime rules could not be saved.",error)
+    }
+    applyCustomOvertimeRulesState(normalized)
+}
+
+function overtimeRulesNeedUiRefresh(){
+    if(plannerView === "month") renderMonthView()
+    else update()
+    updateOutlookPanels({forceAgenda:true})
+}
+
+function formatHoursCompact(hours){
+    let value = Math.round(Number(hours || 0) * 100) / 100
+    let text = value.toFixed(2).replace(/\.00$/,"").replace(/(\.\d)0$/,"$1")
+    return text + "h"
+}
+
+function contiguousBlocksFromDurations(durations,gap=0){
+    let start = 0
+    return durations.map(duration=>{
+        let block = {start,duration:Number(duration || 0)}
+        start += Number(duration || 0) + Number(gap || 0)
+        return block
+    })
+}
+
+function buildAutoOvertimeRuleName(previousDuration,gap,duration,expectedHours){
+    return [
+        "rule",
+        String(previousDuration).replace(".","_"),
+        "break",
+        String(gap).replace(".","_"),
+        String(duration).replace(".","_"),
+        "ot",
+        String(expectedHours).replace(".","_")
+    ].join("_")
+}
+
+function prefillOvertimeRuleForm(previousDuration,gap,duration,expectedHours){
+    let values = {
+        otRulePreviousDurationInput:previousDuration,
+        otRuleGapInput:gap,
+        otRuleDurationInput:duration,
+        otRuleExpectedHoursInput:expectedHours
+    }
+    Object.entries(values).forEach(([id,value])=>{
+        let input = document.getElementById(id)
+        if(input) input.value = String(value)
+    })
+    syncProposedOvertimeRulePreview()
+}
+
+function startNewOvertimeRule(){
+    prefillOvertimeRuleForm(0,0,0,0)
+    setOtRuleStatus("Enter the new OT pattern, then check conflicts before saving.","info")
+    document.getElementById("otRulePreviousDurationInput")?.focus()
+}
+
+function syncProposedOvertimeRulePreview(){
+    let preview = document.getElementById("otRuleDerivedPreview")
+    if(!preview) return
+    let candidate = buildProposedOvertimeRuleCandidate()
+    if(candidate.error){
+        preview.textContent = candidate.error
+        preview.dataset.status = "error"
+        return
+    }
+    let baselineHours = candidate.baselineHours
+    let derivedAllowance = candidate.exception.extra_regular_allowance
+    if(Math.abs(derivedAllowance) < 0.0001){
+        preview.textContent =
+            "This example already matches current OT rules: " +
+            formatHoursCompact(candidate.exception.previous_duration) + " + " +
+            formatHoursCompact(candidate.exception.gap) + " break + " +
+            formatHoursCompact(candidate.exception.duration) + " = " +
+            formatHoursCompact(candidate.regressionCase.expected_hours) + " OT."
+        preview.dataset.status = "info"
+        return
+    }
+    preview.textContent =
+        "Derived adjustment: " +
+        formatHoursCompact(candidate.exception.previous_duration) + " + " +
+        formatHoursCompact(candidate.exception.gap) + " break + " +
+        formatHoursCompact(candidate.exception.duration) +
+        " currently gives " + formatHoursCompact(baselineHours) +
+        " OT. Saving this would add " + formatHoursCompact(derivedAllowance) +
+        " regular time so it becomes " + formatHoursCompact(candidate.regressionCase.expected_hours) + " OT."
+    preview.dataset.status = "success"
+}
+
+function buildProposedOvertimeRuleCandidate(){
+    let previousDuration = Number(document.getElementById("otRulePreviousDurationInput")?.value)
+    let gap = Number(document.getElementById("otRuleGapInput")?.value)
+    let duration = Number(document.getElementById("otRuleDurationInput")?.value)
+    let expectedHours = Number(document.getElementById("otRuleExpectedHoursInput")?.value)
+
+    if([previousDuration,gap,duration,expectedHours].some(value=>!Number.isFinite(value) || value < 0)){
+        return {error:"All OT rule values must be valid positive numbers or zero."}
+    }
+
+    let baselineHours = calculateOvertimeSummaryWithConfig(
+        contiguousBlocksFromDurations([previousDuration,duration],gap),
+        {
+            base:OVERTIME_BASE,
+            continuous_span_exceptions:CONTINUOUS_SPAN_EXCEPTIONS
+        }
+    ).hours
+    let extraRegularAllowance = Math.round((baselineHours - expectedHours) * 100) / 100
+
+    if(extraRegularAllowance < -0.0001){
+        return {error:"This simplified OT exception form can only reduce OT from the current baseline. Enter a case with expected OT at or below the current result."}
+    }
+
+    let exceptionName = buildAutoOvertimeRuleName(previousDuration,gap,duration,expectedHours)
+
+    return {
+        exception:{
+            name:exceptionName,
+            previous_duration:previousDuration,
+            gap,
+            duration,
+            extra_regular_allowance:Math.max(extraRegularAllowance,0)
+        },
+        regressionCase:{
+            label:exceptionName+"_case",
+            durations:[previousDuration,duration],
+            gap,
+            expected_hours:expectedHours
+        },
+        baselineHours
+    }
+}
+
+function validateOvertimeRuleCandidate(candidate){
+    let currentCustom = normalizeCustomOvertimeRules(window.overtimeRulesCustom || {})
+    let existingNames = new Set([
+        ...baseContinuousSpanExceptions().map(rule=>String(rule.name || "").trim()),
+        ...currentCustom.continuous_span_exceptions.map(rule=>String(rule.name || "").trim())
+    ])
+
+    if(existingNames.has(candidate.exception.name)){
+        return {ok:false, message:"A rule with that name already exists. Rename it or reset custom rules first.", conflicts:[]}
+    }
+
+    let exceptions = [...baseContinuousSpanExceptions(), ...currentCustom.continuous_span_exceptions, candidate.exception]
+    let cases = [...baseRegressionCases(), ...currentCustom.regression_cases, candidate.regressionCase]
+    let conflicts = []
+
+    cases.forEach(ruleCase=>{
+        let schedule = contiguousBlocksFromDurations(ruleCase.durations || [], Number(ruleCase.gap || 0))
+        let actual = calculateOvertimeSummaryWithConfig(schedule,{
+            base:OVERTIME_BASE,
+            continuous_span_exceptions:exceptions
+        }).hours
+        let expected = Number(ruleCase.expected_hours || 0)
+        if(Math.abs(actual - expected) > 0.0001){
+            conflicts.push(ruleCase.label + " expected " + formatHoursCompact(expected) + " but got " + formatHoursCompact(actual))
+        }
+    })
+
+    if(conflicts.length){
+        return {
+            ok:false,
+            message:"Conflict detected. This exception would break existing approved OT examples.",
+            conflicts
+        }
+    }
+
+    return {
+        ok:true,
+        message:"No OT conflicts found. This exception is compatible with all approved examples.",
+        conflicts:[]
+    }
+}
+
+function setOtRuleStatus(message,type="info"){
+    let status = document.getElementById("otRuleStatusMessage")
+    if(!status) return
+    status.textContent = message
+    status.dataset.status = type
+}
+
+function validateProposedOvertimeRule(){
+    let candidate = buildProposedOvertimeRuleCandidate()
+    if(candidate.error){
+        setOtRuleStatus(candidate.error,"error")
+        return false
+    }
+    if(candidate.exception.extra_regular_allowance <= 0.0001){
+        setOtRuleStatus("This example already matches current OT rules. No new exception is needed.","info")
+        return true
+    }
+    let validation = validateOvertimeRuleCandidate(candidate)
+    let suffix = validation.conflicts.length ? " " + validation.conflicts.join(" | ") : ""
+    setOtRuleStatus(validation.message + suffix, validation.ok ? "success" : "error")
+    return validation.ok
+}
+
+function saveProposedOvertimeRule(){
+    let candidate = buildProposedOvertimeRuleCandidate()
+    if(candidate.error){
+        setOtRuleStatus(candidate.error,"error")
+        return
+    }
+    if(candidate.exception.extra_regular_allowance <= 0.0001){
+        setOtRuleStatus("This example already matches current OT rules. Nothing new was saved.","info")
+        return
+    }
+    let validation = validateOvertimeRuleCandidate(candidate)
+    if(!validation.ok){
+        let suffix = validation.conflicts.length ? " " + validation.conflicts.join(" | ") : ""
+        setOtRuleStatus(validation.message + suffix,"error")
+        return
+    }
+
+    let currentCustom = normalizeCustomOvertimeRules(window.overtimeRulesCustom || {})
+    currentCustom.continuous_span_exceptions.push(candidate.exception)
+    currentCustom.regression_cases.push(candidate.regressionCase)
+    persistCustomOvertimeRules(currentCustom)
+    setOtRuleStatus("Custom OT exception saved locally and applied to the planner.","success")
+    syncSettingsControls()
+    overtimeRulesNeedUiRefresh()
+}
+
+function removeCustomOvertimeRule(ruleName){
+    let name = String(ruleName || "").trim()
+    if(!name) return
+    let currentCustom = normalizeCustomOvertimeRules(window.overtimeRulesCustom || {})
+    currentCustom.continuous_span_exceptions = currentCustom.continuous_span_exceptions.filter(rule=>String(rule.name || "").trim() !== name)
+    currentCustom.regression_cases = currentCustom.regression_cases.filter(rule=>String(rule.label || "").trim() !== name+"_case")
+    persistCustomOvertimeRules(currentCustom)
+    setOtRuleStatus("Custom OT rule removed: " + name,"info")
+    syncSettingsControls()
+    overtimeRulesNeedUiRefresh()
+}
+
+function resetCustomOvertimeRules(){
+    persistCustomOvertimeRules({})
+    setOtRuleStatus("Custom OT rules cleared. Base planner OT rules are active again.","info")
+    syncProposedOvertimeRulePreview()
+    syncSettingsControls()
+    overtimeRulesNeedUiRefresh()
+}
+
+function syncOvertimeRulesSettings(){
+    let currentCustom = normalizeCustomOvertimeRules(window.overtimeRulesCustom || {})
+    let exceptions = CONTINUOUS_SPAN_EXCEPTIONS
+    let cases = OVERTIME_REGRESSION_CASES
+    let regularSpan = document.getElementById("otRulesRegularSpanValue")
+    let resetBreak = document.getElementById("otRulesResetBreakValue")
+    let exceptionCount = document.getElementById("otRulesExceptionCountValue")
+    let caseCount = document.getElementById("otRulesCaseCountValue")
+    let exceptionList = document.getElementById("otRulesExceptionList")
+    let regressionList = document.getElementById("otRulesRegressionList")
+
+    if(regularSpan) regularSpan.textContent = formatHoursCompact(DAILY_REGULAR_HOURS) + " before OT"
+    if(resetBreak) resetBreak.textContent = formatHoursCompact(CONTINUOUS_RESET_BREAK_HOURS) + " resets OT span"
+    if(exceptionCount) exceptionCount.textContent = exceptions.length + " total / " + currentCustom.continuous_span_exceptions.length + " custom"
+    if(caseCount) caseCount.textContent = cases.length + " total / " + currentCustom.regression_cases.length + " custom"
+    syncProposedOvertimeRulePreview()
+
+    if(exceptionList){
+        exceptionList.innerHTML = ""
+        if(!exceptions.length){
+            let empty = document.createElement("p")
+            empty.className = "ot-rule-item is-empty"
+            empty.textContent = "No OT exceptions configured."
+            exceptionList.appendChild(empty)
+        }else{
+            exceptions.forEach(rule=>{
+                let item = document.createElement("div")
+                item.className = "ot-rule-item"
+                let isCustom = currentCustom.continuous_span_exceptions.some(custom=>custom.name === rule.name)
+                item.innerHTML = "<strong>" + (rule.name || "rule") + "</strong><span>" +
+                    formatHoursCompact(rule.previous_duration) + " + " +
+                    formatHoursCompact(rule.gap) + " break + " +
+                    formatHoursCompact(rule.duration) + " => +" +
+                    formatHoursCompact(rule.extra_regular_allowance) + " regular</span>"
+                if(isCustom){
+                    item.classList.add("is-custom")
+                    let removeButton = document.createElement("button")
+                    removeButton.type = "button"
+                    removeButton.className = "secondary ot-rule-remove-button"
+                    removeButton.textContent = "Remove"
+                    removeButton.addEventListener("click",()=>removeCustomOvertimeRule(rule.name))
+                    item.appendChild(removeButton)
+                }
+                exceptionList.appendChild(item)
+            })
+        }
+    }
+
+    if(regressionList){
+        regressionList.innerHTML = ""
+        if(!cases.length){
+            let empty = document.createElement("p")
+            empty.className = "ot-rule-item is-empty"
+            empty.textContent = "No approved OT examples configured."
+            regressionList.appendChild(empty)
+        }else{
+            cases.forEach(ruleCase=>{
+                let item = document.createElement("div")
+                item.className = "ot-rule-item"
+                item.innerHTML = "<strong>" + ruleCase.label + "</strong><span>" +
+                    (ruleCase.durations || []).map(formatHoursCompact).join(" + ") +
+                    (Number(ruleCase.gap || 0) > 0 ? " with " + formatHoursCompact(ruleCase.gap) + " breaks" : "") +
+                    " => " + formatHoursCompact(ruleCase.expected_hours) + " OT</span>"
+                if(currentCustom.regression_cases.some(custom=>custom.label === ruleCase.label)) item.classList.add("is-custom")
+                regressionList.appendChild(item)
+            })
+        }
+    }
+}
+
+function currentInspectorDate(){
+    let index = Math.max(DAY_ORDER.indexOf(currentDay),0)
+    return addDays(selectedWeekStartDate(),index)
+}
+
+function currentInspectorSchedule(){
+    let schedule = getSchedule(currentDay)
+    if(!schedule.length) schedule = storedSchedule(currentDay)
+    return cloneScheduleForPay(schedule)
+}
+
+function calculateOvertimeDayInspector(schedule){
+    let blocks = (schedule || [])
+        .map(block=>({
+            start:Number(block.start) || 0,
+            dur:Number(block.dur ?? block.duration) || 0,
+            title:block.title || "Untitled",
+            location:block.location || "",
+            description:block.description || ""
+        }))
+        .filter(block=>block.dur > 0)
+        .sort((a,b)=>a.start - b.start)
+
+    if(!blocks.length){
+        return {
+            worked:0,
+            billable:0,
+            overtime:0,
+            doubleOvertime:0,
+            pay:0,
+            exceptions:[],
+            blocks:[]
+        }
+    }
+
+    applyDailyOvertime(blocks)
+    let exceptions = []
+    blocks.forEach((block,index)=>{
+        if(index === 0) return
+        let previousBlock = blocks[index - 1]
+        let gap = block.start - (previousBlock.start + previousBlock.dur)
+        let extra = continuousSpanExtraRegularAllowance(previousBlock.billableDur || 0,gap,block.billableDur || 0)
+        if(extra > 0){
+            exceptions.push(
+                formatHoursCompact(previousBlock.billableDur || 0) + " + " +
+                formatHoursCompact(gap) + " break + " +
+                formatHoursCompact(block.billableDur || 0) + " => +" +
+                formatHoursCompact(extra) + " regular"
+            )
+        }
+    })
+
+    return {
+        worked:blocks.reduce((total,block)=>total + Number(block.dur || 0),0),
+        billable:blocks.reduce((total,block)=>total + Number(block.billableDur || 0),0),
+        overtime:blocks.reduce((total,block)=>total + Number(block.overtimeHours || 0),0),
+        doubleOvertime:blocks.reduce((total,block)=>total + Number(block.doubleOvertimeHours || 0),0),
+        pay:blocks.reduce((total,block)=>total + calculateBlockPay(block),0),
+        exceptions,
+        blocks
+    }
+}
+
+function syncOvertimeDayInspector(){
+    let dayValue = document.getElementById("otInspectorDayValue")
+    let workedValue = document.getElementById("otInspectorWorkedValue")
+    let billableValue = document.getElementById("otInspectorBillableValue")
+    let otValue = document.getElementById("otInspectorOtValue")
+    let payValue = document.getElementById("otInspectorPayValue")
+    let exceptionValue = document.getElementById("otInspectorExceptionValue")
+    let blockList = document.getElementById("otInspectorBlockList")
+    let inspectDate = currentInspectorDate()
+    let summary = calculateOvertimeDayInspector(currentInspectorSchedule())
+
+    if(dayValue) dayValue.textContent = inspectDate.toLocaleDateString(undefined,{weekday:"short", month:"short", day:"numeric"})
+    if(workedValue) workedValue.textContent = formatHoursCompact(summary.worked)
+    if(billableValue) billableValue.textContent = formatHoursCompact(summary.billable)
+    if(otValue) otValue.textContent = formatHoursCompact(summary.overtime) + " / " + formatHoursCompact(summary.doubleOvertime)
+    if(payValue) payValue.textContent = formatCurrencyAmount(summary.pay)
+    if(exceptionValue) exceptionValue.textContent = summary.exceptions.length ? summary.exceptions.join(" | ") : "None"
+
+    if(blockList){
+        blockList.innerHTML = ""
+        if(!summary.blocks.length){
+            let empty = document.createElement("p")
+            empty.className = "ot-rule-item is-empty"
+            empty.textContent = "No blocks on the selected day."
+            blockList.appendChild(empty)
+        }else{
+            summary.blocks.forEach(block=>{
+                let item = document.createElement("div")
+                item.className = "ot-rule-item"
+                item.innerHTML = "<strong>" + (block.title || "Untitled") + "</strong><span>" +
+                    formatTime(block.start) + " - " + formatTime(block.start + block.dur) +
+                    " | worked " + formatHoursCompact(block.dur) +
+                    " | billable " + formatHoursCompact(block.billableDur) +
+                    " | OT " + formatHoursCompact(block.overtimeHours) +
+                    " | Double " + formatHoursCompact(block.doubleOvertimeHours) +
+                    "</span>"
+                blockList.appendChild(item)
+            })
+        }
+    }
+}
+
 function syncSettingsControls(){
     updateThemeButtons()
     updateTimelineZoomControls()
@@ -2616,6 +3203,8 @@ function syncSettingsControls(){
     let modeBadge = document.getElementById("settingsModeBadgeInput")
     if(modeBadge) modeBadge.checked = Boolean(window.modeBadgeVisible)
     if(typeof syncDeviceDiagnostics === "function") syncDeviceDiagnostics()
+    syncOvertimeRulesSettings()
+    syncOvertimeDayInspector()
 }
 
 function openSettings(){
@@ -3125,8 +3714,12 @@ function applyDailyOvertime(schedule){
     let dailyElapsed = 0
 
     schedule.forEach(block=>{
+        let extraRegularAllowance = 0
         if(previousBlock){
             let gap = block.start - (previousBlock.start + previousBlock.dur)
+            // Keep fragmented blocks in one OT span until there is a full 1-hour break.
+            // Explicit exceptions are stored in static/overtime-rules.json.
+            extraRegularAllowance = continuousSpanExtraRegularAllowance(previousBlock.billableDur || 0,gap,block.billableDur)
             if(gap >= CONTINUOUS_RESET_BREAK_HOURS - 0.0001){
                 regularRemaining = DAILY_REGULAR_HOURS
             }
@@ -3135,10 +3728,10 @@ function applyDailyOvertime(schedule){
             }
         }
 
-        let continuousRegular = Math.min(block.billableDur,regularRemaining)
+        let continuousRegular = Math.min(block.billableDur,regularRemaining + extraRegularAllowance)
         block.continuousOvertimeHours = Math.max(block.billableDur - continuousRegular,0)
         continuousOvertime += block.continuousOvertimeHours
-        regularRemaining = Math.max(regularRemaining - continuousRegular,0)
+        regularRemaining = Math.max(regularRemaining - Math.max(continuousRegular - extraRegularAllowance,0),0)
 
         let blockStart = dailyElapsed
         let blockEnd = dailyElapsed + block.billableDur
@@ -4487,6 +5080,45 @@ function selectedWeekStartDate(){
     return startOfPlannerWeek(new Date())
 }
 
+function plannerWeekItemForDateKey(eventDateKey){
+    if(!selectedWeekStartKey) return null
+
+    let start = parseDateKey(selectedWeekStartKey)
+    for(let index=0; index<DAY_ORDER.length; index++){
+        let currentKey = dateKey(addDays(start,index))
+        if(currentKey === eventDateKey){
+            let day = DAY_ORDER[index]
+            return (weekData[day] || []).map(block=>({
+                start:block.start,
+                dur:block.dur,
+                title:block.title,
+                location:block.location,
+                description:block.description
+            }))
+        }
+    }
+
+    return null
+}
+
+function monthDayItems(eventDateKey){
+    let plannerItems = plannerWeekItemForDateKey(eventDateKey)
+    if(plannerItems) return plannerItems
+    return monthEvents[eventDateKey] || []
+}
+
+function monthDateKeysForCurrentView(){
+    let keys = new Set(Object.keys(monthEvents))
+    if(selectedWeekStartKey){
+        let start = parseDateKey(selectedWeekStartKey)
+        DAY_ORDER.forEach((day,index)=>{
+            let items = weekData[day] || []
+            if(items.length) keys.add(dateKey(addDays(start,index)))
+        })
+    }
+    return [...keys].sort()
+}
+
 function selectedWeekAgendaBlocks(){
     let start = selectedWeekStartDate()
     return DAY_ORDER.flatMap((day,index)=>{
@@ -4501,13 +5133,12 @@ function selectedWeekAgendaBlocks(){
 }
 
 function monthAgendaBlocks(){
-    return Object.keys(monthEvents)
-        .sort()
+    return monthDateKeysForCurrentView()
         .flatMap(key=>{
             let date = parseDateKey(key)
             if(date.getMonth() !== monthAnchorDate.getMonth()) return []
             let day = DAY_ORDER[(date.getDay() + 6) % 7]
-            return (monthEvents[key] || []).map(block=>({
+            return monthDayItems(key).map(block=>({
                 ...block,
                 day,
                 date,
@@ -5107,6 +5738,7 @@ function updateOutlookPanels(options={}){
         )
     })
     updateMobileNav()
+    let settingsOpen = !document.getElementById("settingsBackdrop")?.classList.contains("is-hidden")
 
     if(!agendaList) return
     if(agendaSheetLayout && !options.forceAgenda && !document.body.classList.contains("mobile-agenda-open")) return
@@ -5122,6 +5754,7 @@ function updateOutlookPanels(options={}){
                 ? "No scheduled events in this month."
                 : "No scheduled blocks in the selected week."
         agendaList.appendChild(empty)
+        if(settingsOpen) syncOvertimeDayInspector()
         return
     }
 
@@ -5161,6 +5794,7 @@ function updateOutlookPanels(options={}){
 
         agendaList.appendChild(item)
     })
+    if(settingsOpen) syncOvertimeDayInspector()
 }
 
 function getExportScope(){
@@ -5274,7 +5908,7 @@ function renderMonthView(){
             cellDate.setDate(start.getDate() + (week * 7) + day)
 
             let key = dateKey(cellDate)
-            let events = (monthEvents[key] || [])
+            let events = monthDayItems(key)
                 .map((event,index)=>({...event,monthIndex:index}))
                 .sort((a,b)=>a.start-b.start)
             let dailyPay = calculateMonthDayPay(events)
@@ -7054,6 +7688,7 @@ rebuildToolbar = function(...args){
 }
 
 // INIT
+applyCustomOvertimeRulesState(readCustomOvertimeRulesFromStorage())
 updateAppViewportMetrics()
 loadModeBadgePreference()
 syncInputCapabilityClasses()

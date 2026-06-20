@@ -1,0 +1,67 @@
+{
+  "base": {
+    "daily_regular_hours": 3.0,
+    "daily_no_overtime_limit": 4.0,
+    "daily_tier_ot_start": 6.0,
+    "daily_tier_ot_end": 8.0,
+    "ot_rate": 65.0,
+    "double_ot_rate": 90.0,
+    "billing_increment": 0.5,
+    "work_break_limit_hours": 0.0833333333,
+    "daily_reset_break_hours": 1.0,
+    "continuous_reset_break_hours": 1.0
+  },
+  "continuous_span_exceptions": [
+    {
+      "name": "two_point_five_half_hour_break_two_point_five",
+      "previous_duration": 2.5,
+      "gap": 0.5,
+      "duration": 2.5,
+      "extra_regular_allowance": 0.5
+    }
+  ],
+  "regression_cases": [
+    {
+      "label": "five_continuous_hours_is_two_ot",
+      "durations": [5.0],
+      "gap": 0.0,
+      "expected_hours": 2.0
+    },
+    {
+      "label": "fragmented_continuous_five_hours_is_two_ot",
+      "durations": [1.0, 0.5, 0.5, 0.5, 0.5, 1.0, 1.0],
+      "gap": 0.0,
+      "expected_hours": 2.0
+    },
+    {
+      "label": "short_breaks_under_one_hour_keep_same_ot_span",
+      "durations": [1.0, 0.5, 0.5, 0.5, 0.5, 1.0, 1.0],
+      "gap": 0.5,
+      "expected_hours": 2.0
+    },
+    {
+      "label": "two_point_five_half_hour_break_two_point_five_exception",
+      "durations": [2.5, 2.5],
+      "gap": 0.5,
+      "expected_hours": 1.5
+    },
+    {
+      "label": "three_plus_one_with_one_hour_break_is_no_ot",
+      "durations": [3.0, 1.0],
+      "gap": 1.0,
+      "expected_hours": 0.0
+    },
+    {
+      "label": "two_plus_two_with_one_hour_break_is_no_ot",
+      "durations": [2.0, 2.0],
+      "gap": 1.0,
+      "expected_hours": 0.0
+    },
+    {
+      "label": "one_plus_one_plus_one_plus_one_with_one_hour_breaks_is_no_ot",
+      "durations": [1.0, 1.0, 1.0, 1.0],
+      "gap": 1.0,
+      "expected_hours": 0.0
+    }
+  ]
+}

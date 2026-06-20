@@ -48,6 +48,15 @@ def safe_static_response(filename, mimetype=None):
     return Response(data, mimetype=content_type)
 
 
+@app.after_request
+def disable_html_caching(response):
+    if response.mimetype in {"text/html", "application/javascript", "application/manifest+json", "text/css", "application/json"}:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if not password_required():
