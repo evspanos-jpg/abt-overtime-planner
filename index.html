@@ -5017,7 +5017,7 @@ function loadWeekFromMonth(key,options={}){
     let selectedWeekData = emptyWeekData()
 
     DAY_ORDER.forEach((day,index)=>{
-        selectedWeekData[day] = (monthEvents[dateKey(addDays(start,index))] || [])
+        selectedWeekData[day] = monthDayItems(dateKey(addDays(start,index)))
             .map(event=>({
                 start:event.start,
                 dur:event.dur,
@@ -5674,7 +5674,7 @@ function renderMiniMonth(){
         button.classList.toggle("outside-month",cellDate.getMonth() !== monthAnchorDate.getMonth())
         button.classList.toggle("today",sameDate(cellDate,new Date()))
         button.classList.toggle("selected-week",isDateInSelectedWeek(cellDate))
-        button.classList.toggle("has-events",Boolean((monthEvents[key] || []).length))
+        button.classList.toggle("has-events",Boolean(monthDayItems(key).length))
         button.setAttribute("aria-label","Open week of "+weekRangeLabel(startOfPlannerWeek(cellDate)))
         button.addEventListener("click",()=>selectMiniMonthDate(key))
         grid.appendChild(button)
