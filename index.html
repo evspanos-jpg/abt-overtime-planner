@@ -88,7 +88,7 @@
                     <button type="button" class="secondary icon-button" onclick="changeMiniMonth(1)" aria-label="Next mini month">›</button>
                 </div>
                 <div class="mini-month-weekdays" aria-hidden="true">
-                    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                    <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
                 </div>
                 <div class="mini-month-grid" id="miniMonthGrid"></div>
             </div>
@@ -139,13 +139,13 @@
                 </div>
 
                 <div class="month-weekdays" aria-hidden="true">
-                    <span>Sun</span>
                     <span>Mon</span>
                     <span>Tue</span>
                     <span>Wed</span>
                     <span>Thu</span>
                     <span>Fri</span>
                     <span>Sat</span>
+                    <span>Sun</span>
                 </div>
 
                 <div class="month-grid" id="monthGrid"></div>
@@ -6031,7 +6031,8 @@ function renderMiniMonth(){
 
     let first = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth(),1)
     let start = new Date(first)
-    start.setDate(first.getDate() - first.getDay())
+    let mondayOffset = (first.getDay() + 6) % 7
+    start.setDate(first.getDate() - mondayOffset)
 
     for(let index=0; index<42; index++){
         let cellDate = addDays(start,index)
@@ -6269,7 +6270,8 @@ function renderMonthView(){
 
     let first = new Date(monthAnchorDate.getFullYear(),monthAnchorDate.getMonth(),1)
     let start = new Date(first)
-    start.setDate(first.getDate() - first.getDay())
+    let mondayOffset = (first.getDay() + 6) % 7
+    start.setDate(first.getDate() - mondayOffset)
 
     for(let week=0; week<6; week++){
         let weekTotal = 0

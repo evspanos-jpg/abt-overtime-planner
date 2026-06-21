@@ -63,6 +63,23 @@ test("calendar import identity, recurrence, OT views, export, and removal", asyn
   expect(transitions["three-day"]).toEqual(["fri"]);
   expect(transitions.workweek).toEqual(["fri"]);
 
+  const monthLayout = await page.evaluate(() => {
+    monthAnchorDate = new Date(2026, 1, 1);
+    setPlannerView("month");
+    renderMonthView();
+    return {
+      weekdays: [...document.querySelectorAll(".month-weekdays span")].map(node => node.textContent.trim()),
+      firstGridDate: document.querySelector(".month-day")?.dataset.dateKey || null,
+      firstMiniDate: document.querySelector(".mini-month-day")?.textContent?.trim() || null,
+      workweekDays: visibleTimelineDays("workweek")
+    };
+  });
+
+  expect(monthLayout.weekdays).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+  expect(monthLayout.firstGridDate).toBe("2026-01-26");
+  expect(monthLayout.firstMiniDate).toBe("26");
+  expect(monthLayout.workweekDays).toEqual(["mon", "tue", "wed", "thu", "fri", "sat"]);
+
   const monthYearScope = await page.evaluate(() => {
     monthEvents["2025-02-13"] = [{
       start: 10,
