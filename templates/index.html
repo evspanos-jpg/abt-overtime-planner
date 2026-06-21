@@ -2491,6 +2491,56 @@ function removeImportedCalendar(){
     updateUndoButton()
 }
 
+function commitImportedCalendar(importedMonthEvents, importedWeekData, options={}){
+    let {
+        importedCount = 0,
+        skippedNonAbt = 0,
+        firstImportedDay = null,
+        firstImportedDate = null,
+        input = null,
+        sourceLabel = "calendar"
+    } = options
+
+    let previousImportedCount = importedEventCount
+    let replacingExistingImport = Boolean(previousImportedCount || Object.keys(monthEvents || {}).length)
+
+    pushUndoState()
+    weekData = emptyWeekData()
+    selectedWeekStartKey = null
+    monthEvents = importedMonthEvents
+
+    if(firstImportedDate){
+        monthAnchorDate = new Date(firstImportedDate.getFullYear(),firstImportedDate.getMonth(),1)
+        selectedWeekStartKey = dateKey(startOfPlannerWeek(firstImportedDate))
+        weekData = buildWeekDataFromMonthEntries(parseDateKey(selectedWeekStartKey),monthEvents)
+        currentDay = firstImportedDay || currentDay || "mon"
+        loadDay({persist:false})
+        updateActiveDay()
+        updateWeekHeader()
+    }else{
+        weekData = importedWeekData
+        currentDay = firstImportedDay || currentDay
+        loadDay()
+        updateActiveDay()
+    }
+
+    importedEventCount = importedCount
+    skippedNonAbtCount = skippedNonAbt
+    importSummaryText = buildImportSummary()
+    clearSelection()
+    closeBlockEditor()
+    setPlannerView("month")
+    renderMonthView()
+    updateImportSummary()
+    applyThemeMode(themeMode)
+    savePlannerState()
+    updateUndoButton()
+
+    let actionLabel = replacingExistingImport ? "replaced" : "imported"
+    showAppToast(importedCount+" "+sourceLabel+" event"+(importedCount===1 ? "" : "s")+" "+actionLabel)
+    if(input) input.value = ""
+}
+
 function deleteAllBlocks(){
     let weekBlockCount = DAY_ORDER.reduce((total,day)=>total + (weekData[day] || []).length,0)
     let calendarEventCount = Object.values(monthEvents || {}).reduce((total,events)=>total + (events || []).length,0)
@@ -5421,6 +5471,11 @@ function monthDayItems(eventDateKey){
     return monthEvents[eventDateKey] || []
 }
 
+function isInAnchoredMonth(date){
+    return date?.getFullYear?.() === monthAnchorDate.getFullYear() &&
+        date?.getMonth?.() === monthAnchorDate.getMonth()
+}
+
 function monthDateKeysForCurrentView(){
     let keys = new Set(Object.keys(monthEvents))
     if(selectedWeekStartKey){
@@ -5450,7 +5505,7 @@ function monthAgendaBlocks(){
     return monthDateKeysForCurrentView()
         .flatMap(key=>{
             let date = parseDateKey(key)
-            if(date.getMonth() !== monthAnchorDate.getMonth()) return []
+            if(!isInAnchoredMonth(date)) return []
             let day = DAY_ORDER[(date.getDay() + 6) % 7]
             return monthDayItems(key).map(block=>({
                 ...block,
@@ -6875,30 +6930,14 @@ function importICS(fileOverride=null){
                 return
             }
 
-            weekData = emptyWeekData()
-            selectedWeekStartKey = null
-            monthEvents = importedMonthEvents
-            if(firstImportedDate){
-                monthAnchorDate = new Date(firstImportedDate.getFullYear(),firstImportedDate.getMonth(),1)
-                selectedWeekStartKey = dateKey(startOfPlannerWeek(firstImportedDate))
-                weekData = buildWeekDataFromMonthEntries(parseDateKey(selectedWeekStartKey),monthEvents)
-                currentDay = firstImportedDay || currentDay || "mon"
-                loadDay({persist:false})
-                updateActiveDay()
-                updateWeekHeader()
-            }else{
-                weekData = importedWeekData
-                currentDay = firstImportedDay
-                loadDay()
-                updateActiveDay()
-            }
-            importedEventCount = importedCount
-            skippedNonAbtCount = skippedNonAbt
-            importSummaryText = buildImportSummary()
-            showAppToast(importedCount+" calendar event"+(importedCount===1 ? "" : "s")+" imported")
-            setPlannerView("month")
-            applyThemeMode(themeMode)
-            if(input) input.value = ""
+            commitImportedCalendar(importedMonthEvents, importedWeekData, {
+                importedCount,
+                skippedNonAbt,
+                firstImportedDay,
+                firstImportedDate,
+                input,
+                sourceLabel: "calendar"
+            })
             return
         }
 
@@ -7055,30 +7094,14 @@ function importICS(fileOverride=null){
             return
         }
 
-        weekData = emptyWeekData()
-        selectedWeekStartKey = null
-        monthEvents = importedMonthEvents
-        if(firstImportedDate){
-            monthAnchorDate = new Date(firstImportedDate.getFullYear(),firstImportedDate.getMonth(),1)
-            selectedWeekStartKey = dateKey(startOfPlannerWeek(firstImportedDate))
-            weekData = buildWeekDataFromMonthEntries(parseDateKey(selectedWeekStartKey),monthEvents)
-            currentDay = firstImportedDay || currentDay || "mon"
-            loadDay({persist:false})
-            updateActiveDay()
-            updateWeekHeader()
-        }else{
-            weekData = importedWeekData
-            currentDay = firstImportedDay
-            loadDay()
-            updateActiveDay()
-        }
-        importedEventCount = importedCount
-        skippedNonAbtCount = skippedNonAbt
-        importSummaryText = buildImportSummary()
-        showAppToast(importedCount+" calendar event"+(importedCount===1 ? "" : "s")+" imported")
-        setPlannerView("month")
-        applyThemeMode(themeMode)
-        if(input) input.value = ""
+        commitImportedCalendar(importedMonthEvents, importedWeekData, {
+            importedCount,
+            skippedNonAbt,
+            firstImportedDay,
+            firstImportedDate,
+            input,
+            sourceLabel: "calendar"
+        })
     }
 
     reader.onerror = function(){

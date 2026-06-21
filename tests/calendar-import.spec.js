@@ -37,6 +37,10 @@ test("calendar import identity, recurrence, OT views, export, and removal", asyn
   expect(imported.feb20).toEqual(["ABT Overnight Rehearsal"]);
   expect(imported.feb21).toEqual(["ABT Overnight Rehearsal"]);
 
+  await page.locator("#fileInput").setInputFiles(fixture);
+  await expect.poll(() => page.evaluate(() => importedEventCount)).toBe(14);
+  await expect.poll(() => page.evaluate(() => Object.values(monthEvents).flat().length)).toBe(14);
+
   const transitions = await page.evaluate(() => {
     monthAnchorDate = new Date(2026, 1, 1);
     selectedWeekStartKey = "2026-02-02";
@@ -58,6 +62,25 @@ test("calendar import identity, recurrence, OT views, export, and removal", asyn
   expect(transitions.day).toEqual(["fri"]);
   expect(transitions["three-day"]).toEqual(["fri"]);
   expect(transitions.workweek).toEqual(["fri"]);
+
+  const monthYearScope = await page.evaluate(() => {
+    monthEvents["2025-02-13"] = [{
+      start: 10,
+      dur: 6,
+      title: "Prior Year Overtime",
+      location: "",
+      description: ""
+    }];
+
+    monthAnchorDate = new Date(2026, 1, 1);
+    setPlannerView("month");
+    renderMonthView();
+    setDayVisibilityFilter("overtime");
+
+    return [...new Set(visibleAgendaBlocks().map(block => block.dateKey))];
+  });
+
+  expect(monthYearScope).toEqual(["2026-02-06"]);
 
   await page.evaluate(() => {
     setDayVisibilityFilter("all");
