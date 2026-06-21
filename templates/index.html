@@ -755,6 +755,7 @@ let importSummaryText = ""
 let importedEventCount = 0
 let skippedNonAbtCount = 0
 let isRestoringState = false
+let isInitializingState = true
 let undoStack = []
 let redoStack = []
 let editingBlock = null
@@ -5014,6 +5015,7 @@ function plannerStatePayload(){
 function applyPlannerState(state){
     if(!state || typeof state !== "object") throw new Error("Invalid planner file.")
 
+    if(state.projectName) currentProjectName = normalizeProjectFileName(state.projectName)
     if(state.weekData) weekData = state.weekData
     if(state.monthEvents) monthEvents = state.monthEvents
     if(state.currentDay) currentDay = state.currentDay
@@ -5265,7 +5267,7 @@ async function uploadProjectToCloud(provider){
 }
 
 function savePlannerState(){
-    if(isRestoringState) return
+    if(isRestoringState || isInitializingState) return
     if(!autosaveEnabled){
         setSaveStatus("Autosave disabled")
         return
@@ -5273,6 +5275,9 @@ function savePlannerState(){
 
     try{
         localStorage.setItem(STORAGE_KEY,JSON.stringify({
+            fileType: PROJECT_FILE_TYPE,
+            version: PROJECT_FILE_VERSION,
+            projectName: currentProjectName,
             weekData,
             monthEvents,
             currentDay,
@@ -5307,8 +5312,10 @@ function restorePlannerState(){
 
     try{
         let state = JSON.parse(raw)
+        if(state.fileType && state.fileType !== PROJECT_FILE_TYPE) return
         isRestoringState = true
 
+        if(state.projectName) currentProjectName = normalizeProjectFileName(state.projectName)
         if(state.weekData) weekData = state.weekData
         if(state.monthEvents) monthEvents = state.monthEvents
         if(state.currentDay) currentDay = state.currentDay
@@ -8234,6 +8241,8 @@ restorePlannerState()
 if(!selectedWeekStartKey && defaultPlannerView !== plannerView) setPlannerView(defaultPlannerView)
 updateWeekHeader()
 updateImportSummary()
+isInitializingState = false
+savePlannerState()
 setSaveStatus(autosaveEnabled ? "Autosaved locally" : "Autosave disabled")
 updateUndoButton()
 updateOutlookPanels()

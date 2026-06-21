@@ -117,3 +117,76 @@ test("calendar import identity, recurrence, OT views, export, and removal", asyn
   await expect.poll(() => page.evaluate(() => Object.values(monthEvents).flat().length)).toBe(0);
   expect(pageErrors).toEqual([]);
 });
+
+test("opened project state survives reload", async ({ page }) => {
+  await page.goto("file:///" + path.resolve(__dirname, "..", "index.html").replaceAll("\\", "/"));
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  const beforeReload = await page.evaluate(async () => {
+    const state = {
+      fileType: PROJECT_FILE_TYPE,
+      version: PROJECT_FILE_VERSION,
+      projectName: "memory-test.abt-planner.json",
+      weekData: {
+        mon: [{ start: 11, dur: 2, title: "Saved Block", location: "Studio 5", description: "note" }],
+        tue: [],
+        wed: [],
+        thu: [],
+        fri: [],
+        sat: [],
+        sun: []
+      },
+      monthEvents: {
+        "2026-04-16": [{ start: 11, dur: 2, title: "Saved Event", location: "Studio 5", description: "note" }]
+      },
+      currentDay: "mon",
+      plannerView: "month",
+      selectedWeekStartKey: "2026-04-13",
+      importSummaryText: "Imported 1 timed event",
+      importedEventCount: 1,
+      skippedNonAbtCount: 0,
+      customImportKeywords: ["abt"],
+      exportScope: "month",
+      monthAnchorDate: "2026-04-01"
+    };
+
+    const file = new File([JSON.stringify(state)], "memory-test.abt-planner.json", { type: "application/json" });
+    await openProjectBlob(file);
+    savePlannerState();
+
+    return {
+      currentProjectName,
+      plannerView,
+      selectedWeekStartKey,
+      monthAnchorDate: dateKey(monthAnchorDate),
+      importedEventCount,
+      monCount: weekData.mon.length,
+      monthCount: Object.values(monthEvents).flat().length
+    };
+  });
+
+  await page.reload();
+
+  const afterReload = await page.evaluate(() => ({
+    currentProjectName,
+    plannerView,
+    selectedWeekStartKey,
+    monthAnchorDate: dateKey(monthAnchorDate),
+    importedEventCount,
+    monCount: weekData.mon.length,
+    monthCount: Object.values(monthEvents).flat().length
+  }));
+
+  expect(beforeReload).toEqual({
+    currentProjectName: "memory-test.abt-planner.json",
+    plannerView: "month",
+    selectedWeekStartKey: "2026-04-13",
+    monthAnchorDate: "2026-04-01",
+    importedEventCount: 1,
+    monCount: 1,
+    monthCount: 1
+  });
+
+  expect(afterReload).toEqual(beforeReload);
+});
