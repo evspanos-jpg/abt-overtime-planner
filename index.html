@@ -6385,7 +6385,8 @@ function importICS(fileOverride=null){
         let skippedNonAbt = 0
         let firstImportedDay = null
         let firstImportedDate = null
-        let seenImportedEvents = new Set()
+        let seenImportedSourceEvents = new Set()
+        let seenImportedSemanticEvents = new Set()
 
         function getProperty(eventText, fieldName){
             let line = eventText
@@ -6658,7 +6659,19 @@ function importICS(fileOverride=null){
             ].join("|")
         }
 
-        function addImportedEvent(dayKey, start, end, title, location, description, eventDate=null){
+        function importedSourceSignature(identity,eventDate,dayKey){
+            let uid = String(identity?.uid || "").trim().toLowerCase()
+            if(!uid) return ""
+
+            let occurrenceDate = identity?.occurrenceDate || eventDate
+            let occurrenceKey = occurrenceDate
+                ? dateTimeExclusionKey(occurrenceDate)
+                : String(dayKey || "")
+            let segmentKey = eventDate ? dateKey(eventDate) : String(dayKey || "")
+            return uid+"|"+occurrenceKey+"|"+segmentKey
+        }
+
+        function addImportedEvent(dayKey, start, end, title, location, description, eventDate=null,identity={}){
             let visibleStart = Math.max(start, START_HOUR)
             let visibleEnd = Math.min(end, START_HOUR + HOURS)
             let dur = visibleEnd - visibleStart
@@ -6670,9 +6683,14 @@ function importICS(fileOverride=null){
                 return false
             }
 
-            let signature = importedEventSignature(eventDate, dayKey, visibleStart, dur, title)
-            if(seenImportedEvents.has(signature)) return false
-            seenImportedEvents.add(signature)
+            let sourceSignature = importedSourceSignature(identity,eventDate,dayKey)
+            if(sourceSignature && seenImportedSourceEvents.has(sourceSignature)) return false
+
+            let semanticSignature = importedEventSignature(eventDate, dayKey, visibleStart, dur, title)
+            if(seenImportedSemanticEvents.has(semanticSignature)) return false
+
+            if(sourceSignature) seenImportedSourceEvents.add(sourceSignature)
+            seenImportedSemanticEvents.add(semanticSignature)
 
             importedWeekData[dayKey].push({
                 start: Math.round(visibleStart * 100) / 100,
@@ -6689,7 +6707,7 @@ function importICS(fileOverride=null){
             return true
         }
 
-        function addImportedEventRange(startDate, endDate, title, location, description){
+        function addImportedEventRange(startDate, endDate, title, location, description,identity={}){
             let cursor = startOfDay(startDate)
             let finalDay = startOfDay(endDate)
 
@@ -6707,7 +6725,16 @@ function importICS(fileOverride=null){
                     continue
                 }
 
-                addImportedEvent(dayKey, start, end, title, location, description, new Date(cursor))
+                addImportedEvent(
+                    dayKey,
+                    start,
+                    end,
+                    title,
+                    location,
+                    description,
+                    new Date(cursor),
+                    {...identity,occurrenceDate:identity.occurrenceDate || startDate}
+                )
                 cursor.setDate(cursor.getDate() + 1)
             }
         }
@@ -6886,6 +6913,8 @@ function importICS(fileOverride=null){
                     (startInfo?.allDay ? addDays(startInfo.date,1) : null)
 
                 return {
+                    uid: getField(ev, "UID") || "",
+                    recurrenceId: parseIcsDate(getProperty(ev, "RECURRENCE-ID")),
                     startDate: startInfo?.date || null,
                     endDate,
                     allDay: Boolean(startInfo?.allDay || endInfo?.allDay),
@@ -6899,12 +6928,18 @@ function importICS(fileOverride=null){
             })
             .filter(event => event.startDate && event.endDate && event.endDate > event.startDate && !event.allDay)
 
+        let overriddenOccurrences = new Set(parsedEvents
+            .filter(event=>event.uid && event.recurrenceId)
+            .map(event=>String(event.uid).trim().toLowerCase()+"|"+dateTimeExclusionKey(event.recurrenceId)))
+
         let importRangeAnchor = parsedEvents.find(event=>!event.rule || event.rule.FREQ !== "WEEKLY")?.startDate ||
             parsedEvents[0]?.startDate ||
             null
 
-        parsedEvents.forEach(event => {
-            let { startDate, endDate, title, location, description, rule, exdates, rdates } = event
+        parsedEvents
+        .sort((a,b)=>Number(Boolean(b.recurrenceId)) - Number(Boolean(a.recurrenceId)))
+        .forEach(event => {
+            let { uid, recurrenceId, startDate, endDate, title, location, description, rule, exdates, rdates } = event
             let excluded = new Set(exdates.map(info=>dateTimeExclusionKey(info.date)))
 
             if(rule && ["DAILY","WEEKLY","MONTHLY"].includes(rule.FREQ)){
@@ -6965,8 +7000,19 @@ function importICS(fileOverride=null){
                         let occurrenceDate = new Date(cursor)
                         occurrenceDate.setHours(startDate.getHours(),startDate.getMinutes(),0,0)
 
-                        if(!excluded.has(dateTimeExclusionKey(occurrenceDate))){
-                            addImportedEvent(dayKey, start, end, title, location, description, new Date(cursor))
+                        let occurrenceKey = String(uid || "").trim().toLowerCase()+"|"+dateTimeExclusionKey(occurrenceDate)
+                        if(!excluded.has(dateTimeExclusionKey(occurrenceDate)) &&
+                           (!uid || !overriddenOccurrences.has(occurrenceKey))){
+                            addImportedEvent(
+                                dayKey,
+                                start,
+                                end,
+                                title,
+                                location,
+                                description,
+                                new Date(cursor),
+                                {uid,occurrenceDate}
+                            )
                         }
                         added++
                         if(countLimit && added >= countLimit) break
@@ -6976,7 +7022,14 @@ function importICS(fileOverride=null){
                 }
             }else{
                 if(!excluded.has(dateTimeExclusionKey(startDate))){
-                    addImportedEventRange(startDate, endDate, title, location, description)
+                    addImportedEventRange(
+                        startDate,
+                        endDate,
+                        title,
+                        location,
+                        description,
+                        {uid,occurrenceDate:recurrenceId || startDate}
+                    )
                 }
             }
 
@@ -6986,7 +7039,14 @@ function importICS(fileOverride=null){
                 let duration = (endDate - startDate) / (1000 * 60 * 60)
                 let rdateEnd = new Date(info.date)
                 rdateEnd.setMinutes(rdateEnd.getMinutes() + Math.round(duration * 60))
-                addImportedEventRange(info.date, rdateEnd, title, location, description)
+                addImportedEventRange(
+                    info.date,
+                    rdateEnd,
+                    title,
+                    location,
+                    description,
+                    {uid,occurrenceDate:info.date}
+                )
             })
         })
 

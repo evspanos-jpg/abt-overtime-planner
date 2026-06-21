@@ -6,3 +6,6 @@ venv/
 client_secret*.json
 credentials*.json
 token*.json
+node_modules/
+test-results/
+playwright-report/

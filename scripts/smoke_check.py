@@ -38,6 +38,8 @@ def main() -> None:
         "!TIMELINE_VIEWS.includes(plannerView)",
         "date.getMonth() !== monthAnchorDate.getMonth()",
         'document.querySelectorAll(".day-column")',
+        'getProperty(ev, "RECURRENCE-ID")',
+        "seenImportedSourceEvents",
     ]
     for marker in markers:
         assert marker in html, f"Missing marker: {marker}"
