@@ -4800,6 +4800,75 @@ function emptyWeekData(){
     return {mon:[],tue:[],wed:[],thu:[],fri:[],sat:[],sun:[]}
 }
 
+function normalizePlannerBlock(block){
+    let start = Math.round(Number(block?.start || 0) * 100) / 100
+    let dur = Math.round(Number(block?.dur || 0) * 100) / 100
+    return {
+        start,
+        dur,
+        title: String(block?.title || "").trim(),
+        location: String(block?.location || "").trim(),
+        description: String(block?.description || "").trim()
+    }
+}
+
+function plannerBlockSignature(block){
+    let normalized = normalizePlannerBlock(block)
+    return [
+        normalized.start,
+        normalized.dur,
+        normalized.title,
+        normalized.location,
+        normalized.description
+    ].join("|")
+}
+
+function sanitizePlannerBlocks(blocks){
+    let seen = new Set()
+    let sanitized = []
+
+    ;(Array.isArray(blocks) ? blocks : []).forEach(block=>{
+        let normalized = normalizePlannerBlock(block)
+        if(!(normalized.dur > 0)) return
+
+        let signature = plannerBlockSignature(normalized)
+        if(seen.has(signature)) return
+        seen.add(signature)
+        sanitized.push(normalized)
+    })
+
+    sanitized.sort((a,b)=>a.start-b.start || a.dur-b.dur || a.title.localeCompare(b.title))
+    return sanitized
+}
+
+function sanitizePlannerStateCollections(state){
+    let sanitizedWeekData = emptyWeekData()
+    let sanitizedMonthEvents = {}
+    let removedDuplicates = 0
+
+    DAY_ORDER.forEach(day=>{
+        let original = Array.isArray(state?.weekData?.[day]) ? state.weekData[day] : []
+        let sanitized = sanitizePlannerBlocks(original)
+        removedDuplicates += Math.max(original.length - sanitized.length,0)
+        sanitizedWeekData[day] = sanitized
+    })
+
+    Object.entries(state?.monthEvents || {}).forEach(([key,events])=>{
+        let original = Array.isArray(events) ? events : []
+        let sanitized = sanitizePlannerBlocks(original)
+        removedDuplicates += Math.max(original.length - sanitized.length,0)
+        if(sanitized.length) sanitizedMonthEvents[key] = sanitized
+    })
+
+    let monthEventCount = Object.values(sanitizedMonthEvents).reduce((total,events)=>total + events.length,0)
+    return {
+        weekData: sanitizedWeekData,
+        monthEvents: sanitizedMonthEvents,
+        monthEventCount,
+        removedDuplicates
+    }
+}
+
 function populateWeekSelector(){
     let selector = document.getElementById("weekSelector")
     if(!selector) return
@@ -5015,15 +5084,17 @@ function plannerStatePayload(){
 function applyPlannerState(state){
     if(!state || typeof state !== "object") throw new Error("Invalid planner file.")
 
+    let sanitizedCollections = sanitizePlannerStateCollections(state)
+
     if(state.projectName) currentProjectName = normalizeProjectFileName(state.projectName)
-    if(state.weekData) weekData = state.weekData
-    if(state.monthEvents) monthEvents = state.monthEvents
+    weekData = sanitizedCollections.weekData
+    monthEvents = sanitizedCollections.monthEvents
     if(state.currentDay) currentDay = state.currentDay
     if(state.selectedWeekStartKey) selectedWeekStartKey = state.selectedWeekStartKey
     if(state.exportOtRangeStartKey) exportOtRangeStartKey = state.exportOtRangeStartKey
     if(state.exportOtRangeEndKey) exportOtRangeEndKey = state.exportOtRangeEndKey
     importSummaryText = state.importSummaryText || ""
-    importedEventCount = state.importedEventCount || 0
+    importedEventCount = Math.min(state.importedEventCount || 0,sanitizedCollections.monthEventCount || 0) || 0
     skippedNonAbtCount = state.skippedNonAbtCount || 0
 
     if(Array.isArray(state.customImportKeywords)){
@@ -5313,17 +5384,18 @@ function restorePlannerState(){
     try{
         let state = JSON.parse(raw)
         if(state.fileType && state.fileType !== PROJECT_FILE_TYPE) return
+        let sanitizedCollections = sanitizePlannerStateCollections(state)
         isRestoringState = true
 
         if(state.projectName) currentProjectName = normalizeProjectFileName(state.projectName)
-        if(state.weekData) weekData = state.weekData
-        if(state.monthEvents) monthEvents = state.monthEvents
+        weekData = sanitizedCollections.weekData
+        monthEvents = sanitizedCollections.monthEvents
         if(state.currentDay) currentDay = state.currentDay
         if(state.selectedWeekStartKey) selectedWeekStartKey = state.selectedWeekStartKey
         if(state.exportOtRangeStartKey) exportOtRangeStartKey = state.exportOtRangeStartKey
         if(state.exportOtRangeEndKey) exportOtRangeEndKey = state.exportOtRangeEndKey
         if(state.importSummaryText) importSummaryText = state.importSummaryText
-        if(state.importedEventCount) importedEventCount = state.importedEventCount
+        if(state.importedEventCount) importedEventCount = Math.min(state.importedEventCount,sanitizedCollections.monthEventCount || 0)
         if(state.skippedNonAbtCount) skippedNonAbtCount = state.skippedNonAbtCount
         if(Array.isArray(state.customImportKeywords)){
             customImportKeywords = state.customImportKeywords.map(normalizeImportKeyword).filter(Boolean)

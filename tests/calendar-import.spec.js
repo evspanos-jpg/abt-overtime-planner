@@ -190,3 +190,65 @@ test("opened project state survives reload", async ({ page }) => {
 
   expect(afterReload).toEqual(beforeReload);
 });
+
+test("stale saved duplicate imports are scrubbed on restore", async ({ page }) => {
+  await page.goto("file:///" + path.resolve(__dirname, "..", "index.html").replaceAll("\\", "/"));
+  await page.evaluate(() => localStorage.clear());
+
+  await page.evaluate(() => {
+    const duplicateState = {
+      fileType: PROJECT_FILE_TYPE,
+      version: PROJECT_FILE_VERSION,
+      projectName: "duplicate-state.abt-planner.json",
+      weekData: {
+        mon: [],
+        tue: [
+          { start: 11, dur: 1.5, title: "Swan Lake", location: "Studio 5", description: "" },
+          { start: 11, dur: 1.5, title: "Swan Lake", location: "Studio 5", description: "" },
+          { start: 13, dur: 1.5, title: "Variations", location: "Studio 2", description: "" },
+          { start: 13, dur: 1.5, title: "Variations", location: "Studio 2", description: "" }
+        ],
+        wed: [],
+        thu: [],
+        fri: [],
+        sat: [],
+        sun: []
+      },
+      monthEvents: {
+        "2026-05-26": [
+          { start: 11, dur: 1.5, title: "Swan Lake", location: "Studio 5", description: "" },
+          { start: 11, dur: 1.5, title: "Swan Lake", location: "Studio 5", description: "" },
+          { start: 13, dur: 1.5, title: "Variations", location: "Studio 2", description: "" },
+          { start: 13, dur: 1.5, title: "Variations", location: "Studio 2", description: "" }
+        ]
+      },
+      currentDay: "tue",
+      plannerView: "month",
+      selectedWeekStartKey: "2026-05-25",
+      importSummaryText: "Imported 4 timed events",
+      importedEventCount: 4,
+      skippedNonAbtCount: 0,
+      customImportKeywords: [],
+      exportScope: "month",
+      monthAnchorDate: "2026-05-01"
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(duplicateState));
+  });
+
+  await page.reload();
+
+  const restored = await page.evaluate(() => ({
+    importedEventCount,
+    dayCount: monthEvents["2026-05-26"]?.length || 0,
+    weekCount: weekData.tue.length,
+    hasOt: hasOvertimeForDateKey("2026-05-26")
+  }));
+
+  expect(restored).toEqual({
+    importedEventCount: 2,
+    dayCount: 2,
+    weekCount: 2,
+    hasOt: false
+  });
+});
