@@ -365,22 +365,44 @@ test("ipad panes can undock and dock back", async ({ page }) => {
     setPaneDock("rail", "left");
     setPaneDock("agenda", "bottom");
     const workspace = document.querySelector(".calendar-workspace");
+    const railRect = document.querySelector(".calendar-rail")?.getBoundingClientRect();
+    const mainRect = document.querySelector(".calendar-main")?.getBoundingClientRect();
+    const agendaRect = document.querySelector(".agenda-pane")?.getBoundingClientRect();
     return {
       railFloating: workspace?.dataset.railFloating || "false",
       agendaFloating: workspace?.dataset.agendaFloating || "false",
       railButton: document.getElementById("railFloatToggleButton")?.textContent?.trim() || "",
       agendaButton: document.getElementById("agendaFloatToggleButton")?.textContent?.trim() || "",
       railPosition: getComputedStyle(document.querySelector(".calendar-rail")).position,
-      agendaPosition: getComputedStyle(document.querySelector(".agenda-pane")).position
+      agendaPosition: getComputedStyle(document.querySelector(".agenda-pane")).position,
+      workspaceDisplay: getComputedStyle(workspace).display,
+      railX: railRect?.x || 0,
+      railY: railRect?.y || 0,
+      railWidth: railRect?.width || 0,
+      mainX: mainRect?.x || 0,
+      mainY: mainRect?.y || 0,
+      mainWidth: mainRect?.width || 0,
+      mainHeight: mainRect?.height || 0,
+      agendaX: agendaRect?.x || 0,
+      agendaY: agendaRect?.y || 0,
+      agendaWidth: agendaRect?.width || 0,
+      agendaHeight: agendaRect?.height || 0
     };
   });
 
-  expect(docked).toEqual({
-    railFloating: "false",
-    agendaFloating: "false",
-    railButton: "Undock",
-    agendaButton: "Undock",
-    railPosition: "relative",
-    agendaPosition: "relative"
-  });
+  expect(docked.railFloating).toBe("false");
+  expect(docked.agendaFloating).toBe("false");
+  expect(docked.railButton).toBe("Undock");
+  expect(docked.agendaButton).toBe("Undock");
+  expect(docked.railPosition).toBe("relative");
+  expect(docked.agendaPosition).toBe("relative");
+  expect(docked.workspaceDisplay).toBe("grid");
+  expect(docked.railWidth).toBeGreaterThan(150);
+  expect(docked.mainWidth).toBeGreaterThan(500);
+  expect(docked.agendaWidth).toBeGreaterThan(800);
+  expect(docked.agendaHeight).toBeGreaterThan(200);
+  expect(docked.railX).toBeLessThan(docked.mainX);
+  expect(Math.abs(docked.railY - docked.mainY)).toBeLessThan(4);
+  expect(docked.agendaY).toBeGreaterThan(docked.mainY + docked.mainHeight - 10);
+  expect(docked.agendaX).toBeLessThanOrEqual(docked.mainX);
 });

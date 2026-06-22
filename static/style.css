@@ -10251,14 +10251,16 @@ textarea:focus-visible {
 
     .calendar-workspace,
     body.navigation-auto-hide .calendar-workspace {
+        display: grid !important;
         grid-template-columns:
             minmax(176px, min(var(--workspace-rail-width), 320px))
             6px
             minmax(0, 1fr) !important;
-        grid-template-rows: minmax(0, 1fr) 10px auto;
+        grid-template-rows: minmax(0, 1fr) 10px auto !important;
         gap: 10px !important;
-        align-items: stretch;
-        min-height: calc((var(--app-vh) * 100) - 170px);
+        align-items: stretch !important;
+        min-height: calc((var(--app-vh) * 100) - 170px) !important;
+        height: auto !important;
     }
 
     .workspace-resizer-left {
@@ -10292,6 +10294,8 @@ textarea:focus-visible {
         min-width: 0;
         min-height: 0;
         align-self: stretch;
+        display: block !important;
+        height: 100% !important;
     }
 
     .timeline-panel,
