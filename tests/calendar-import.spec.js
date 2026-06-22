@@ -252,3 +252,61 @@ test("stale saved duplicate imports are scrubbed on restore", async ({ page }) =
     hasOt: false
   });
 });
+
+test("restore scrub removes semantic import duplicates with different notes", async ({ page }) => {
+  await page.goto("file:///" + path.resolve(__dirname, "..", "index.html").replaceAll("\\", "/"));
+  await page.evaluate(() => localStorage.clear());
+
+  await page.evaluate(() => {
+    const duplicateState = {
+      fileType: PROJECT_FILE_TYPE,
+      version: PROJECT_FILE_VERSION,
+      projectName: "semantic-duplicate-state.abt-planner.json",
+      weekData: {
+        mon: [],
+        tue: [
+          { start: 11.58, dur: 0.92, title: "Spanos Rehearsal - Sylvia (Studio 2)", location: "Studio 2", description: "First copy" },
+          { start: 11.58, dur: 0.92, title: "Spanos Performance - Sylvia", location: "American Ballet Theatre", description: "Second copy" },
+          { start: 12.58, dur: 0.92, title: "Spanos Rehearsal - Variations", location: "Studio 5", description: "" }
+        ],
+        wed: [],
+        thu: [],
+        fri: [],
+        sat: [],
+        sun: []
+      },
+      monthEvents: {
+        "2026-05-26": [
+          { start: 11.58, dur: 0.92, title: "Spanos Rehearsal - Sylvia (Studio 2)", location: "Studio 2", description: "First copy" },
+          { start: 11.58, dur: 0.92, title: "Spanos Performance - Sylvia", location: "American Ballet Theatre", description: "Second copy" },
+          { start: 12.58, dur: 0.92, title: "Spanos Rehearsal - Variations", location: "Studio 5", description: "" }
+        ]
+      },
+      currentDay: "tue",
+      plannerView: "month",
+      selectedWeekStartKey: "2026-05-25",
+      importSummaryText: "Imported 3 timed events",
+      importedEventCount: 3,
+      skippedNonAbtCount: 0,
+      customImportKeywords: [],
+      exportScope: "month",
+      monthAnchorDate: "2026-05-01"
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(duplicateState));
+  });
+
+  await page.reload();
+
+  const restored = await page.evaluate(() => ({
+    importedEventCount,
+    dayCount: monthEvents["2026-05-26"]?.length || 0,
+    weekCount: weekData.tue.length
+  }));
+
+  expect(restored).toEqual({
+    importedEventCount: 2,
+    dayCount: 2,
+    weekCount: 2
+  });
+});

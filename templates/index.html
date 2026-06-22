@@ -4812,14 +4812,24 @@ function normalizePlannerBlock(block){
     }
 }
 
+function normalizePlannerBlockTitle(title){
+    return String(title || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/\([^)]*\bstudio\b[^)]*\)/g, " ")
+        .replace(/\b(?:rehearsal|performance)\b/g, " ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+}
+
 function plannerBlockSignature(block){
     let normalized = normalizePlannerBlock(block)
     return [
         normalized.start,
         normalized.dur,
-        normalized.title,
-        normalized.location,
-        normalized.description
+        normalizePlannerBlockTitle(normalized.title)
     ].join("|")
 }
 
