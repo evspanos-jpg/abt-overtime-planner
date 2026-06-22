@@ -7059,11 +7059,19 @@ function parseWorkspaceBool(value){
 function clampWorkspaceLayout(layout){
     let viewport = currentViewportBounds()
     let margin = 12
-    let railWidth = Math.min(Math.max(Number(layout?.rail) || 208,160),Math.max(220,viewport.width - (margin * 2)))
-    let agendaWidth = Math.min(Math.max(Number(layout?.agenda) || 380,260),Math.max(280,viewport.width - (margin * 2)))
+    let ipadLayout = isFloatingTabletLayout()
+    let railDefault = ipadLayout ? 192 : 208
+    let agendaDefault = ipadLayout ? 320 : 380
+    let railMin = ipadLayout ? 168 : 160
+    let railMax = ipadLayout ? 260 : Math.max(220,viewport.width - (margin * 2))
+    let agendaMin = ipadLayout ? 280 : 260
+    let agendaMax = ipadLayout ? 360 : Math.max(280,viewport.width - (margin * 2))
+    let railWidth = Math.min(Math.max(Number(layout?.rail) || railDefault,railMin),Math.max(railMax,railMin))
+    let agendaWidth = Math.min(Math.max(Number(layout?.agenda) || agendaDefault,agendaMin),Math.max(agendaMax,agendaMin))
     let agendaHeight = Math.min(Math.max(Number(layout?.agendaHeight) || 360,220),Math.max(240,viewport.height - (margin * 2)))
     let railDock = ["left","right"].includes(layout?.railDock) ? layout.railDock : "left"
     let agendaDock = ["left","right","bottom"].includes(layout?.agendaDock) ? layout.agendaDock : "right"
+    if(ipadLayout && agendaDock === "bottom") agendaDock = "right"
     let railFloating = parseWorkspaceBool(layout?.railFloating)
     let agendaFloating = parseWorkspaceBool(layout?.agendaFloating)
     if(agendaDock !== "bottom" && agendaDock === railDock){
@@ -7224,16 +7232,12 @@ function setPaneDock(pane,dock){
             next.railY = margin
         }
         if(pane === "agenda"){
-            next.agendaDock = ["left","right","bottom"].includes(dock) ? dock : next.agendaDock
+            let targetDock = dock === "bottom" ? "right" : dock
+            next.agendaDock = ["left","right"].includes(targetDock) ? targetDock : next.agendaDock
             next.agendaFloating = false
-            if(dock === "left") next.agendaX = margin
-            if(dock === "right") next.agendaX = Math.max(margin,viewport.width - next.agenda - margin)
-            if(dock === "bottom"){
-                next.agendaX = Math.max(margin,viewport.width - next.agenda - margin)
-                next.agendaY = Math.max(margin,viewport.height - next.agendaHeight - margin)
-            }else{
-                next.agendaY = margin
-            }
+            if(next.agendaDock === "left") next.agendaX = margin
+            if(next.agendaDock === "right") next.agendaX = Math.max(margin,viewport.width - next.agenda - margin)
+            next.agendaY = margin
         }
         saveWorkspaceLayout(next)
         syncTabletAgendaControls(currentWorkspaceLayout().agendaHeight,"")
@@ -7466,10 +7470,11 @@ function loadOutlookChromeState(){
         return {
             ...saved,
             ribbonAutoHide:!!saved.ribbonAutoHide,
-            navigationAutoHide:false
+            navigationAutoHide:!!saved.navigationAutoHide,
+            agendaAutoHide:!!saved.agendaAutoHide
         }
     }catch(error){
-        return {ribbonAutoHide:false,navigationAutoHide:false}
+        return {ribbonAutoHide:false,navigationAutoHide:false,agendaAutoHide:false}
     }
 }
 
@@ -7477,7 +7482,8 @@ function saveOutlookChromeState(){
     try{
         localStorage.setItem(OUTLOOK_CHROME_KEY,JSON.stringify({
             ribbonAutoHide:document.body.classList.contains("ribbon-auto-hide"),
-            navigationAutoHide:false
+            navigationAutoHide:document.body.classList.contains("navigation-auto-hide"),
+            agendaAutoHide:document.body.classList.contains("agenda-auto-hide")
         }))
     }catch(error){
         console.warn("Outlook chrome state could not be saved.",error)
@@ -7486,15 +7492,18 @@ function saveOutlookChromeState(){
 
 function applyOutlookChromeState(state=loadOutlookChromeState()){
     document.body.classList.toggle("ribbon-auto-hide",!!state.ribbonAutoHide)
-    document.body.classList.remove("navigation-auto-hide")
+    document.body.classList.toggle("navigation-auto-hide",!!state.navigationAutoHide)
+    document.body.classList.toggle("agenda-auto-hide",!!state.agendaAutoHide)
     updateOutlookChromeButtons()
 }
 
 function updateOutlookChromeButtons(){
     const ribbonHidden = document.body.classList.contains("ribbon-auto-hide")
     const navHidden = document.body.classList.contains("navigation-auto-hide")
+    const agendaHidden = document.body.classList.contains("agenda-auto-hide")
     const ribbonButton = document.getElementById("ribbonPinButton")
     const navButton = document.getElementById("navPanePinButton")
+    const agendaButton = document.getElementById("agendaPanePinButton")
 
     if(ribbonButton){
         ribbonButton.classList.toggle("is-unpinned",ribbonHidden)
@@ -7509,6 +7518,13 @@ function updateOutlookChromeButtons(){
         navButton.setAttribute("aria-label",navHidden ? "Keep navigation pane shown" : "Auto-hide navigation pane")
         navButton.title = navHidden ? "Keep navigation pane shown" : "Auto-hide navigation pane"
     }
+
+    if(agendaButton){
+        agendaButton.classList.toggle("is-unpinned",agendaHidden)
+        agendaButton.setAttribute("aria-pressed",String(!agendaHidden))
+        agendaButton.setAttribute("aria-label",agendaHidden ? "Keep agenda shown" : "Auto-hide agenda pane")
+        agendaButton.title = agendaHidden ? "Keep agenda shown" : "Auto-hide agenda pane"
+    }
 }
 
 function toggleRibbonAutoHide(){
@@ -7520,7 +7536,14 @@ function toggleRibbonAutoHide(){
 }
 
 function toggleNavigationPaneAutoHide(){
-    document.body.classList.remove("navigation-auto-hide")
+    document.body.classList.toggle("navigation-auto-hide")
+    updateOutlookChromeButtons()
+    saveOutlookChromeState()
+    cachedTimelineHeight = null
+}
+
+function toggleAgendaPaneAutoHide(){
+    document.body.classList.toggle("agenda-auto-hide")
     updateOutlookChromeButtons()
     saveOutlookChromeState()
     cachedTimelineHeight = null

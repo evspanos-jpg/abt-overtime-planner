@@ -10253,14 +10253,43 @@ textarea:focus-visible {
     body.navigation-auto-hide .calendar-workspace {
         display: grid !important;
         grid-template-columns:
-            minmax(176px, min(var(--workspace-rail-width), 320px))
+            minmax(168px, min(var(--workspace-rail-width), 260px))
             6px
-            minmax(0, 1fr) !important;
-        grid-template-rows: minmax(0, 1fr) 10px auto !important;
+            minmax(0, 1fr)
+            6px
+            minmax(280px, min(var(--workspace-agenda-width), 360px)) !important;
+        grid-template-rows: minmax(0, 1fr) !important;
         gap: 10px !important;
         align-items: stretch !important;
         min-height: calc((var(--app-vh) * 100) - 170px) !important;
         height: auto !important;
+    }
+
+    body.navigation-auto-hide .calendar-workspace {
+        grid-template-columns:
+            var(--workspace-rail-collapsed-width)
+            6px
+            minmax(0, 1fr)
+            6px
+            minmax(280px, min(var(--workspace-agenda-width), 360px)) !important;
+    }
+
+    body.agenda-auto-hide .calendar-workspace {
+        grid-template-columns:
+            minmax(168px, min(var(--workspace-rail-width), 260px))
+            6px
+            minmax(0, 1fr)
+            6px
+            var(--workspace-agenda-collapsed-width) !important;
+    }
+
+    body.navigation-auto-hide.agenda-auto-hide .calendar-workspace {
+        grid-template-columns:
+            var(--workspace-rail-collapsed-width)
+            6px
+            minmax(0, 1fr)
+            6px
+            var(--workspace-agenda-collapsed-width) !important;
     }
 
     .workspace-resizer-left {
@@ -10271,12 +10300,12 @@ textarea:focus-visible {
 
     .workspace-resizer-right {
         display: block !important;
-        grid-column: 1 / -1;
-        grid-row: 2;
-        width: 100%;
-        height: 10px;
-        min-height: 10px;
-        cursor: row-resize;
+        grid-column: 4;
+        grid-row: 1;
+        width: 6px;
+        height: auto;
+        min-height: 0;
+        cursor: col-resize;
         align-self: center;
     }
 
@@ -10305,8 +10334,8 @@ textarea:focus-visible {
     }
 
     .agenda-pane {
-        grid-column: 1 / -1;
-        grid-row: 3;
+        grid-column: 5;
+        grid-row: 1;
         position: relative !important;
         top: auto !important;
         max-height: none !important;
@@ -10315,7 +10344,7 @@ textarea:focus-visible {
         min-width: 0;
         align-self: stretch;
         width: 100%;
-        height: var(--tablet-agenda-height);
+        height: 100%;
     }
 
     .agenda-header {
@@ -10326,8 +10355,7 @@ textarea:focus-visible {
     }
 
     .tablet-agenda-size-controls {
-        display: inline-flex !important;
-        justify-content: flex-end;
+        display: none !important;
     }
 
     .agenda-search-toolbar {
@@ -10351,27 +10379,11 @@ textarea:focus-visible {
     }
 
     .agenda-list {
-        height: calc(var(--tablet-agenda-height) - 154px);
+        height: auto;
         max-height: none !important;
         min-height: 120px;
         overflow: auto !important;
         padding-right: 2px;
-    }
-
-    body.tablet-agenda-compact .agenda-list {
-        height: calc(var(--tablet-agenda-height) - 154px);
-    }
-
-    body.tablet-agenda-expanded .agenda-list {
-        height: calc(var(--tablet-agenda-height) - 154px);
-    }
-
-    body.tablet-agenda-compact .agenda-pane {
-        height: var(--tablet-agenda-height);
-    }
-
-    body.tablet-agenda-expanded .agenda-pane {
-        height: var(--tablet-agenda-height);
     }
 
     .rail-actions {
@@ -10412,6 +10424,10 @@ textarea:focus-visible {
         position: relative;
     }
 
+    body.mode-ipad .nav-pane-pin {
+        display: inline-flex !important;
+    }
+
     body.mode-ipad .pane-dock-controls {
         display: inline-flex !important;
         flex-wrap: wrap;
@@ -10430,7 +10446,9 @@ textarea:focus-visible {
         grid-template-columns:
             0
             0
-            minmax(0, 1fr) !important;
+            minmax(0, 1fr)
+            6px
+            minmax(280px, min(var(--workspace-agenda-width), 360px)) !important;
     }
 
     body.mode-ipad .calendar-workspace[data-rail-floating="true"] .workspace-resizer-left {
@@ -10450,10 +10468,23 @@ textarea:focus-visible {
     }
 
     body.mode-ipad .calendar-workspace[data-agenda-floating="true"] {
-        grid-template-rows: minmax(0, 1fr) !important;
+        grid-template-columns:
+            minmax(168px, min(var(--workspace-rail-width), 260px))
+            6px
+            minmax(0, 1fr)
+            0
+            0 !important;
     }
 
     body.mode-ipad .calendar-workspace[data-agenda-floating="true"] .workspace-resizer-right {
+        display: none !important;
+    }
+
+    body.mode-ipad .calendar-workspace[data-rail-floating="true"][data-agenda-floating="true"] {
+        grid-template-columns: 0 0 minmax(0, 1fr) 0 0 !important;
+    }
+
+    body.mode-ipad #agendaDockBottomButton {
         display: none !important;
     }
 
@@ -10803,11 +10834,27 @@ textarea:focus-visible {
         grid-template-columns:
             var(--workspace-rail-collapsed-width)
             6px
-            minmax(0, 1fr) !important;
+            minmax(0, 1fr)
+            6px
+            minmax(280px, min(var(--workspace-agenda-width), 360px)) !important;
     }
 
     body.agenda-auto-hide .calendar-workspace {
-        grid-template-rows: minmax(0, 1fr) 10px var(--tablet-agenda-collapsed-height) !important;
+        grid-template-columns:
+            minmax(168px, min(var(--workspace-rail-width), 260px))
+            6px
+            minmax(0, 1fr)
+            6px
+            var(--workspace-agenda-collapsed-width) !important;
+    }
+
+    body.navigation-auto-hide.agenda-auto-hide .calendar-workspace {
+        grid-template-columns:
+            var(--workspace-rail-collapsed-width)
+            6px
+            minmax(0, 1fr)
+            6px
+            var(--workspace-agenda-collapsed-width) !important;
     }
 
     .calendar-rail {
@@ -10838,20 +10885,20 @@ textarea:focus-visible {
 
     .workspace-resizer-right {
         display: block !important;
-        grid-column: 1 / -1 !important;
-        grid-row: 2 !important;
-        width: 100% !important;
-        height: 10px !important;
-        min-height: 10px !important;
-        cursor: row-resize !important;
+        grid-column: 4 !important;
+        grid-row: 1 !important;
+        width: 6px !important;
+        height: auto !important;
+        min-height: 0 !important;
+        cursor: col-resize !important;
         align-self: center !important;
     }
 
     .agenda-pane {
         display: grid !important;
         grid-template-rows: auto auto minmax(0, 1fr) !important;
-        grid-column: 1 / -1 !important;
-        grid-row: 3 !important;
+        grid-column: 5 !important;
+        grid-row: 1 !important;
         position: relative !important;
         inset: auto !important;
         top: auto !important;
@@ -10859,7 +10906,7 @@ textarea:focus-visible {
         right: auto !important;
         bottom: auto !important;
         width: 100% !important;
-        height: var(--tablet-agenda-height) !important;
+        height: 100% !important;
         max-height: none !important;
         min-height: 220px !important;
         overflow: hidden !important;
@@ -10870,15 +10917,13 @@ textarea:focus-visible {
     }
 
     body.agenda-auto-hide .agenda-pane {
-        height: var(--tablet-agenda-collapsed-height) !important;
-        min-height: var(--tablet-agenda-collapsed-height) !important;
+        height: 100% !important;
+        min-height: 0 !important;
         padding-block: 10px !important;
     }
 
     .tablet-agenda-size-controls {
-        display: inline-flex !important;
-        flex-wrap: wrap !important;
-        justify-content: flex-end !important;
+        display: none !important;
     }
 
     .agenda-header-actions {
@@ -10895,7 +10940,7 @@ textarea:focus-visible {
     }
 
     .agenda-list {
-        height: calc(var(--tablet-agenda-height) - 154px) !important;
+        height: auto !important;
         min-height: 120px !important;
         max-height: none !important;
         overflow: auto !important;

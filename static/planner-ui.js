@@ -94,7 +94,13 @@
         document.body.classList.toggle("show-mode-badge",Boolean(window.modeBadgeVisible))
         window.ensurePaneFloatButtons?.()
         document.querySelectorAll(".pane-dock-controls, .tablet-agenda-size-controls").forEach(node=>{
-            node.hidden = !ipad
+            if(ipad){
+                node.hidden = false
+                node.removeAttribute("hidden")
+            }else{
+                node.hidden = true
+                node.setAttribute("hidden","hidden")
+            }
         })
         window.syncDeviceDiagnostics()
     }
@@ -102,8 +108,8 @@
     window.resetWorkspaceLayoutPreferences = function resetWorkspaceLayoutPreferences(showToast=true){
         if(typeof window.saveWorkspaceLayout !== "function") return
         window.saveWorkspaceLayout({
-            rail:220,
-            agenda:460,
+            rail:192,
+            agenda:320,
             agendaHeight:360,
             railDock:"left",
             agendaDock:"right"

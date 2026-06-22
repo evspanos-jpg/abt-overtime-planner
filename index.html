@@ -15,13 +15,13 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=147">
-    <link rel="stylesheet" href="static/planner-ui.css?v=1">
+    <link rel="stylesheet" href="static/style.css?v=148">
+    <link rel="stylesheet" href="static/planner-ui.css?v=2">
 
     <!-- ✅ LIBRARIES -->
     <script src="static/vendor/jspdf.umd.min.js"></script>
     <script src="static/overtime-rules.js?v=1"></script>
-    <script src="static/planner-ui.js?v=1"></script>
+    <script src="static/planner-ui.js?v=2"></script>
     <script src="static/pwa.js?v=4" defer></script>
 </head>
 
@@ -164,6 +164,9 @@
                     <button type="button" class="secondary" id="agendaDockLeftButton" data-dock-target="agenda" data-dock-value="left" onclick="setPaneDock('agenda','left')" aria-pressed="false">Left</button>
                     <button type="button" class="secondary" id="agendaDockRightButton" data-dock-target="agenda" data-dock-value="right" onclick="setPaneDock('agenda','right')" aria-pressed="true">Right</button>
                     <button type="button" class="secondary" id="agendaDockBottomButton" data-dock-target="agenda" data-dock-value="bottom" onclick="setPaneDock('agenda','bottom')" aria-pressed="false">Bottom</button>
+                    <button type="button" class="secondary icon-button nav-pane-pin" id="agendaPanePinButton" onclick="toggleAgendaPaneAutoHide()" aria-label="Auto-hide agenda pane" title="Auto-hide agenda pane">
+                        <span class="button-icon icon-pane-pin" aria-hidden="true"></span>
+                    </button>
                 </div>
                 <div class="tablet-agenda-size-controls" aria-label="Adjust agenda size" hidden>
                     <button type="button" class="secondary tablet-agenda-size-button" id="tabletAgendaCompactButton" onclick="setTabletAgendaSize('compact')">Compact</button>
@@ -629,7 +632,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=1"></script>
+<script src="static/planner-app.js?v=2"></script>
 
 </body>
 </html>

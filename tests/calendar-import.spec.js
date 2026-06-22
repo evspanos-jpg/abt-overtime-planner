@@ -322,21 +322,41 @@ test("ipad panes can undock and dock back", async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
 
-  const initial = await page.evaluate(() => ({
-    deviceMode: document.body.dataset.deviceMode,
-    railFloatButton: document.getElementById("railFloatToggleButton")?.textContent?.trim() || "",
-    agendaFloatButton: document.getElementById("agendaFloatToggleButton")?.textContent?.trim() || "",
-    railFloating: document.querySelector(".calendar-workspace")?.dataset.railFloating || "false",
-    agendaFloating: document.querySelector(".calendar-workspace")?.dataset.agendaFloating || "false"
-  }));
-
-  expect(initial).toEqual({
-    deviceMode: "ipad",
-    railFloatButton: "Undock",
-    agendaFloatButton: "Undock",
-    railFloating: "false",
-    agendaFloating: "false"
+  const initial = await page.evaluate(() => {
+    const workspace = document.querySelector(".calendar-workspace");
+    const railRect = document.querySelector(".calendar-rail")?.getBoundingClientRect();
+    const mainRect = document.querySelector(".calendar-main")?.getBoundingClientRect();
+    const agendaRect = document.querySelector(".agenda-pane")?.getBoundingClientRect();
+    return {
+      deviceMode: document.body.dataset.deviceMode,
+      railFloatButton: document.getElementById("railFloatToggleButton")?.textContent?.trim() || "",
+      agendaFloatButton: document.getElementById("agendaFloatToggleButton")?.textContent?.trim() || "",
+      railFloating: workspace?.dataset.railFloating || "false",
+      agendaFloating: workspace?.dataset.agendaFloating || "false",
+      agendaDock: workspace?.dataset.agendaDock || "",
+      workspaceDisplay: workspace ? getComputedStyle(workspace).display : "",
+      railX: railRect?.x || 0,
+      railY: railRect?.y || 0,
+      mainX: mainRect?.x || 0,
+      mainY: mainRect?.y || 0,
+      agendaX: agendaRect?.x || 0,
+      agendaY: agendaRect?.y || 0,
+      agendaWidth: agendaRect?.width || 0
+    };
   });
+
+  expect(initial.deviceMode).toBe("ipad");
+  expect(initial.railFloatButton).toBe("Undock");
+  expect(initial.agendaFloatButton).toBe("Undock");
+  expect(initial.railFloating).toBe("false");
+  expect(initial.agendaFloating).toBe("false");
+  expect(initial.agendaDock).toBe("right");
+  expect(initial.workspaceDisplay).toBe("grid");
+  expect(initial.railX).toBeLessThan(initial.mainX);
+  expect(Math.abs(initial.railY - initial.mainY)).toBeLessThan(4);
+  expect(initial.agendaX).toBeGreaterThan(initial.mainX);
+  expect(Math.abs(initial.agendaY - initial.mainY)).toBeLessThan(4);
+  expect(initial.agendaWidth).toBeGreaterThan(240);
 
   const floating = await page.evaluate(() => {
     togglePaneFloating("rail");
@@ -363,7 +383,7 @@ test("ipad panes can undock and dock back", async ({ page }) => {
 
   const docked = await page.evaluate(() => {
     setPaneDock("rail", "left");
-    setPaneDock("agenda", "bottom");
+    setPaneDock("agenda", "right");
     const workspace = document.querySelector(".calendar-workspace");
     const railRect = document.querySelector(".calendar-rail")?.getBoundingClientRect();
     const mainRect = document.querySelector(".calendar-main")?.getBoundingClientRect();
@@ -398,11 +418,28 @@ test("ipad panes can undock and dock back", async ({ page }) => {
   expect(docked.agendaPosition).toBe("relative");
   expect(docked.workspaceDisplay).toBe("grid");
   expect(docked.railWidth).toBeGreaterThan(150);
-  expect(docked.mainWidth).toBeGreaterThan(500);
-  expect(docked.agendaWidth).toBeGreaterThan(800);
+  expect(docked.mainWidth).toBeGreaterThan(280);
+  expect(docked.agendaWidth).toBeGreaterThan(240);
   expect(docked.agendaHeight).toBeGreaterThan(200);
   expect(docked.railX).toBeLessThan(docked.mainX);
   expect(Math.abs(docked.railY - docked.mainY)).toBeLessThan(4);
-  expect(docked.agendaY).toBeGreaterThan(docked.mainY + docked.mainHeight - 10);
-  expect(docked.agendaX).toBeLessThanOrEqual(docked.mainX);
+  expect(docked.agendaX).toBeGreaterThan(docked.mainX);
+  expect(Math.abs(docked.agendaY - docked.mainY)).toBeLessThan(4);
+
+  const autoHidden = await page.evaluate(() => {
+    toggleNavigationPaneAutoHide();
+    toggleAgendaPaneAutoHide();
+    const workspace = document.querySelector(".calendar-workspace");
+    const agendaRect = document.querySelector(".agenda-pane")?.getBoundingClientRect();
+    return {
+      navHidden: document.body.classList.contains("navigation-auto-hide"),
+      agendaHidden: document.body.classList.contains("agenda-auto-hide"),
+      railTemplate: getComputedStyle(workspace).gridTemplateColumns,
+      agendaWidth: agendaRect?.width || 0
+    };
+  });
+
+  expect(autoHidden.navHidden).toBe(true);
+  expect(autoHidden.agendaHidden).toBe(true);
+  expect(autoHidden.agendaWidth).toBeLessThan(120);
 });
