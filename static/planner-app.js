@@ -7052,6 +7052,10 @@ function isDesktopWorkspaceLayout(){
     return !isPhoneLayout()
 }
 
+function parseWorkspaceBool(value){
+    return value === true || value === "true"
+}
+
 function clampWorkspaceLayout(layout){
     let viewport = currentViewportBounds()
     let margin = 12
@@ -7060,6 +7064,8 @@ function clampWorkspaceLayout(layout){
     let agendaHeight = Math.min(Math.max(Number(layout?.agendaHeight) || 360,220),Math.max(240,viewport.height - (margin * 2)))
     let railDock = ["left","right"].includes(layout?.railDock) ? layout.railDock : "left"
     let agendaDock = ["left","right","bottom"].includes(layout?.agendaDock) ? layout.agendaDock : "right"
+    let railFloating = parseWorkspaceBool(layout?.railFloating)
+    let agendaFloating = parseWorkspaceBool(layout?.agendaFloating)
     if(agendaDock !== "bottom" && agendaDock === railDock){
         agendaDock = railDock === "left" ? "right" : "left"
     }
@@ -7087,6 +7093,8 @@ function clampWorkspaceLayout(layout){
         agendaHeight:agendaHeight,
         railDock,
         agendaDock,
+        railFloating,
+        agendaFloating,
         railX,
         railY,
         agendaX,
@@ -7107,6 +7115,8 @@ function applyWorkspaceLayout(layout){
     if(workspace){
         workspace.dataset.railDock = next.railDock
         workspace.dataset.agendaDock = next.agendaDock
+        workspace.dataset.railFloating = String(Boolean(next.railFloating))
+        workspace.dataset.agendaFloating = String(Boolean(next.agendaFloating))
     }
     syncPaneDockControls(next)
 }
@@ -7141,8 +7151,15 @@ function currentWorkspaceLayout(){
         agendaX:parseFloat(styles.getPropertyValue("--workspace-agenda-left")),
         agendaY:parseFloat(styles.getPropertyValue("--workspace-agenda-top")),
         railDock:workspace?.dataset.railDock,
-        agendaDock:workspace?.dataset.agendaDock
+        agendaDock:workspace?.dataset.agendaDock,
+        railFloating:workspace?.dataset.railFloating,
+        agendaFloating:workspace?.dataset.agendaFloating
     })
+}
+
+function isPaneFloating(pane,layout=currentWorkspaceLayout()){
+    let next = clampWorkspaceLayout(layout)
+    return pane === "rail" ? next.railFloating : next.agendaFloating
 }
 
 function syncPaneDockControls(layout=currentWorkspaceLayout()){
@@ -7150,10 +7167,49 @@ function syncPaneDockControls(layout=currentWorkspaceLayout()){
     document.querySelectorAll("[data-dock-target]").forEach(button=>{
         let target = button.dataset.dockTarget
         let value = button.dataset.dockValue
-        let active = (target === "rail" ? next.railDock : next.agendaDock) === value
+        let floating = target === "rail" ? next.railFloating : next.agendaFloating
+        let active = !floating && (target === "rail" ? next.railDock : next.agendaDock) === value
         button.classList.toggle("is-active",active)
         button.setAttribute("aria-pressed",String(active))
     })
+    if(typeof window.syncPaneFloatButtons === "function") window.syncPaneFloatButtons(next)
+}
+
+function setPaneFloating(pane,floating){
+    let next = currentWorkspaceLayout()
+    let shouldFloat = Boolean(floating)
+    let viewport = currentViewportBounds()
+    let margin = 12
+
+    if(pane === "rail"){
+        next.railFloating = shouldFloat
+        next.railX = next.railDock === "right"
+            ? Math.max(margin,viewport.width - next.rail - margin)
+            : margin
+        next.railY = margin
+    }
+
+    if(pane === "agenda"){
+        next.agendaFloating = shouldFloat
+        if(next.agendaDock === "bottom"){
+            next.agendaX = Math.max(margin,viewport.width - next.agenda - margin)
+            next.agendaY = Math.max(margin,viewport.height - next.agendaHeight - margin)
+        }else{
+            next.agendaX = next.agendaDock === "left"
+                ? margin
+                : Math.max(margin,viewport.width - next.agenda - margin)
+            next.agendaY = margin
+        }
+    }
+
+    saveWorkspaceLayout(next)
+    syncTabletAgendaControls(currentWorkspaceLayout().agendaHeight,"")
+    cachedTimelineHeight = null
+}
+
+function togglePaneFloating(pane){
+    if(!isFloatingTabletLayout()) return
+    setPaneFloating(pane,!isPaneFloating(pane))
 }
 
 function setPaneDock(pane,dock){
@@ -7163,11 +7219,13 @@ function setPaneDock(pane,dock){
         let margin = 12
         if(pane === "rail"){
             next.railDock = ["left","right"].includes(dock) ? dock : next.railDock
+            next.railFloating = false
             next.railX = dock === "right" ? Math.max(margin,viewport.width - next.rail - margin) : margin
             next.railY = margin
         }
         if(pane === "agenda"){
             next.agendaDock = ["left","right","bottom"].includes(dock) ? dock : next.agendaDock
+            next.agendaFloating = false
             if(dock === "left") next.agendaX = margin
             if(dock === "right") next.agendaX = Math.max(margin,viewport.width - next.agenda - margin)
             if(dock === "bottom"){
@@ -7184,12 +7242,14 @@ function setPaneDock(pane,dock){
     }
     if(pane === "rail"){
         next.railDock = ["left","right"].includes(dock) ? dock : next.railDock
+        next.railFloating = false
         if(next.agendaDock !== "bottom" && next.agendaDock === next.railDock){
             next.agendaDock = next.railDock === "left" ? "right" : "left"
         }
     }
     if(pane === "agenda"){
         next.agendaDock = ["left","right","bottom"].includes(dock) ? dock : next.agendaDock
+        next.agendaFloating = false
         if(next.agendaDock !== "bottom" && next.agendaDock === next.railDock){
             next.railDock = next.agendaDock === "left" ? "right" : "left"
         }

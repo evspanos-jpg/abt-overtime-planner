@@ -74,7 +74,8 @@
             workspaceValue.textContent =
                 "rail " + Math.round(layout.rail || 0) +
                 " / agenda " + Math.round(layout.agenda || layout.agendaHeight || 0) +
-                " / dock " + (layout.railDock || "-") + "-" + (layout.agendaDock || "-")
+                " / dock " + (layout.railDock || "-") + "-" + (layout.agendaDock || "-") +
+                " / float " + (layout.railFloating ? "rail" : "-") + "-" + (layout.agendaFloating ? "agenda" : "-")
         }
         if(pwaValue) pwaValue.textContent = pwaMode
         if(userAgentValue) userAgentValue.textContent = navigator.userAgent || "-"
@@ -91,6 +92,7 @@
         document.body.classList.toggle("mode-desktop",mode === "desktop")
         document.body.dataset.deviceMode = mode
         document.body.classList.toggle("show-mode-badge",Boolean(window.modeBadgeVisible))
+        window.ensurePaneFloatButtons?.()
         document.querySelectorAll(".pane-dock-controls, .tablet-agenda-size-controls").forEach(node=>{
             node.hidden = !ipad
         })
@@ -126,6 +128,7 @@
             handle.dataset.floatingPaneInit = "true"
             handle.addEventListener("pointerdown",event=>{
                 if(!window.isFloatingTabletLayout()) return
+                if(typeof window.isPaneFloating === "function" && !window.isPaneFloating(config.pane)) return
                 if(event.target.closest("button,input,select,textarea,label,a")) return
                 event.preventDefault()
 
@@ -164,5 +167,68 @@
                 document.addEventListener("pointercancel",onUp)
             })
         })
+    }
+
+    window.syncPaneFloatButtons = function syncPaneFloatButtons(layout){
+        const next = layout || (typeof window.currentWorkspaceLayout === "function" ? window.currentWorkspaceLayout() : {})
+        const configs = [
+            {pane:"rail", id:"railFloatToggleButton", floating:!!next.railFloating},
+            {pane:"agenda", id:"agendaFloatToggleButton", floating:!!next.agendaFloating}
+        ]
+
+        configs.forEach(config=>{
+            const button = document.getElementById(config.id)
+            if(!button) return
+            button.textContent = config.floating ? "Dock" : "Undock"
+            button.classList.toggle("is-active",config.floating)
+            button.setAttribute("aria-pressed",String(config.floating))
+            button.setAttribute("aria-label",config.floating ? "Dock " + config.pane + " pane" : "Undock " + config.pane + " pane")
+            button.title = config.floating ? "Dock " + config.pane + " pane" : "Undock " + config.pane + " pane"
+        })
+    }
+
+    window.ensurePaneFloatButtons = function ensurePaneFloatButtons(){
+        const configs = [
+            {
+                pane:"rail",
+                id:"railFloatToggleButton",
+                containerSelector:".calendar-rail .pane-dock-controls",
+                headerSelector:".calendar-rail .navigation-pane-header",
+                ariaLabel:"Move navigation pane"
+            },
+            {
+                pane:"agenda",
+                id:"agendaFloatToggleButton",
+                containerSelector:".agenda-pane .pane-dock-controls",
+                headerSelector:".agenda-pane .agenda-header",
+                ariaLabel:"Move agenda pane"
+            }
+        ]
+
+        configs.forEach(config=>{
+            let container = document.querySelector(config.containerSelector)
+            if(!container){
+                const header = document.querySelector(config.headerSelector)
+                if(!header) return
+                container = document.createElement("div")
+                container.className = "pane-dock-controls"
+                container.setAttribute("aria-label",config.ariaLabel)
+                container.hidden = true
+                header.appendChild(container)
+            }
+
+            let button = document.getElementById(config.id)
+            if(!button){
+                button = document.createElement("button")
+                button.type = "button"
+                button.className = "secondary pane-float-toggle"
+                button.id = config.id
+                button.textContent = "Undock"
+                button.addEventListener("click",()=>window.togglePaneFloating?.(config.pane))
+                container.appendChild(button)
+            }
+        })
+
+        window.syncPaneFloatButtons?.()
     }
 })()

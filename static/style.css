@@ -10403,6 +10403,75 @@ textarea:focus-visible {
     }
 }
 
+@media (min-width: 761px) and (max-width: 1366px) {
+    body.mode-ipad .calendar-workspace {
+        position: relative;
+    }
+
+    body.mode-ipad .pane-dock-controls {
+        display: inline-flex !important;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    body.mode-ipad .pane-float-toggle.is-active {
+        border-color: rgba(0, 120, 212, 0.5);
+        background: rgba(0, 120, 212, 0.16);
+        color: var(--accent-strong);
+    }
+
+    body.mode-ipad .calendar-workspace[data-rail-floating="true"],
+    body.mode-ipad .calendar-workspace[data-rail-floating="true"][data-agenda-floating="false"] {
+        grid-template-columns:
+            0
+            0
+            minmax(0, 1fr) !important;
+    }
+
+    body.mode-ipad .calendar-workspace[data-rail-floating="true"] .workspace-resizer-left {
+        display: none !important;
+    }
+
+    body.mode-ipad .calendar-workspace[data-rail-floating="true"] .calendar-rail {
+        position: fixed !important;
+        left: var(--workspace-rail-left) !important;
+        top: var(--workspace-rail-top) !important;
+        width: min(var(--workspace-rail-width), calc(100vw - 24px)) !important;
+        max-height: calc((var(--app-vh) * 100) - 24px) !important;
+        z-index: 40 !important;
+        border-radius: 18px !important;
+        box-shadow: 0 20px 42px rgba(15, 23, 42, 0.24) !important;
+        backdrop-filter: blur(14px);
+    }
+
+    body.mode-ipad .calendar-workspace[data-agenda-floating="true"] {
+        grid-template-rows: minmax(0, 1fr) !important;
+    }
+
+    body.mode-ipad .calendar-workspace[data-agenda-floating="true"] .workspace-resizer-right {
+        display: none !important;
+    }
+
+    body.mode-ipad .calendar-workspace[data-agenda-floating="true"] .agenda-pane {
+        position: fixed !important;
+        left: var(--workspace-agenda-left) !important;
+        top: var(--workspace-agenda-top) !important;
+        width: min(var(--workspace-agenda-width), calc(100vw - 24px)) !important;
+        height: min(var(--tablet-agenda-height), calc((var(--app-vh) * 100) - 24px)) !important;
+        max-height: calc((var(--app-vh) * 100) - 24px) !important;
+        min-height: 220px !important;
+        z-index: 42 !important;
+        border-radius: 18px !important;
+        box-shadow: 0 24px 48px rgba(15, 23, 42, 0.24) !important;
+        backdrop-filter: blur(14px);
+    }
+
+    body.mode-ipad .calendar-workspace[data-agenda-floating="true"] .agenda-list {
+        height: calc(min(var(--tablet-agenda-height), calc((var(--app-vh) * 100) - 24px)) - 154px) !important;
+    }
+}
+
 @media (min-width: 1367px) {
     body {
         padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)) !important;

@@ -35,7 +35,7 @@ def main() -> None:
         "otRulesRegularSpanValue",
         "otInspectorDayValue",
         "Reset Workspace",
-        "/static/vendor/jspdf.umd.min.js",
+        "static/vendor/jspdf.umd.min.js",
     ]
     for marker in html_markers:
         assert marker in html, f"Missing HTML marker: {marker}"

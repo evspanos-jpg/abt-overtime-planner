@@ -310,3 +310,77 @@ test("restore scrub removes semantic import duplicates with different notes", as
     weekCount: 2
   });
 });
+
+test("ipad panes can undock and dock back", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", { get: () => "MacIntel", configurable: true });
+    Object.defineProperty(navigator, "maxTouchPoints", { get: () => 5, configurable: true });
+    Object.defineProperty(navigator, "userAgent", { get: () => "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)", configurable: true });
+  });
+  await page.setViewportSize({ width: 1180, height: 900 });
+  await page.goto("file:///" + path.resolve(__dirname, "..", "index.html").replaceAll("\\", "/"));
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  const initial = await page.evaluate(() => ({
+    deviceMode: document.body.dataset.deviceMode,
+    railFloatButton: document.getElementById("railFloatToggleButton")?.textContent?.trim() || "",
+    agendaFloatButton: document.getElementById("agendaFloatToggleButton")?.textContent?.trim() || "",
+    railFloating: document.querySelector(".calendar-workspace")?.dataset.railFloating || "false",
+    agendaFloating: document.querySelector(".calendar-workspace")?.dataset.agendaFloating || "false"
+  }));
+
+  expect(initial).toEqual({
+    deviceMode: "ipad",
+    railFloatButton: "Undock",
+    agendaFloatButton: "Undock",
+    railFloating: "false",
+    agendaFloating: "false"
+  });
+
+  const floating = await page.evaluate(() => {
+    togglePaneFloating("rail");
+    togglePaneFloating("agenda");
+    const workspace = document.querySelector(".calendar-workspace");
+    return {
+      railFloating: workspace?.dataset.railFloating || "false",
+      agendaFloating: workspace?.dataset.agendaFloating || "false",
+      railButton: document.getElementById("railFloatToggleButton")?.textContent?.trim() || "",
+      agendaButton: document.getElementById("agendaFloatToggleButton")?.textContent?.trim() || "",
+      railPosition: getComputedStyle(document.querySelector(".calendar-rail")).position,
+      agendaPosition: getComputedStyle(document.querySelector(".agenda-pane")).position
+    };
+  });
+
+  expect(floating).toEqual({
+    railFloating: "true",
+    agendaFloating: "true",
+    railButton: "Dock",
+    agendaButton: "Dock",
+    railPosition: "fixed",
+    agendaPosition: "fixed"
+  });
+
+  const docked = await page.evaluate(() => {
+    setPaneDock("rail", "left");
+    setPaneDock("agenda", "bottom");
+    const workspace = document.querySelector(".calendar-workspace");
+    return {
+      railFloating: workspace?.dataset.railFloating || "false",
+      agendaFloating: workspace?.dataset.agendaFloating || "false",
+      railButton: document.getElementById("railFloatToggleButton")?.textContent?.trim() || "",
+      agendaButton: document.getElementById("agendaFloatToggleButton")?.textContent?.trim() || "",
+      railPosition: getComputedStyle(document.querySelector(".calendar-rail")).position,
+      agendaPosition: getComputedStyle(document.querySelector(".agenda-pane")).position
+    };
+  });
+
+  expect(docked).toEqual({
+    railFloating: "false",
+    agendaFloating: "false",
+    railButton: "Undock",
+    agendaButton: "Undock",
+    railPosition: "relative",
+    agendaPosition: "relative"
+  });
+});
