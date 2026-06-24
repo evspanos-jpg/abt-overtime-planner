@@ -3808,6 +3808,15 @@ async function initGCal(){
         let data = await resp.json()
         gcalConnected = data.connected || false
         _gcalUpdateUI(data)
+        // Show a friendly note if env vars aren't set on the server
+        if(data.configured === false){
+            _gcalShowResult("Set GCAL_CLIENT_ID and GCAL_CLIENT_SECRET in Render env vars to enable sync.", true)
+        }
+        // Show error passed via redirect query param (e.g. after /gcal/connect fails)
+        if(new URLSearchParams(location.search).get("gcal_error") === "not_configured"){
+            _gcalShowResult("Google Calendar credentials are not yet configured on the server.", true)
+            history.replaceState(null,"",location.pathname)
+        }
     }catch(e){
         // Running as file:// or server not available — hide gcal UI silently
     }

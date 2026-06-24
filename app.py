@@ -242,7 +242,7 @@ def gcal_connect():
         abort(403)
     config = _gcal_client_config()
     if not config:
-        abort(503)
+        return redirect(url_for("index") + "?gcal_error=not_configured")
     flow = Flow.from_client_config(config, scopes=GCAL_SCOPES, redirect_uri=_gcal_redirect_uri())
     auth_url, state = flow.authorization_url(
         access_type="offline",
@@ -300,10 +300,12 @@ def gcal_callback():
 def gcal_status():
     if not is_logged_in():
         return {"error": "Unauthorized"}, 403
+    if not _gcal_client_config():
+        return jsonify({"connected": False, "configured": False})
     data = session.get("gcal_credentials")
     if not data or not data.get("refresh_token"):
-        return jsonify({"connected": False})
-    return jsonify({"connected": True, "email": data.get("email", "")})
+        return jsonify({"connected": False, "configured": True})
+    return jsonify({"connected": True, "configured": True, "email": data.get("email", "")})
 
 
 @app.route("/gcal/disconnect", methods=["POST"])
