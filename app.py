@@ -312,7 +312,18 @@ def gcal_status():
 def gcal_disconnect():
     if not is_logged_in():
         return {"error": "Unauthorized"}, 403
-    session.pop("gcal_credentials", None)
+    data = session.pop("gcal_credentials", None)
+    # Revoke the token at Google so the app loses access immediately
+    token = (data or {}).get("refresh_token") or (data or {}).get("token")
+    if token:
+        try:
+            http_requests.post(
+                "https://oauth2.googleapis.com/revoke",
+                params={"token": token},
+                timeout=5,
+            )
+        except Exception:
+            pass  # revocation is best-effort; session is already cleared
     return jsonify({"ok": True})
 
 
