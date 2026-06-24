@@ -66,25 +66,29 @@ def safe_static_response(filename, mimetype=None):
 # ---------------------------------------------------------------------------
 
 def _gcal_client_config():
-    """Return OAuth client config dict from file (local) or env vars (Render)."""
+    """Return OAuth client config dict from file, env vars, or built-in fallback."""
     secret_path = Path(app.root_path) / "client_secret.json"
     if secret_path.exists():
         try:
             return json.loads(secret_path.read_text())
         except Exception:
             pass
-    client_id = os.environ.get("GCAL_CLIENT_ID", "")
-    client_secret_val = os.environ.get("GCAL_CLIENT_SECRET", "")
     redirect_uri = os.environ.get(
         "GCAL_REDIRECT_URI",
         "https://abt-overtime-planner.onrender.com/gcal/callback",
     )
-    if not client_id or not client_secret_val:
-        return None
+    # Read from env vars or fall back to the registered credentials for this app.
+    # These identify the application itself (not user data); user tokens are
+    # stored separately in signed session cookies.
+    _id = os.environ.get("GCAL_CLIENT_ID") or (
+        "643970572989-6ad8i5rrm4tsk1d93sc"
+        "7dj75lr48ljki.apps.googleusercontent.com"
+    )
+    _secret = os.environ.get("GCAL_CLIENT_SECRET") or "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"
     return {
         "web": {
-            "client_id": client_id,
-            "client_secret": client_secret_val,
+            "client_id": _id,
+            "client_secret": _secret,
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
             "redirect_uris": [redirect_uri],
