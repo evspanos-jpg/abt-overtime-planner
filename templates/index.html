@@ -593,18 +593,30 @@
 
                 <section class="settings-card settings-card-wide">
                     <h4>Google Calendar</h4>
-                    <div id="gcalConnectedPanel" class="is-hidden">
+
+                    <div class="gcal-ics-section">
+                        <label class="settings-field">
+                            <span>iCal URL</span>
+                            <input type="url" id="gcalIcsUrl" autocomplete="off" spellcheck="false"
+                                   placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"
+                                   oninput="gcalSaveIcsUrl()">
+                        </label>
+                        <button type="button" class="primary" id="gcalIcsPullButton" onclick="gcalIcsPull()" disabled>Sync from Google Calendar</button>
+                        <p class="gcal-hint">Google Calendar → ⚙ Settings → [your calendar] → Integrate calendar → <em>Secret address in iCal format</em></p>
+                    </div>
+
+                    <div id="gcalConnectedPanel" class="is-hidden gcal-oauth-row">
                         <p class="gcal-account" id="gcalEmail"></p>
                         <div class="gcal-actions">
-                            <button type="button" class="primary" onclick="gcalPull()">Pull from Google Calendar</button>
+                            <button type="button" class="primary" onclick="gcalPull()">Pull via OAuth</button>
                             <button type="button" class="primary" onclick="gcalPushAll()">Push to Google Calendar</button>
                             <button type="button" class="secondary" onclick="gcalDisconnect()">Sign out from Google</button>
                         </div>
                     </div>
-                    <div id="gcalDisconnectedPanel">
-                        <p class="gcal-hint">Sync ABT work blocks with your primary Google Calendar.</p>
-                        <button type="button" class="primary" onclick="gcalConnect()">Connect Google Calendar</button>
+                    <div id="gcalDisconnectedPanel" class="gcal-oauth-row">
+                        <button type="button" class="secondary" onclick="gcalConnect()">Connect Google account</button>
                     </div>
+
                     <p class="gcal-sync-result is-hidden" id="gcalSyncResult" aria-live="polite"></p>
                 </section>
             </div>

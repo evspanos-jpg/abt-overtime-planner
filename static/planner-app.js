@@ -3802,23 +3802,106 @@ timeline.addEventListener("dblclick", e=>{
 let gcalConnected = false
 
 async function initGCal(){
+    gcalLoadIcsUrl()
     try{
         let resp = await fetch("/gcal/status")
         if(!resp.ok) return
         let data = await resp.json()
         gcalConnected = data.connected || false
         _gcalUpdateUI(data)
-        // Show a friendly note if env vars aren't set on the server
-        if(data.configured === false){
-            _gcalShowResult("Set GCAL_CLIENT_ID and GCAL_CLIENT_SECRET in Render env vars to enable sync.", true)
-        }
-        // Show error passed via redirect query param (e.g. after /gcal/connect fails)
         if(new URLSearchParams(location.search).get("gcal_error") === "not_configured"){
             _gcalShowResult("Google Calendar credentials are not yet configured on the server.", true)
             history.replaceState(null,"",location.pathname)
         }
     }catch(e){
         // Running as file:// or server not available — hide gcal UI silently
+    }
+}
+
+const GCAL_ICS_URL_KEY = "gcalIcsUrl"
+
+function gcalLoadIcsUrl(){
+    let url = localStorage.getItem(GCAL_ICS_URL_KEY) || ""
+    let input = document.getElementById("gcalIcsUrl")
+    if(input) input.value = url
+    let btn = document.getElementById("gcalIcsPullButton")
+    if(btn) btn.disabled = !url
+}
+
+function gcalSaveIcsUrl(){
+    let url = (document.getElementById("gcalIcsUrl")?.value || "").trim()
+    if(url) localStorage.setItem(GCAL_ICS_URL_KEY, url)
+    else localStorage.removeItem(GCAL_ICS_URL_KEY)
+    let btn = document.getElementById("gcalIcsPullButton")
+    if(btn) btn.disabled = !url
+}
+
+async function gcalIcsPull(){
+    let url = (document.getElementById("gcalIcsUrl")?.value || "").trim()
+    if(!url){ _gcalShowResult("Paste an iCal URL first.", true); return }
+
+    let weekStart = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : startOfPlannerWeek(new Date())
+    let weekEnd = addDays(weekStart, 7)
+
+    setSaveStatus("Fetching iCal events…")
+    let resp
+    try{
+        resp = await fetch(
+            `/gcal/ics-pull?url=${encodeURIComponent(url)}&start=${encodeURIComponent(weekStart.toISOString())}&end=${encodeURIComponent(weekEnd.toISOString())}`
+        )
+    }catch(e){
+        setSaveStatus("iCal fetch failed")
+        _gcalShowResult("Network error — could not reach server.", true)
+        return
+    }
+    if(!resp.ok){
+        let err = await resp.json().catch(()=>({}))
+        _gcalShowResult(err.error || "Failed to fetch iCal events.", true)
+        setSaveStatus("iCal sync failed")
+        return
+    }
+
+    let data = await resp.json()
+    let events = data.events || []
+    let existingIds = _gcalExistingIds()
+    let added = 0
+
+    for(let event of events){
+        if(!event.start?.dateTime) continue
+        if(!isImportRelevantEvent(event.summary || "", event.location || "", event.description || "")) continue
+        if(existingIds.has(event.id)) continue
+
+        let startDate = new Date(event.start.dateTime)
+        let endDate   = new Date(event.end?.dateTime || event.start.dateTime)
+        let dayIndex  = (startDate.getDay() + 6) % 7
+        let day       = DAY_ORDER[dayIndex]
+
+        if(dateKey(addDays(weekStart, dayIndex)) !== dateKey(startDate)) continue
+
+        let startHour = startDate.getHours() + startDate.getMinutes() / 60
+        let durHours  = Math.max(0.25, (endDate - startDate) / 3600000)
+
+        if(!weekData[day]) weekData[day] = []
+        weekData[day].push({
+            start: startHour,
+            dur: durHours,
+            title: event.summary || "Block",
+            location: event.location || "",
+            description: event.description || "",
+            gcalId: event.id
+        })
+        existingIds.add(event.id)
+        added++
+    }
+
+    if(added > 0){
+        buildTimeline()
+        savePlannerState()
+        setSaveStatus(`Pulled ${added} event${added === 1 ? "" : "s"} from Google Calendar`)
+        _gcalShowResult(`Added ${added} new block${added === 1 ? "" : "s"}.`)
+    }else{
+        setSaveStatus("iCal sync — no new ABT events found")
+        _gcalShowResult("No new matching events in this week.")
     }
 }
 

@@ -335,6 +335,112 @@ def gcal_disconnect():
 # Google Calendar sync
 # ---------------------------------------------------------------------------
 
+def _parse_ics(ics_text, win_start="", win_end=""):
+    """Parse ICS text into Google Calendar API-shaped event dicts."""
+    lines = []
+    for raw in ics_text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        if raw.startswith((" ", "\t")) and lines:
+            lines[-1] += raw[1:]
+        else:
+            lines.append(raw)
+
+    events, current = [], None
+    for line in lines:
+        s = line.strip()
+        if s == "BEGIN:VEVENT":
+            current = {}
+        elif s == "END:VEVENT" and current is not None:
+            ev = _vevent_to_gcal(current, win_start, win_end)
+            if ev:
+                events.append(ev)
+            current = None
+        elif current is not None and ":" in line:
+            key_part, _, value = line.partition(":")
+            parts = key_part.split(";")
+            key = parts[0].upper()
+            params = {}
+            for p in parts[1:]:
+                if "=" in p:
+                    pk, _, pv = p.partition("=")
+                    params[pk.upper()] = pv
+            value = (value
+                     .replace("\\n", "\n")
+                     .replace("\\,", ",")
+                     .replace("\\;", ";")
+                     .replace("\\\\", "\\"))
+            current[key] = {"value": value, "params": params}
+    return events
+
+
+def _vevent_to_gcal(vevent, win_start, win_end):
+    def fv(k):
+        v = vevent.get(k)
+        return v["value"] if isinstance(v, dict) else ""
+    def fp(k):
+        v = vevent.get(k)
+        return v["params"] if isinstance(v, dict) else {}
+
+    dtstart = fv("DTSTART")
+    dtend   = fv("DTEND") or dtstart
+    if fp("DTSTART").get("VALUE") == "DATE" or "T" not in dtstart:
+        return None  # skip all-day events
+
+    def ics_to_iso(dt, tzid):
+        utc = dt.endswith("Z")
+        s = dt.rstrip("Z")
+        if len(s) < 15:
+            return None, None
+        iso = f"{s[0:4]}-{s[4:6]}-{s[6:8]}T{s[9:11]}:{s[11:13]}:{s[13:15]}"
+        return (iso + "Z", "UTC") if utc else (iso, tzid or "")
+
+    tzid = fp("DTSTART").get("TZID", "")
+    start_iso, start_tz = ics_to_iso(dtstart, tzid)
+    end_iso,   end_tz   = ics_to_iso(dtend, fp("DTEND").get("TZID", tzid))
+    if not start_iso:
+        return None
+
+    date_part = dtstart.rstrip("Z")[:8]
+    if win_start and date_part < win_start:
+        return None
+    if win_end and date_part >= win_end:
+        return None
+
+    return {
+        "id":          fv("UID") or dtstart,
+        "summary":     fv("SUMMARY"),
+        "location":    fv("LOCATION"),
+        "description": fv("DESCRIPTION"),
+        "start": {"dateTime": start_iso, "timeZone": start_tz},
+        "end":   {"dateTime": end_iso or start_iso, "timeZone": end_tz or start_tz},
+    }
+
+
+@app.route("/gcal/ics-pull")
+def gcal_ics_pull():
+    if not is_logged_in():
+        return {"error": "Unauthorized"}, 403
+    url = request.args.get("url", "").strip()
+    if not url.startswith("https://calendar.google.com/"):
+        return {"error": "Only Google Calendar iCal URLs are supported"}, 400
+    time_min = request.args.get("start", "")
+    time_max = request.args.get("end", "")
+    win_start = time_min[:10].replace("-", "") if time_min else ""
+    win_end   = time_max[:10].replace("-", "") if time_max else ""
+    try:
+        resp = http_requests.get(
+            url,
+            timeout=15,
+            headers={"User-Agent": "ABT-Overtime-Planner/1.0"},
+        )
+        resp.raise_for_status()
+        return jsonify({"events": _parse_ics(resp.text, win_start, win_end)})
+    except http_requests.exceptions.Timeout:
+        return {"error": "Timed out fetching iCal URL"}, 504
+    except Exception as exc:
+        app.logger.error("ICS pull error: %s", exc)
+        return {"error": "Could not fetch iCal URL"}, 502
+
+
 @app.route("/gcal/pull")
 def gcal_pull():
     if not is_logged_in():
