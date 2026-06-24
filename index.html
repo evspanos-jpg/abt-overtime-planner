@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=149">
+    <link rel="stylesheet" href="static/style.css?v=150">
     <link rel="stylesheet" href="static/planner-ui.css?v=2">
 
     <!-- ✅ LIBRARIES -->
@@ -589,6 +589,23 @@
                         <div><strong>Applied Exceptions</strong><span id="otInspectorExceptionValue">None</span></div>
                     </div>
                     <div class="ot-rules-list ot-inspector-blocks" id="otInspectorBlockList"></div>
+                </section>
+
+                <section class="settings-card settings-card-wide">
+                    <h4>Google Calendar</h4>
+                    <div id="gcalConnectedPanel" class="is-hidden">
+                        <p class="gcal-account" id="gcalEmail"></p>
+                        <div class="gcal-actions">
+                            <button type="button" class="primary" onclick="gcalPull()">Pull from Google Calendar</button>
+                            <button type="button" class="primary" onclick="gcalPushAll()">Push to Google Calendar</button>
+                            <button type="button" class="secondary" onclick="gcalDisconnect()">Disconnect</button>
+                        </div>
+                    </div>
+                    <div id="gcalDisconnectedPanel">
+                        <p class="gcal-hint">Sync ABT work blocks with your primary Google Calendar.</p>
+                        <button type="button" class="primary" onclick="gcalConnect()">Connect Google Calendar</button>
+                    </div>
+                    <p class="gcal-sync-result is-hidden" id="gcalSyncResult" aria-live="polite"></p>
                 </section>
             </div>
         </section>

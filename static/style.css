@@ -11108,3 +11108,32 @@ textarea:focus-visible {
         gap: 5px;
     }
 }
+
+/* ---- Google Calendar sync UI ------------------------------------------ */
+.gcal-hint {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+}
+
+.gcal-account {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+}
+
+.gcal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gcal-sync-result {
+    margin: 10px 0 0;
+    font-size: 13px;
+    color: var(--success-color, #4caf50);
+}
+
+.gcal-sync-result.gcal-result-error {
+    color: var(--danger-color, #e53935);
+}
