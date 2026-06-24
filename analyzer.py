@@ -24,8 +24,8 @@ def continuous_span_extra_regular_allowance(previous_duration, gap, duration):
 
 
 def simulate_schedule(schedule):
-    schedule = sorted(schedule, key=lambda x: x["start"])
-    total_worked_hours = sum(block["duration"] for block in schedule)
+    schedule = sorted(schedule, key=lambda x: float(x["start"]))
+    total_worked_hours = sum(float(block.get("duration", block.get("dur", 0)) or 0) for block in schedule)
 
     if total_worked_hours <= DAILY_NO_OVERTIME_LIMIT:
         return {
@@ -46,7 +46,7 @@ def simulate_schedule(schedule):
 
     for block in schedule:
         start = float(block["start"])
-        duration = float(block["duration"])
+        duration = float(block.get("duration", block.get("dur", 0)) or 0)
         end = start + duration
         extra_regular_allowance = 0.0
 

@@ -11020,3 +11020,91 @@ textarea:focus-visible {
         border-color: #35506a !important;
     }
 }
+
+/* ── Large-phone tier: Pixel 10 XL Pro and similar (~420-760px wide) ───── */
+/* These devices have substantially more screen real estate than compact       */
+/* phones (~375px), so the timeline, agenda sheet, and nav can all breathe.   */
+@media (min-width: 420px) and (max-width: 760px) {
+    /* Taller timeline – takes advantage of the long 900px+ screen */
+    #timeline-container {
+        height: min(62svh, 720px);
+        min-height: 480px;
+        max-height: 72svh;
+    }
+
+    /* Taller agenda sheet – more content visible at once */
+    .agenda-pane {
+        max-height: min(calc(var(--app-vh) * 78), 700px);
+    }
+
+    /* Bottom nav icons slightly larger and labels more readable */
+    .mobile-nav-icon {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 22px;
+    }
+
+    .mobile-nav-button {
+        min-height: 54px;
+        font-size: 11px;
+    }
+
+    /* Calendar bar: tighter grid tracks to use wider viewport */
+    .mobile-calendar-bar {
+        grid-template-columns: 58px 44px minmax(0, 1fr) 44px 50px;
+    }
+
+    .mobile-today-chip {
+        min-height: 50px;
+    }
+
+    .mobile-today-chip strong {
+        font-size: 24px;
+    }
+
+    .mobile-period-button,
+    .mobile-add-button {
+        min-height: 50px;
+    }
+
+    /* Larger earnings cards to fill the width */
+    .earnings-card strong {
+        font-size: 26px;
+    }
+
+    /* Week grid – allow slightly wider day columns on big phones */
+    .week-grid-header {
+        grid-template-columns: 54px repeat(7, minmax(110px, 1fr));
+    }
+
+    .week-grid-body {
+        grid-template-columns: 54px minmax(770px, 1fr);
+    }
+
+    #dayColumns {
+        grid-template-columns: repeat(7, minmax(110px, 1fr));
+    }
+
+    .day-column {
+        min-width: 110px;
+    }
+}
+
+/* Portrait-specific large-phone tweaks */
+@media (min-width: 420px) and (max-width: 760px) and (orientation: portrait) {
+    /* In portrait the rail is hidden, so let the timeline breathe vertically */
+    #timeline-container {
+        height: min(64svh, 760px);
+        max-height: 74svh;
+    }
+
+    /* Agenda sheet can be taller in portrait – more vertical space */
+    .agenda-pane {
+        max-height: min(calc(var(--app-vh) * 80), 740px);
+    }
+
+    /* Seven-button bottom nav: extra margin between icons */
+    .mobile-bottom-nav {
+        gap: 5px;
+    }
+}

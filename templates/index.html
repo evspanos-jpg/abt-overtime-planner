@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=148">
+    <link rel="stylesheet" href="static/style.css?v=149">
     <link rel="stylesheet" href="static/planner-ui.css?v=2">
 
     <!-- ✅ LIBRARIES -->
@@ -44,6 +44,21 @@
             </div>
         </div>
     </header>
+
+    <!-- Phone: sticky calendar nav bar -->
+    <div class="mobile-calendar-bar" role="toolbar" aria-label="Calendar navigation">
+        <button type="button" class="mobile-today-chip" onclick="goToCurrentWeek()" aria-label="Go to today">
+            <span id="mobileMonthLabel">Jun</span>
+            <strong id="mobileDateLabel">--</strong>
+        </button>
+        <button type="button" class="secondary mobile-period-button" onclick="changeMobilePeriod(-1)" aria-label="Previous period">&#8249;</button>
+        <div class="mobile-period-title">
+            <strong id="mobileViewLabel">Week</strong>
+            <span id="mobileRangeLabel">Loading...</span>
+        </div>
+        <button type="button" class="secondary mobile-period-button" onclick="changeMobilePeriod(1)" aria-label="Next period">&#8250;</button>
+        <button type="button" class="primary mobile-add-button" onclick="addBlock()" aria-label="Add block"></button>
+    </div>
 
     <section class="tablet-toolbar" aria-label="Tablet planner controls">
         <button type="button" class="secondary" onclick="goToCurrentWeek()">Today</button>
@@ -160,6 +175,7 @@
                     <span>Agenda</span>
                     <strong id="agendaRangeLabel">Selected week</strong>
                 </div>
+                <button type="button" class="secondary icon-button mobile-sheet-close" onclick="closeMobileSheet()" aria-label="Close agenda">&times;</button>
                 <div class="pane-dock-controls" aria-label="Move agenda pane" hidden>
                     <button type="button" class="secondary" id="agendaDockLeftButton" data-dock-target="agenda" data-dock-value="left" onclick="setPaneDock('agenda','left')" aria-pressed="false">Left</button>
                     <button type="button" class="secondary" id="agendaDockRightButton" data-dock-target="agenda" data-dock-value="right" onclick="setPaneDock('agenda','right')" aria-pressed="true">Right</button>
@@ -577,6 +593,41 @@
             </div>
         </section>
     </div>
+
+    <!-- Phone: agenda sheet backdrop -->
+    <div class="mobile-sheet-backdrop" onclick="closeMobileSheet()" aria-hidden="true"></div>
+
+    <!-- Phone: bottom navigation bar -->
+    <nav class="mobile-bottom-nav" aria-label="Phone navigation">
+        <button type="button" class="mobile-nav-button" data-mobile-nav="today" onclick="goToCurrentWeek()" aria-label="Go to today">
+            <span class="mobile-nav-icon" aria-hidden="true"><span class="button-icon icon-calendar-check"></span></span>
+            <span>Today</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="week" onclick="setPlannerView(mobileFriendlyView('week'))" aria-label="Week view">
+            <span class="mobile-nav-icon" aria-hidden="true"><span class="button-icon icon-week-view"></span></span>
+            <span>Week</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="day" onclick="setPlannerView('day')" aria-label="Day view">
+            <span class="mobile-nav-icon" aria-hidden="true"><span class="button-icon icon-view"></span></span>
+            <span>Day</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="month" onclick="setPlannerView('month')" aria-label="Month view">
+            <span class="mobile-nav-icon" aria-hidden="true"><span class="button-icon icon-month-view"></span></span>
+            <span>Month</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="agenda" onclick="openMobileSheet('agenda')" aria-label="Open agenda">
+            <span class="mobile-nav-icon" aria-hidden="true"><span class="button-icon icon-blocks"></span></span>
+            <span>Agenda</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="settings" onclick="openSettings()" aria-label="Open settings">
+            <span class="mobile-nav-icon" aria-hidden="true"><span class="button-icon icon-settings"></span></span>
+            <span>Settings</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="search" onclick="openFullSearch()" aria-label="Search">
+            <span class="mobile-nav-icon" aria-hidden="true"><span class="button-icon icon-search"></span></span>
+            <span>Search</span>
+        </button>
+    </nav>
 
     <div class="device-mode-badge" id="deviceModeBadge" aria-live="polite">
         <strong id="deviceModeBadgeLabel">MODE</strong>

@@ -12,7 +12,6 @@ const CONTINUOUS_SPAN_EXCEPTIONS = Array.isArray(OVERTIME_RULES.continuous_span_
 const OVERTIME_REGRESSION_CASES = Array.isArray(OVERTIME_RULES.regression_cases) ? OVERTIME_RULES.regression_cases : []
 const DAILY_REGULAR_HOURS = Number(OVERTIME_BASE.daily_regular_hours ?? 3)
 const DAILY_NO_OVERTIME_LIMIT = Number(OVERTIME_BASE.daily_no_overtime_limit ?? 4)
-const DAILY_TIER_OT_START = Number(OVERTIME_BASE.daily_tier_ot_start ?? 6)
 const DAILY_TIER_OT_END = Number(OVERTIME_BASE.daily_tier_ot_end ?? 8)
 const OT_RATE = Number(OVERTIME_BASE.ot_rate ?? 65)
 const DOUBLE_OT_RATE = Number(OVERTIME_BASE.double_ot_rate ?? 90)
@@ -3796,6 +3795,34 @@ timeline.addEventListener("dblclick", e=>{
     }
 })
 
+// Phone: swipe the mobile calendar bar left/right to navigate periods
+;(function(){
+    const SWIPE_THRESHOLD = 42
+    const SWIPE_RATIO = 1.5
+    let swipeStart = null
+
+    document.addEventListener("pointerdown", e=>{
+        if(!isPhoneLayout()) return
+        if(!e.target.closest(".mobile-calendar-bar")) return
+        if(e.target.closest("button")) return
+        swipeStart = {x: e.clientX, y: e.clientY, id: e.pointerId}
+    }, {passive: true})
+
+    document.addEventListener("pointermove", e=>{
+        if(!swipeStart || e.pointerId !== swipeStart.id) return
+        let dx = e.clientX - swipeStart.x
+        let dy = e.clientY - swipeStart.y
+        if(Math.abs(dx) >= SWIPE_THRESHOLD && Math.abs(dx) >= Math.abs(dy) * SWIPE_RATIO){
+            let direction = dx < 0 ? 1 : -1
+            swipeStart = null
+            changeMobilePeriod(direction)
+        }
+    }, {passive: true})
+
+    document.addEventListener("pointerup", ()=>{ swipeStart = null }, {passive: true})
+    document.addEventListener("pointercancel", ()=>{ swipeStart = null }, {passive: true})
+})()
+
 function isEditableShortcutTarget(target){
     if(!target) return false
     if(target.isContentEditable) return true
@@ -7188,13 +7215,15 @@ function setPaneFloating(pane,floating){
     let shouldFloat = Boolean(floating)
     let viewport = currentViewportBounds()
     let margin = 12
+    let workspaceRect = shouldFloat ? document.querySelector(".calendar-workspace")?.getBoundingClientRect() : null
+    let workspaceTop = (workspaceRect && Number.isFinite(workspaceRect.top) && workspaceRect.top > margin) ? workspaceRect.top : margin
 
     if(pane === "rail"){
         next.railFloating = shouldFloat
         next.railX = next.railDock === "right"
             ? Math.max(margin,viewport.width - next.rail - margin)
             : margin
-        next.railY = margin
+        next.railY = shouldFloat ? workspaceTop : margin
     }
 
     if(pane === "agenda"){
@@ -7206,7 +7235,7 @@ function setPaneFloating(pane,floating){
             next.agendaX = next.agendaDock === "left"
                 ? margin
                 : Math.max(margin,viewport.width - next.agenda - margin)
-            next.agendaY = margin
+            next.agendaY = shouldFloat ? workspaceTop : margin
         }
     }
 

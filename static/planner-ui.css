@@ -390,4 +390,36 @@ body.show-mode-badge .device-mode-badge{
     body.ipad-device.dragging-floating-pane .calendar-workspace[data-agenda-floating="true"] .agenda-header{
         cursor:grabbing;
     }
+
+    /* Collapse grid when agenda floats so main content expands */
+    body.ipad-device .calendar-workspace[data-rail-dock="left"][data-agenda-dock="right"][data-agenda-floating="true"]{
+        grid-template-columns:var(--workspace-rail-width) 12px minmax(0,1fr);
+        grid-template-rows:minmax(0,1fr);
+        grid-template-areas:"rail railResizer main";
+    }
+    body.ipad-device .calendar-workspace[data-rail-dock="right"][data-agenda-dock="left"][data-agenda-floating="true"]{
+        grid-template-columns:minmax(0,1fr) 12px var(--workspace-rail-width);
+        grid-template-rows:minmax(0,1fr);
+        grid-template-areas:"main railResizer rail";
+    }
+
+    /* Collapse grid when rail floats so main content expands */
+    body.ipad-device .calendar-workspace[data-rail-dock="left"][data-agenda-dock="right"][data-rail-floating="true"]{
+        grid-template-columns:minmax(0,1fr) 12px minmax(260px,var(--workspace-agenda-width));
+        grid-template-rows:minmax(0,1fr);
+        grid-template-areas:"main agendaResizer agenda";
+    }
+    body.ipad-device .calendar-workspace[data-rail-dock="right"][data-agenda-dock="left"][data-rail-floating="true"]{
+        grid-template-columns:minmax(260px,var(--workspace-agenda-width)) 12px minmax(0,1fr);
+        grid-template-rows:minmax(0,1fr);
+        grid-template-areas:"agenda agendaResizer main";
+    }
+
+    /* When both panes float, main takes full width (higher specificity overrides singles above) */
+    body.ipad-device .calendar-workspace[data-rail-dock="left"][data-agenda-dock="right"][data-rail-floating="true"][data-agenda-floating="true"],
+    body.ipad-device .calendar-workspace[data-rail-dock="right"][data-agenda-dock="left"][data-rail-floating="true"][data-agenda-floating="true"]{
+        grid-template-columns:minmax(0,1fr);
+        grid-template-rows:minmax(0,1fr);
+        grid-template-areas:"main";
+    }
 }

@@ -1,7 +1,7 @@
 import mimetypes
 import os
 from pathlib import Path
-from analyzer import simulate_schedule
+from analyzer import DAILY_NO_OVERTIME_LIMIT, simulate_schedule
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request, session, url_for
 
 app = Flask(__name__, static_folder=None)
@@ -28,21 +28,8 @@ def safe_static_response(filename, mimetype=None):
     try:
         data = target.read_bytes()
     except OSError as error:
-        fallback_target = None
-        if target.name == "style.css":
-            candidate = static_root / "style-fallback.css"
-            if candidate.is_file():
-                fallback_target = candidate
-        if fallback_target is None:
-            app.logger.warning("Could not read static file %s: %s", target, error)
-            abort(404)
-        try:
-            data = fallback_target.read_bytes()
-            target = fallback_target
-        except OSError as fallback_error:
-            app.logger.warning("Could not read static file %s: %s", target, error)
-            app.logger.warning("Could not read fallback static file %s: %s", fallback_target, fallback_error)
-            abort(404)
+        app.logger.warning("Could not read static file %s: %s", target, error)
+        abort(404)
 
     content_type = mimetype or mimetypes.guess_type(target.name)[0] or "application/octet-stream"
     return Response(data, mimetype=content_type)
@@ -108,7 +95,7 @@ def simulate():
     schedule = data.get("schedule", [])
     total_worked_hours = sum(float(block.get("duration", block.get("dur", 0)) or 0) for block in schedule)
 
-    if total_worked_hours <= 4:
+    if total_worked_hours <= DAILY_NO_OVERTIME_LIMIT:
         return jsonify({
             "pay": 0,
             "type": ""

@@ -443,3 +443,86 @@ test("ipad panes can undock and dock back", async ({ page }) => {
   expect(autoHidden.agendaHidden).toBe(true);
   expect(autoHidden.agendaWidth).toBeLessThan(120);
 });
+
+test("phone layout nav bar, agenda sheet, and period navigation work on Pixel viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto("file:///" + path.resolve(__dirname, "..", "index.html").replaceAll("\\", "/"));
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  // Phone mode detected via JS (matchMedia-based, reliable in all Playwright modes)
+  const initial = await page.evaluate(() => ({
+    deviceMode: document.body.dataset.deviceMode,
+    isPhoneLayout: isPhoneLayout(),
+    weekButtonLabel: document.querySelector("[data-mobile-nav='week'] span:last-child")?.textContent?.trim() || "",
+    mobileMonthText: document.getElementById("mobileMonthLabel")?.textContent?.trim() || "",
+    mobileDateText: document.getElementById("mobileDateLabel")?.textContent?.trim() || "",
+    hasCalBar: !!document.querySelector(".mobile-calendar-bar"),
+    hasBottomNav: !!document.querySelector(".mobile-bottom-nav"),
+    hasBackdrop: !!document.querySelector(".mobile-sheet-backdrop"),
+    hasSheetClose: !!document.querySelector(".mobile-sheet-close"),
+    navButtons: [...document.querySelectorAll("[data-mobile-nav]")].map(b => b.dataset.mobileNav)
+  }));
+
+  expect(initial.deviceMode).toBe("phone");
+  expect(initial.isPhoneLayout).toBe(true);
+  // All phone HTML elements are present in the DOM
+  expect(initial.hasCalBar).toBe(true);
+  expect(initial.hasBottomNav).toBe(true);
+  expect(initial.hasBackdrop).toBe(true);
+  expect(initial.hasSheetClose).toBe(true);
+  // All 7 nav buttons are wired up
+  expect(initial.navButtons).toEqual(["today", "week", "day", "month", "agenda", "settings", "search"]);
+  // On phone the week button label becomes "3 Day"
+  expect(initial.weekButtonLabel).toBe("3 Day");
+  // Calendar bar shows today's month abbreviation and date number
+  expect(initial.mobileMonthText.length).toBeGreaterThan(0);
+  expect(Number(initial.mobileDateText)).toBeGreaterThan(0);
+
+  // Agenda sheet opens when the agenda nav button is tapped
+  await page.evaluate(() => document.querySelector("[data-mobile-nav='agenda']").click());
+  const sheetOpen = await page.evaluate(() => ({
+    bodyClass: document.body.classList.contains("mobile-agenda-open"),
+    agendaNavActive: document.querySelector("[data-mobile-nav='agenda']").classList.contains("active-view")
+  }));
+  expect(sheetOpen.bodyClass).toBe(true);
+  expect(sheetOpen.agendaNavActive).toBe(true);
+
+  // Close button collapses the sheet
+  await page.evaluate(() => document.querySelector(".mobile-sheet-close").click());
+  const sheetClosed = await page.evaluate(() => ({
+    bodyClass: document.body.classList.contains("mobile-agenda-open"),
+    agendaNavActive: document.querySelector("[data-mobile-nav='agenda']").classList.contains("active-view")
+  }));
+  expect(sheetClosed.bodyClass).toBe(false);
+  expect(sheetClosed.agendaNavActive).toBe(false);
+
+  // Period navigation: anchor to a known Monday first so string comparison is reliable
+  await page.evaluate(() => { selectedWeekStartKey = "2026-06-15"; });
+  const weekBefore = await page.evaluate(() => selectedWeekStartKey);
+  await page.evaluate(() => changeMobilePeriod(1));
+  const weekAfter = await page.evaluate(() => selectedWeekStartKey);
+  expect(weekAfter).not.toBe(weekBefore);
+  expect(weekAfter > weekBefore).toBe(true);
+
+  // Going back returns to the original week
+  await page.evaluate(() => changeMobilePeriod(-1));
+  const weekRestored = await page.evaluate(() => selectedWeekStartKey);
+  expect(weekRestored).toBe(weekBefore);
+
+  // Switching to day view marks the day nav button active
+  await page.evaluate(() => { setPlannerView("day"); updateMobileNav(); });
+  const dayActive = await page.evaluate(() =>
+    document.querySelector("[data-mobile-nav='day']").classList.contains("active-view")
+  );
+  expect(dayActive).toBe(true);
+
+  // Switching to month view marks the month nav button active and period label updates
+  await page.evaluate(() => { setPlannerView("month"); updateMobileNav(); updateOutlookPanels(); });
+  const monthActive = await page.evaluate(() => ({
+    monthNavActive: document.querySelector("[data-mobile-nav='month']").classList.contains("active-view"),
+    viewLabel: document.getElementById("mobileViewLabel")?.textContent?.trim() || ""
+  }));
+  expect(monthActive.monthNavActive).toBe(true);
+  expect(monthActive.viewLabel.length).toBeGreaterThan(0);
+});

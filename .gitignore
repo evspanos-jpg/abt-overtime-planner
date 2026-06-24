@@ -9,3 +9,17 @@ token*.json
 node_modules/
 test-results/
 playwright-report/
+
+# Machine-specific generated files
+*-LAPTOP-*/
+*-LAPTOP-*.css
+*-LAPTOP-*.js
+*-LAPTOP-*.html
+
+# Local scratch directories
+tmp/
+%TEMP%/
+.tools/
+
+# Derived CSS copy (kept identical to style.css by safe_static_response fallback)
+static/style-fallback.css
