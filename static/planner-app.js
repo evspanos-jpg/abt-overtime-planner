@@ -3653,6 +3653,17 @@ function formatTime(value){
     return displayHour+":"+String(minute).padStart(2,"0")+" "+suffix
 }
 
+function formatTimeRange(start, end){
+    let startH = Math.floor(start), startM = Math.round((start-startH)*60)
+    if(startM===60){startH++;startM=0}
+    let endH = Math.floor(end), endM = Math.round((end-endH)*60)
+    if(endM===60){endH++;endM=0}
+    let endSuffix = endH >= 12 ? "PM" : "AM"
+    let startDisp = (startH%12||12)+":"+(String(startM).padStart(2,"0"))
+    let endDisp = (endH%12||12)+":"+(String(endM).padStart(2,"0"))+" "+endSuffix
+    return startDisp+"–"+endDisp
+}
+
 //--------------------------------
 timeline.addEventListener("click", e=>{
     if(suppressTimelineClick){
@@ -5961,7 +5972,7 @@ function updateOutlookPanels(options={}){
 
         let time = document.createElement("span")
         time.className = "agenda-time"
-        time.textContent = formatTime(block.start)+" - "+formatTime(block.start + block.dur)
+        time.textContent = formatTimeRange(block.start, block.start + block.dur)
         item.appendChild(time)
 
         let title = document.createElement("strong")
@@ -5969,11 +5980,12 @@ function updateOutlookPanels(options={}){
         title.textContent = block.title || "Block"
         item.appendChild(title)
 
-        let meta = document.createElement("span")
-        meta.className = "agenda-meta"
-        meta.textContent = DAY_LABELS[block.day]+" - "+block.dur+" hr"+(block.dur===1 ? "" : "s")
-        if(block.location) meta.textContent += " - "+block.location
-        item.appendChild(meta)
+        if(block.location){
+            let loc = document.createElement("span")
+            loc.className = "agenda-location"
+            loc.textContent = block.location
+            item.appendChild(loc)
+        }
 
         agendaList.appendChild(item)
     })
