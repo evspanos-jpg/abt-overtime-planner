@@ -5164,7 +5164,7 @@ function restorePlannerState(){
         syncSelectedWeekToMonth()
         loadDay()
         updateActiveDay()
-        setPlannerView(state.plannerView || "week")
+        setPlannerView(mobileFriendlyView(state.plannerView || "week"))
         updateWeekHeader()
         updateImportSummary()
     }catch(error){
@@ -7449,16 +7449,17 @@ function clampWorkspaceLayout(layout){
     if(agendaDock !== "bottom" && agendaDock === railDock){
         agendaDock = railDock === "left" ? "right" : "left"
     }
+    let topOffset = ipadLayout ? 70 : margin
     let railDefaultX = railDock === "right"
         ? Math.max(margin,viewport.width - railWidth - margin)
         : margin
-    let railDefaultY = margin
+    let railDefaultY = topOffset
     let agendaDefaultX = agendaDock === "left"
         ? margin
         : Math.max(margin,viewport.width - agendaWidth - margin)
     let agendaDefaultY = agendaDock === "bottom"
         ? Math.max(margin,viewport.height - agendaHeight - margin)
-        : margin
+        : topOffset
     let railX = Math.min(Math.max(Number(layout?.railX),margin),Math.max(margin,viewport.width - railWidth - margin))
     let railY = Math.min(Math.max(Number(layout?.railY),margin),Math.max(margin,viewport.height - 180))
     let agendaX = Math.min(Math.max(Number(layout?.agendaX),margin),Math.max(margin,viewport.width - agendaWidth - margin))
@@ -8146,6 +8147,7 @@ if(!selectedWeekStartKey){
     syncSelectedWeekToMonth()
     if(defaultPlannerView !== plannerView) setPlannerView(defaultPlannerView)
 }
+if(isPhoneLayout() && (plannerView === "week" || plannerView === "workweek")) setPlannerView("three-day")
 updateWeekHeader()
 updateImportSummary()
 isInitializingState = false

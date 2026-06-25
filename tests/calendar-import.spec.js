@@ -495,8 +495,8 @@ test("phone layout nav bar, agenda sheet, and period navigation work on Pixel vi
   expect(sheetClosed.bodyClass).toBe(false);
   expect(sheetClosed.agendaNavActive).toBe(false);
 
-  // Period navigation: anchor to a known Monday first so string comparison is reliable
-  await page.evaluate(() => { selectedWeekStartKey = "2026-06-15"; });
+  // Period navigation: anchor to Friday so a 3-day advance (three-day view) crosses the week boundary
+  await page.evaluate(() => { selectedWeekStartKey = "2026-06-15"; currentDay = "fri"; });
   const weekBefore = await page.evaluate(() => selectedWeekStartKey);
   await page.evaluate(() => changeMobilePeriod(1));
   const weekAfter = await page.evaluate(() => selectedWeekStartKey);

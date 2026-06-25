@@ -7884,6 +7884,9 @@ body.ribbon-auto-hide .outlook-ribbon-tab {
 
 .navigation-pane-header strong {
     min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     color: var(--muted);
     font-size: 12px;
     font-weight: 820;
