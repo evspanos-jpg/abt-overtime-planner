@@ -345,22 +345,20 @@ test("ipad panes can undock and dock back", async ({ page }) => {
     };
   });
 
+  // iPad default: panels float so main timeline gets full width
   expect(initial.deviceMode).toBe("ipad");
-  expect(initial.railFloatButton).toBe("Undock");
-  expect(initial.agendaFloatButton).toBe("Undock");
-  expect(initial.railFloating).toBe("false");
-  expect(initial.agendaFloating).toBe("false");
+  expect(initial.railFloatButton).toBe("Dock");
+  expect(initial.agendaFloatButton).toBe("Dock");
+  expect(initial.railFloating).toBe("true");
+  expect(initial.agendaFloating).toBe("true");
   expect(initial.agendaDock).toBe("right");
   expect(initial.workspaceDisplay).toBe("grid");
-  expect(initial.railX).toBeLessThan(initial.mainX);
-  expect(Math.abs(initial.railY - initial.mainY)).toBeLessThan(4);
-  expect(initial.agendaX).toBeGreaterThan(initial.mainX);
-  expect(Math.abs(initial.agendaY - initial.mainY)).toBeLessThan(4);
   expect(initial.agendaWidth).toBeGreaterThan(240);
 
+  // Dock both panels via setPaneDock (which also sets floating=false)
   const floating = await page.evaluate(() => {
-    togglePaneFloating("rail");
-    togglePaneFloating("agenda");
+    setPaneDock("rail", "left");
+    setPaneDock("agenda", "right");
     const workspace = document.querySelector(".calendar-workspace");
     return {
       railFloating: workspace?.dataset.railFloating || "false",
@@ -373,12 +371,12 @@ test("ipad panes can undock and dock back", async ({ page }) => {
   });
 
   expect(floating).toEqual({
-    railFloating: "true",
-    agendaFloating: "true",
-    railButton: "Dock",
-    agendaButton: "Dock",
-    railPosition: "fixed",
-    agendaPosition: "fixed"
+    railFloating: "false",
+    agendaFloating: "false",
+    railButton: "Undock",
+    agendaButton: "Undock",
+    railPosition: "relative",
+    agendaPosition: "relative"
   });
 
   const docked = await page.evaluate(() => {

@@ -7444,8 +7444,8 @@ function clampWorkspaceLayout(layout){
     let railDock = ["left","right"].includes(layout?.railDock) ? layout.railDock : "left"
     let agendaDock = ["left","right","bottom"].includes(layout?.agendaDock) ? layout.agendaDock : "right"
     if(ipadLayout && agendaDock === "bottom") agendaDock = "right"
-    let railFloating = parseWorkspaceBool(layout?.railFloating)
-    let agendaFloating = parseWorkspaceBool(layout?.agendaFloating)
+    let railFloating = parseWorkspaceBool(layout?.railFloating ?? (ipadLayout ? true : false))
+    let agendaFloating = parseWorkspaceBool(layout?.agendaFloating ?? (ipadLayout ? true : false))
     if(agendaDock !== "bottom" && agendaDock === railDock){
         agendaDock = railDock === "left" ? "right" : "left"
     }
