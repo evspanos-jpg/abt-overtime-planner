@@ -5147,6 +5147,10 @@ function restorePlannerState(){
             document.getElementById("exportScope").value = state.exportScope
         }
 
+        if(!selectedWeekStartKey){
+            selectedWeekStartKey = dateKey(startOfPlannerWeek(new Date()))
+        }
+        syncSelectedWeekToMonth()
         loadDay()
         updateActiveDay()
         setPlannerView(state.plannerView || "week")
@@ -5179,14 +5183,15 @@ function loadWeekFromMonth(key,options={}){
     if(!useImportedMonthEvents){
         DAY_ORDER.forEach((day,index)=>{
             let currentDateKey = dateKey(addDays(start,index))
-            let items = monthDayItems(currentDateKey)
+            let items = monthEvents[currentDateKey] || []
             selectedWeekData[day] = items
                 .map(event=>({
                     start:event.start,
                     dur:event.dur,
                     title:event.title,
                     location:event.location,
-                    description:event.description
+                    description:event.description,
+                    ...(event.gcalId && {gcalId:event.gcalId})
                 }))
         })
     }
@@ -8124,7 +8129,11 @@ applyTimelineZoom()
 updateActiveDay()
 loadProjectName()
 restorePlannerState()
-if(!selectedWeekStartKey && defaultPlannerView !== plannerView) setPlannerView(defaultPlannerView)
+if(!selectedWeekStartKey){
+    selectedWeekStartKey = dateKey(startOfPlannerWeek(new Date()))
+    syncSelectedWeekToMonth()
+    if(defaultPlannerView !== plannerView) setPlannerView(defaultPlannerView)
+}
 updateWeekHeader()
 updateImportSummary()
 isInitializingState = false
