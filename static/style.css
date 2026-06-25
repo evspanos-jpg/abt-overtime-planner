@@ -2433,8 +2433,8 @@ body.selecting-blocks * {
     }
 
     .month-day {
-        min-height: 122px;
-        padding: 8px;
+        min-height: 80px;
+        padding: 5px;
     }
 
 }
@@ -5218,8 +5218,8 @@ body,
 
     .month-weekdays,
     .month-grid {
-        grid-template-columns: repeat(7, minmax(98px, 1fr));
-        min-width: 686px;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        min-width: 0;
     }
 
     .month-grid {
@@ -6984,7 +6984,9 @@ body[data-timeline-days="1"] .day-column {
 
     .time-line {
         font-size: 9px;
+        padding-left: 4px;
         padding-right: 4px;
+        white-space: nowrap;
     }
 
     .day-heading span {
@@ -11202,4 +11204,44 @@ textarea:focus-visible {
 
 .gcal-sync-result.gcal-result-error {
     color: var(--danger-color, #e53935);
+}
+
+/* ============================================================
+   Phone / touch-tablet: force timeline grids to fit viewport.
+   Uses !important because base-level body[data-timeline-days]
+   rules (no @media) have the same specificity and cascade
+   priority is otherwise unpredictable across browser engines.
+   ============================================================ */
+@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
+    body[data-timeline-days="3"] .week-grid-header {
+        grid-template-columns: 50px repeat(3, minmax(0, 1fr)) !important;
+    }
+    body[data-timeline-days="3"] .week-grid-body {
+        grid-template-columns: 50px minmax(0, 1fr) !important;
+    }
+    body[data-timeline-days="3"] #dayColumns {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+    body[data-timeline-days="3"] .day-column {
+        min-width: 0 !important;
+    }
+    body[data-timeline-days="3"] #timeline {
+        min-width: 0 !important;
+    }
+
+    body[data-timeline-days="1"] .week-grid-header {
+        grid-template-columns: 44px minmax(0, 1fr) !important;
+    }
+    body[data-timeline-days="1"] .week-grid-body {
+        grid-template-columns: 44px minmax(0, 1fr) !important;
+    }
+    body[data-timeline-days="1"] #dayColumns {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+    body[data-timeline-days="1"] .day-column {
+        min-width: 0 !important;
+    }
+    body[data-timeline-days="1"] #timeline {
+        min-width: 0 !important;
+    }
 }

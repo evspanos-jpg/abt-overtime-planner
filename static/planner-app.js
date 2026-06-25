@@ -2887,7 +2887,7 @@ function syncSettingsControls(){
     let autosave = document.getElementById("settingsAutosaveInput")
     if(autosave) autosave.checked = autosaveEnabled
     let defaultView = document.getElementById("settingsDefaultViewInput")
-    if(defaultView) defaultView.value = defaultPlannerView
+    if(defaultView) defaultView.value = isPhoneLayout() ? mobileFriendlyView(defaultPlannerView) : defaultPlannerView
     let modeBadge = document.getElementById("settingsModeBadgeInput")
     if(modeBadge) modeBadge.checked = Boolean(window.modeBadgeVisible)
     if(typeof syncDeviceDiagnostics === "function") syncDeviceDiagnostics()
