@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=150">
+    <link rel="stylesheet" href="static/style.css?v=154">
     <link rel="stylesheet" href="static/planner-ui.css?v=2">
 
     <!-- ✅ LIBRARIES -->
@@ -601,7 +601,10 @@
                                    placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"
                                    oninput="gcalSaveIcsUrl()">
                         </label>
-                        <button type="button" class="primary" id="gcalIcsPullButton" onclick="gcalIcsPull()" disabled>Sync from Google Calendar</button>
+                        <div class="gcal-ics-actions">
+                            <button type="button" class="primary" id="gcalIcsPullButton" onclick="gcalIcsPull()" disabled>Sync week</button>
+                            <button type="button" id="gcalIcsPullMonthButton" onclick="gcalIcsPullMonth()" disabled>Sync month</button>
+                        </div>
                         <p class="gcal-hint">Google Calendar → ⚙ Settings → [your calendar] → Integrate calendar → <em>Secret address in iCal format</em></p>
                     </div>
 

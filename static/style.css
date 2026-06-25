@@ -105,7 +105,7 @@ optgroup {
 .mobile-bottom-nav,
 .mobile-sheet-backdrop,
 .mobile-sheet-close {
-    display: none !important;
+    display: none;
 }
 
 .tablet-toolbar {
@@ -1448,6 +1448,12 @@ input[type="file"] {
     font-size: 12px;
     font-weight: 850;
     text-transform: uppercase;
+}
+
+.day-heading span em {
+    font-style: normal;
+    font-weight: 600;
+    opacity: 0.65;
 }
 
 .day-heading strong {
@@ -11135,7 +11141,8 @@ textarea:focus-visible {
     margin: 0 0 10px;
 }
 
-.gcal-actions {
+.gcal-actions,
+.gcal-ics-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;

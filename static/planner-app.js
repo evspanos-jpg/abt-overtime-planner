@@ -174,12 +174,15 @@ function buildTimeline(){
     gutterHead.className="time-gutter-heading"
     header.appendChild(gutterHead)
 
-    visibleDays.forEach(day=>{
+    let weekStart = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : null
+    visibleDays.forEach((day,i)=>{
         let btn=document.createElement("button")
         btn.type="button"
         btn.className="day-heading"
         btn.dataset.day=day
-        btn.innerHTML=`<span>${DAY_LABELS[day]}</span><strong id="${day}-total">$0</strong>`
+        let dayIndex = DAY_ORDER.indexOf(day)
+        let dateNum = weekStart ? addDays(weekStart,dayIndex).getDate() : ""
+        btn.innerHTML=`<span>${DAY_LABELS[day]}${dateNum !== "" ? " <em>"+dateNum+"</em>" : ""}</span><strong id="${day}-total">$0</strong>`
         btn.onclick=()=>{
             if(draggedBlock) return
             if(plannerView === "three-day" || plannerView === "day"){
@@ -1270,6 +1273,7 @@ function createBlock(y,h,details={}){
     el.dataset.title=details.title || "Block"
     el.dataset.location=details.location || ""
     el.dataset.description=details.description || ""
+    if(details.gcalId) el.dataset.gcalId=details.gcalId
     el.style.height=h+"px"
     el.style.transform=`translateY(${y}px)`
 
@@ -1754,7 +1758,8 @@ function saveAllDays(options={}){
             dur:b.dur,
             title:b.title,
             location:b.location,
-            description:b.description
+            description:b.description,
+            ...(b.gcalId && {gcalId:b.gcalId})
         }))
     })
 
@@ -3343,6 +3348,7 @@ function getSchedule(dayKey=null){
                 title:e.dataset.title || "Block",
                 location:e.dataset.location || "",
                 description:e.dataset.description || "",
+                gcalId:e.dataset.gcalId || "",
                 el:e
             }
         })
@@ -3816,6 +3822,9 @@ async function initGCal(){
     }catch(e){
         // Running as file:// or server not available — hide gcal UI silently
     }
+    if(localStorage.getItem("gcalIcsUrl")){
+        setTimeout(()=> gcalIcsPull(true), 800)
+    }
 }
 
 const GCAL_ICS_URL_KEY = "gcalIcsUrl"
@@ -3824,40 +3833,54 @@ function gcalLoadIcsUrl(){
     let url = localStorage.getItem(GCAL_ICS_URL_KEY) || ""
     let input = document.getElementById("gcalIcsUrl")
     if(input) input.value = url
-    let btn = document.getElementById("gcalIcsPullButton")
-    if(btn) btn.disabled = !url
+    let hasUrl = Boolean(url)
+    ;["gcalIcsPullButton","gcalIcsPullMonthButton"].forEach(id=>{
+        let btn = document.getElementById(id)
+        if(btn) btn.disabled = !hasUrl
+    })
 }
 
 function gcalSaveIcsUrl(){
     let url = (document.getElementById("gcalIcsUrl")?.value || "").trim()
     if(url) localStorage.setItem(GCAL_ICS_URL_KEY, url)
     else localStorage.removeItem(GCAL_ICS_URL_KEY)
-    let btn = document.getElementById("gcalIcsPullButton")
-    if(btn) btn.disabled = !url
+    let hasUrl = Boolean(url)
+    ;["gcalIcsPullButton","gcalIcsPullMonthButton"].forEach(id=>{
+        let btn = document.getElementById(id)
+        if(btn) btn.disabled = !hasUrl
+    })
 }
 
-async function gcalIcsPull(){
+async function gcalIcsPull(silent = false, monthRange = false){
     let url = (document.getElementById("gcalIcsUrl")?.value || "").trim()
-    if(!url){ _gcalShowResult("Paste an iCal URL first.", true); return }
+    if(!url){ if(!silent) _gcalShowResult("Paste an iCal URL first.", true); return }
 
-    let weekStart = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : startOfPlannerWeek(new Date())
-    let weekEnd = addDays(weekStart, 7)
+    let anchorDate = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : startOfPlannerWeek(new Date())
+    let rangeStart, rangeEnd
+    if(monthRange){
+        rangeStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1)
+        rangeEnd   = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 1)
+    }else{
+        rangeStart = anchorDate
+        rangeEnd   = addDays(anchorDate, 7)
+    }
 
-    setSaveStatus("Fetching iCal events…")
+    if(!silent) setSaveStatus(monthRange ? "Fetching month iCal events…" : "Fetching iCal events…")
     let resp
     try{
         resp = await fetch(
-            `/gcal/ics-pull?url=${encodeURIComponent(url)}&start=${encodeURIComponent(weekStart.toISOString())}&end=${encodeURIComponent(weekEnd.toISOString())}`
+            `/gcal/ics-pull?url=${encodeURIComponent(url)}&start=${encodeURIComponent(rangeStart.toISOString())}&end=${encodeURIComponent(rangeEnd.toISOString())}`
         )
     }catch(e){
-        setSaveStatus("iCal fetch failed")
-        _gcalShowResult("Network error — could not reach server.", true)
+        if(!silent){ setSaveStatus("iCal fetch failed"); _gcalShowResult("Network error — could not reach server.", true) }
         return
     }
     if(!resp.ok){
-        let err = await resp.json().catch(()=>({}))
-        _gcalShowResult(err.error || "Failed to fetch iCal events.", true)
-        setSaveStatus("iCal sync failed")
+        if(!silent){
+            let err = await resp.json().catch(()=>({}))
+            _gcalShowResult(err.error || "Failed to fetch iCal events.", true)
+            setSaveStatus("iCal sync failed")
+        }
         return
     }
 
@@ -3866,30 +3889,38 @@ async function gcalIcsPull(){
     let existingIds = _gcalExistingIds()
     let added = 0
 
+    let weekStart = anchorDate
+    let weekEnd   = addDays(weekStart, 7)
+
     for(let event of events){
         if(!event.start?.dateTime) continue
         if(!isImportRelevantEvent(event.summary || "", event.location || "", event.description || "")) continue
         if(existingIds.has(event.id)) continue
 
-        let startDate = new Date(event.start.dateTime)
-        let endDate   = new Date(event.end?.dateTime || event.start.dateTime)
-        let dayIndex  = (startDate.getDay() + 6) % 7
-        let day       = DAY_ORDER[dayIndex]
+        let startDate  = new Date(event.start.dateTime)
+        let endDate    = new Date(event.end?.dateTime || event.start.dateTime)
+        let dayIndex   = (startDate.getDay() + 6) % 7
+        let day        = DAY_ORDER[dayIndex]
+        let eventDKey  = dateKey(startDate)
+        let startHour  = startDate.getHours() + startDate.getMinutes() / 60
+        let durHours   = Math.max(0.25, (endDate - startDate) / 3600000)
+        let block = {
+            start:startHour, dur:durHours,
+            title:event.summary || "Block",
+            location:event.location || "",
+            description:event.description || "",
+            gcalId:event.id
+        }
 
-        if(dateKey(addDays(weekStart, dayIndex)) !== dateKey(startDate)) continue
-
-        let startHour = startDate.getHours() + startDate.getMinutes() / 60
-        let durHours  = Math.max(0.25, (endDate - startDate) / 3600000)
-
-        if(!weekData[day]) weekData[day] = []
-        weekData[day].push({
-            start: startHour,
-            dur: durHours,
-            title: event.summary || "Block",
-            location: event.location || "",
-            description: event.description || "",
-            gcalId: event.id
-        })
+        if(startDate >= weekStart && startDate < weekEnd){
+            if(!weekData[day]) weekData[day] = []
+            weekData[day].push(block)
+        }else if(monthRange){
+            if(!monthEvents[eventDKey]) monthEvents[eventDKey] = []
+            monthEvents[eventDKey].push(block)
+        }else{
+            continue
+        }
         existingIds.add(event.id)
         added++
     }
@@ -3897,12 +3928,16 @@ async function gcalIcsPull(){
     if(added > 0){
         buildTimeline()
         savePlannerState()
-        setSaveStatus(`Pulled ${added} event${added === 1 ? "" : "s"} from Google Calendar`)
+        if(!silent) setSaveStatus(`Pulled ${added} event${added === 1 ? "" : "s"} from Google Calendar`)
         _gcalShowResult(`Added ${added} new block${added === 1 ? "" : "s"}.`)
-    }else{
+    }else if(!silent){
         setSaveStatus("iCal sync — no new ABT events found")
-        _gcalShowResult("No new matching events in this week.")
+        _gcalShowResult(`No new matching events in this ${monthRange ? "month" : "week"}.`)
     }
+}
+
+async function gcalIcsPullMonth(){
+    await gcalIcsPull(false, true)
 }
 
 function _gcalUpdateUI(data){
@@ -3941,7 +3976,7 @@ async function gcalDisconnect(){
     setSaveStatus("Disconnected from Google Calendar")
 }
 
-// Collect every gcalId already stored in the current week's blocks
+// Collect every gcalId already stored in weekData and monthEvents
 function _gcalExistingIds(){
     let ids = new Set()
     for(let day of DAY_ORDER){
@@ -3949,6 +3984,9 @@ function _gcalExistingIds(){
             if(block.gcalId) ids.add(block.gcalId)
         }
     }
+    Object.values(monthEvents).forEach(dayEvents => {
+        ;(dayEvents || []).forEach(e => { if(e.gcalId) ids.add(e.gcalId) })
+    })
     return ids
 }
 
@@ -4667,7 +4705,8 @@ function syncSelectedWeekToMonth(){
             dur:item.dur,
             title:item.title,
             location:item.location,
-            description:item.description
+            description:item.description,
+            ...(item.gcalId && {gcalId:item.gcalId})
         }))
 
         if(items.length) monthEvents[key] = items
@@ -5120,11 +5159,11 @@ function restorePlannerState(){
     }
 }
 
-function selectWeekFromMonth(key){
+function selectWeekFromMonth(key,day){
     if(!key) return
 
     selectedWeekStartKey = key
-    loadWeekFromMonth(key)
+    loadWeekFromMonth(key,{currentDay:day || "mon"})
     renderMonthView()
     setPlannerView("week")
 }
@@ -5174,7 +5213,8 @@ function buildWeekDataFromMonthEntries(startDate,sourceMonthEvents=monthEvents){
                 dur:event.dur,
                 title:event.title,
                 location:event.location,
-                description:event.description
+                description:event.description,
+                ...(event.gcalId && {gcalId:event.gcalId})
             }))
     })
 
@@ -5783,23 +5823,10 @@ function selectMiniMonthDate(key){
     monthAnchorDate = new Date(selectedDate.getFullYear(),selectedDate.getMonth(),1)
     currentDay = DAY_ORDER[(selectedDate.getDay() + 6) % 7]
 
-    let hasWeekEvents = DAY_ORDER.some((day,index)=>{
-        let date = addDays(parseDateKey(selectedWeekStartKey),index)
-        return (monthEvents[dateKey(date)] || []).length
-    })
-
-    if(hasWeekEvents){
-        loadWeekFromMonth(selectedWeekStartKey,{currentDay})
-        setPlannerView(plannerView === "month" ? "month" : plannerView)
-        renderMonthView()
-        updateOutlookPanels()
-    }else{
-        setPlannerView(plannerView === "month" ? "month" : plannerView)
-        updateWeekHeader()
-        renderMonthView()
-        updateOutlookPanels()
-        savePlannerState()
-    }
+    loadWeekFromMonth(selectedWeekStartKey,{currentDay})
+    setPlannerView(plannerView === "month" ? "month" : plannerView)
+    renderMonthView()
+    updateOutlookPanels()
 }
 
 function renderMiniMonth(){
@@ -6080,12 +6107,12 @@ function renderMonthView(){
             cell.setAttribute("role","button")
             cell.setAttribute("aria-label","Open week of "+weekRangeLabel(startOfPlannerWeek(cellDate)))
             cell.addEventListener("click",()=>{
-                selectWeekFromMonth(dateKey(startOfPlannerWeek(cellDate)))
+                selectWeekFromMonth(dateKey(startOfPlannerWeek(cellDate)),DAY_ORDER[(cellDate.getDay()+6)%7])
             })
             cell.addEventListener("keydown",event=>{
                 if(event.key === "Enter" || event.key === " "){
                     event.preventDefault()
-                    selectWeekFromMonth(dateKey(startOfPlannerWeek(cellDate)))
+                    selectWeekFromMonth(dateKey(startOfPlannerWeek(cellDate)),DAY_ORDER[(cellDate.getDay()+6)%7])
                 }
             })
 

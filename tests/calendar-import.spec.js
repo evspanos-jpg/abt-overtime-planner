@@ -526,3 +526,70 @@ test("phone layout nav bar, agenda sheet, and period navigation work on Pixel vi
   expect(monthActive.monthNavActive).toBe(true);
   expect(monthActive.viewLabel.length).toBeGreaterThan(0);
 });
+
+test("iCal URL pull imports ABT events, filters non-ABT, and deduplicates on re-sync", async ({ page }) => {
+  const ICS_EVENTS = [
+    {
+      id: "abt-uid-1@google.com",
+      summary: "ABT Rehearsal",
+      location: "", description: "",
+      start: { dateTime: "2026-06-15T09:00:00", timeZone: "" },
+      end:   { dateTime: "2026-06-15T11:00:00", timeZone: "" }
+    },
+    {
+      id: "other-uid-1@google.com",
+      summary: "Doctor Appointment",
+      location: "", description: "",
+      start: { dateTime: "2026-06-15T14:00:00", timeZone: "" },
+      end:   { dateTime: "2026-06-15T15:00:00", timeZone: "" }
+    }
+  ];
+
+  // Intercept the server endpoint before navigation so it catches the auto-sync too
+  await page.route("**/gcal/ics-pull**", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({ events: ICS_EVENTS })
+  }));
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("file:///" + path.resolve(__dirname, "..", "index.html").replaceAll("\\", "/"));
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  // Set known week anchor and iCal URL
+  await page.evaluate(() => {
+    selectedWeekStartKey = "2026-06-15";
+    localStorage.setItem("gcalIcsUrl", "https://calendar.google.com/calendar/ical/test/basic.ics");
+  });
+  await page.evaluate(() => gcalLoadIcsUrl());
+
+  // First pull
+  await page.evaluate(async () => { await gcalIcsPull(); });
+
+  const afterFirstPull = await page.evaluate(() => ({
+    monBlocks: weekData["mon"] || [],
+    statusText: document.getElementById("saveStatus")?.innerText || ""
+  }));
+
+  // ABT event imported
+  const abtBlock = afterFirstPull.monBlocks.find(b => b.gcalId === "abt-uid-1@google.com");
+  expect(abtBlock).toBeTruthy();
+  expect(abtBlock.title).toBe("ABT Rehearsal");
+  expect(abtBlock.start).toBe(9);
+  expect(abtBlock.dur).toBe(2);
+
+  // Non-ABT event filtered out
+  const nonAbtBlock = afterFirstPull.monBlocks.find(b => b.gcalId === "other-uid-1@google.com");
+  expect(nonAbtBlock).toBeUndefined();
+
+  // Status message reflects the import
+  expect(afterFirstPull.statusText).toMatch(/1 event/);
+
+  // Second pull must not duplicate the ABT block
+  await page.evaluate(async () => { await gcalIcsPull(); });
+
+  const afterSecondPull = await page.evaluate(() =>
+    (weekData["mon"] || []).filter(b => b.gcalId === "abt-uid-1@google.com")
+  );
+  expect(afterSecondPull).toHaveLength(1);
+});
