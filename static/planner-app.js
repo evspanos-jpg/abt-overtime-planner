@@ -90,7 +90,6 @@ const TOOLBAR_DEFAULTS = [
     {key:"file", label:"File", visible:true},
     {key:"edit", label:"Edit", visible:true},
     {key:"calendar", label:"Calendar", visible:true},
-    {key:"search", label:"Search", visible:true},
     {key:"view", label:"View", visible:true},
     {key:"tools", label:"Tools", visible:true}
 ]
@@ -266,7 +265,10 @@ function isMobileLayout(){
 }
 
 function isPhoneLayout(){
-    return window.matchMedia("(max-width: 760px)").matches
+    if(window.matchMedia("(max-width: 760px)").matches) return true
+    // Landscape phone: width > 760 but short dimension is still phone-sized
+    let minDim = Math.min(window.innerWidth, window.innerHeight)
+    return minDim <= 550 && !(typeof window.isIpadDevice === "function" && window.isIpadDevice())
 }
 
 function isTabletLayout(){
@@ -1309,6 +1311,52 @@ function createBlock(y,h,details={}){
     return el
 }
 
+// Block quick-menu (long-press on touch)
+let quickMenuBlock = null
+
+function showBlockQuickMenu(x, y, block){
+    const menu = document.getElementById("blockQuickMenu")
+    if(!menu) return
+    quickMenuBlock = block
+    menu.classList.remove("is-hidden")
+    const mw = 210, mh = 80
+    let left = Math.min(x - mw / 2, window.innerWidth - mw - 8)
+    left = Math.max(8, left)
+    let top = y - mh - 18
+    if(top < 8) top = y + 18
+    menu.style.left = left + "px"
+    menu.style.top = top + "px"
+    navigator.vibrate?.(14)
+}
+
+function hideBlockQuickMenu(){
+    const menu = document.getElementById("blockQuickMenu")
+    if(menu) menu.classList.add("is-hidden")
+    quickMenuBlock = null
+}
+
+function blockQuickDelete(){
+    if(!quickMenuBlock?.isConnected){ hideBlockQuickMenu(); return }
+    pushUndoState()
+    quickMenuBlock.remove()
+    hideBlockQuickMenu()
+    saveDay()
+    update()
+}
+
+function blockQuickEdit(){
+    const block = quickMenuBlock
+    hideBlockQuickMenu()
+    if(block) openBlockEditor(block)
+}
+
+function blockQuickCopy(){
+    if(!quickMenuBlock){ hideBlockQuickMenu(); return }
+    selectBlock(quickMenuBlock)
+    copySelectedBlock()
+    hideBlockQuickMenu()
+}
+
 function attachBlockPointerControls(el){
     el.addEventListener("pointerdown", e=>{
         if(e.button !== 0) return
@@ -1336,12 +1384,26 @@ function attachBlockPointerControls(el){
         if(e.clientY - rect.top <= edgeSize) mode = "resize-top"
         else if(rect.bottom - e.clientY <= edgeSize) mode = "resize-bottom"
 
+        let startClientX = e.clientX
         let startClientY = e.clientY
         let startY = parseFloat(el.dataset.y) || 0
         let startHeight = el.offsetHeight
         let minHeight = Math.max(40,hoursToPixels(SNAP))
         let undoRecorded = false
         let pointerMoved = false
+
+        // Long-press: 420ms hold on touch/pen opens quick-action menu
+        let longPressTimer = null
+        let longPressActivated = false
+        if(isDirectPointer(e) && mode === "drag"){
+            longPressTimer = setTimeout(()=>{
+                longPressTimer = null
+                longPressActivated = true
+                el.classList.remove("is-moving")
+                document.body.classList.remove("dragging-block")
+                showBlockQuickMenu(e.clientX, e.clientY, el)
+            }, 420)
+        }
 
         el.classList.add("is-moving")
         document.body.classList.add("dragging-block")
@@ -1352,6 +1414,14 @@ function attachBlockPointerControls(el){
             let dy = moveEvent.clientY - startClientY
             let y = startY
             let h = startHeight
+
+            // Cancel long-press if the finger moves
+            if(longPressTimer && (Math.abs(moveEvent.clientX - startClientX) > 6 || Math.abs(dy) > 6)){
+                clearTimeout(longPressTimer)
+                longPressTimer = null
+            }
+
+            if(longPressActivated) return
 
             if(!undoRecorded && Math.abs(dy) > pointerMoveThreshold(e)){
                 pushUndoState()
@@ -1387,6 +1457,9 @@ function attachBlockPointerControls(el){
         }
 
         function onPointerUp(upEvent){
+            clearTimeout(longPressTimer)
+            longPressTimer = null
+
             if(el.hasPointerCapture && el.hasPointerCapture(upEvent.pointerId)){
                 el.releasePointerCapture(upEvent.pointerId)
             }
@@ -1395,6 +1468,12 @@ function attachBlockPointerControls(el){
             document.removeEventListener("pointermove",onPointerMove)
             document.removeEventListener("pointerup",onPointerUp)
             document.removeEventListener("pointercancel",onPointerUp)
+
+            // Don't treat finger-lift as a tap when long-press opened the menu
+            if(longPressActivated){
+                draggedBlock = null
+                return
+            }
 
             let dayButton = getDayButtonAtPoint(upEvent.clientX,upEvent.clientY)
             clearDayDropTargets()
@@ -2950,20 +3029,100 @@ function closeOpenFileMenus(){
 }
 
 function closeMobileSheet(){
-    document.body.classList.remove("mobile-agenda-open")
+    document.body.classList.remove("mobile-agenda-open","mobile-actions-open")
     document.querySelectorAll("[data-mobile-nav]").forEach(button=>{
         if(button.dataset.mobileNav === "agenda") button.classList.remove("active-view")
+        if(button.dataset.mobileNav === "actions") button.classList.remove("active-view")
     })
 }
 
 function openMobileSheet(sheet){
-    if(sheet !== "agenda") return
-    closeOpenFileMenus()
-    closeFullSearch()
-    document.body.classList.add("mobile-agenda-open")
-    updateOutlookPanels({forceAgenda:true})
-    updateMobileNav()
-    if(!isMobileLayout()) setTimeout(()=>document.getElementById("agendaSearchInput")?.focus({preventScroll:true}),80)
+    if(sheet === "agenda"){
+        closeOpenFileMenus()
+        closeFullSearch()
+        hideBlockQuickMenu()
+        document.body.classList.remove("mobile-actions-open")
+        document.body.classList.add("mobile-agenda-open")
+        updateOutlookPanels({forceAgenda:true})
+        updateMobileNav()
+        if(!isMobileLayout()) setTimeout(()=>document.getElementById("agendaSearchInput")?.focus({preventScroll:true}),80)
+    }else if(sheet === "actions"){
+        closeOpenFileMenus()
+        closeFullSearch()
+        hideBlockQuickMenu()
+        document.body.classList.remove("mobile-agenda-open")
+        buildMobileActionsSheet()
+        document.body.classList.add("mobile-actions-open")
+        updateMobileNav()
+    }
+}
+
+function buildMobileActionsSheet(){
+    const body = document.getElementById("mobileActionsBody")
+    if(!body) return
+    body.innerHTML = ""
+
+    function section(label){
+        const el = document.createElement("div")
+        el.className = "mobile-action-section"
+        el.textContent = label
+        body.appendChild(el)
+    }
+
+    function item(label, handler, options={}){
+        const btn = document.createElement("button")
+        btn.type = "button"
+        btn.className = "mobile-action-item" + (options.danger ? " danger" : "")
+        if(options.iconClass){
+            const icon = document.createElement("span")
+            icon.className = "button-icon " + options.iconClass
+            icon.setAttribute("aria-hidden","true")
+            btn.appendChild(icon)
+        }
+        const text = document.createElement("span")
+        text.textContent = label
+        btn.appendChild(text)
+        btn.addEventListener("click",()=>{ closeMobileSheet(); handler() })
+        body.appendChild(btn)
+        return btn
+    }
+
+    section("Blocks")
+    item("Add Block", addBlock, {iconClass:"icon-add"})
+    item("Edit Selected", editSelectedBlock, {iconClass:"icon-edit"})
+    item("Undo", undoLastChange, {iconClass:"icon-undo"})
+    item("Redo", redoLastChange, {iconClass:"icon-redo"})
+    item("Delete Selected", deleteSelectedBlocks, {iconClass:"icon-trash", danger:true})
+    item("Delete All", deleteAllBlocks, {iconClass:"icon-trash", danger:true})
+
+    section("Clipboard")
+    item("Copy", copySelectedBlock, {iconClass:"icon-copy"})
+    item("Cut", cutSelectedBlock, {iconClass:"icon-cut"})
+    item("Paste", pasteBlock, {iconClass:"icon-paste"})
+
+    section("Selection")
+    item("Select All", selectAllBlocks, {iconClass:"icon-select-all"})
+    item("All Calendar Events", selectAllCalendarEvents, {iconClass:"icon-calendar-check"})
+    item("Clear Selection", clearSelection, {iconClass:"icon-clear"})
+
+    section("Calendar")
+    item("Import Calendar", triggerCalendarFilePicker, {iconClass:"icon-import"})
+    item("Import Filters", openImportFilterEditor, {iconClass:"icon-filter"})
+    item("Review Conflicts", openConflictReviewFromImport, {iconClass:"icon-calendar-check"})
+    item("Remove Imported Calendar", removeImportedCalendar, {iconClass:"icon-trash", danger:true})
+
+    section("Export")
+    item("Export PDF", exportPDF, {iconClass:"icon-pdf"})
+    item("Export Calendar (.ics)", exportICS, {iconClass:"icon-export"})
+
+    section("File")
+    item("Save", saveProject, {iconClass:"icon-save"})
+    item("Save As", saveProjectAs, {iconClass:"icon-save-as"})
+    item("Open Project", triggerProjectOpen, {iconClass:"icon-open"})
+    item("Import from OneDrive", ()=>importProjectFromCloud("onedrive"), {iconClass:"icon-cloud-download"})
+    item("Import from Google Drive", ()=>importProjectFromCloud("google"), {iconClass:"icon-cloud-download"})
+    item("Upload to OneDrive", ()=>uploadProjectToCloud("onedrive"), {iconClass:"icon-cloud-upload"})
+    item("Upload to Google Drive", ()=>uploadProjectToCloud("google"), {iconClass:"icon-cloud-upload"})
 }
 
 function updateMobileNav(){
@@ -2975,12 +3134,14 @@ function updateMobileNav(){
             let label = button.querySelector("span:last-child")
             if(label) label.textContent = isPhoneLayout() ? "3 Day" : "Week"
         }
+        let actionsOpen = document.body.classList.contains("mobile-actions-open")
         button.classList.toggle("active-view",
             (nav === "today" && isDateInSelectedWeek(today)) ||
-            (nav === "week" && ["week","workweek","three-day"].includes(plannerView) && !document.body.classList.contains("mobile-agenda-open")) ||
-            (nav === "day" && plannerView === "day" && !document.body.classList.contains("mobile-agenda-open")) ||
+            (nav === "week" && ["week","workweek","three-day"].includes(plannerView) && !document.body.classList.contains("mobile-agenda-open") && !actionsOpen) ||
+            (nav === "day" && plannerView === "day" && !document.body.classList.contains("mobile-agenda-open") && !actionsOpen) ||
             (nav === "month" && plannerView === "month") ||
             (nav === "agenda" && document.body.classList.contains("mobile-agenda-open")) ||
+            (nav === "actions" && actionsOpen) ||
             (nav === "settings" && settingsOpen)
         )
     })
@@ -3201,32 +3362,6 @@ function rebuildToolbar(){
             selectionStatus.textContent = "No selection"
             editMenu.appendChild(selectionStatus)
         },
-        blocks(item){
-            const createGroup = group("create-tools")
-            const createMenu = menuButton(createGroup,item.label,"","icon-blocks")
-            menuItem(createMenu,"Add Block",addBlock,"",{iconClass:"icon-add"})
-            menuItem(createMenu,"Edit Selected",editSelectedBlock,"",{iconClass:"icon-edit"})
-            menuItem(createMenu,"Undo",undoLastChange,"undoButton",{iconClass:"icon-undo"})
-            menuItem(createMenu,"Redo",redoLastChange,"redoButton",{iconClass:"icon-redo"})
-            menuItem(createMenu,"Delete Selected",deleteSelectedBlocks,"",{iconClass:"icon-trash",className:"danger"})
-            menuItem(createMenu,"Delete All",deleteAllBlocks,"",{iconClass:"icon-trash",className:"danger"})
-        },
-        selection(item){
-            const selectionGroup = group("selection-tools")
-            const selectionMenu = menuButton(selectionGroup,item.label,"","icon-selection")
-            menuItem(selectionMenu,"Select All",selectAllBlocks,"",{iconClass:"icon-select-all"})
-            menuItem(selectionMenu,"All Calendar",selectAllCalendarEvents,"",{iconClass:"icon-calendar-check"})
-            menuItem(selectionMenu,"Clear Selection",clearSelection,"",{iconClass:"icon-clear"})
-            menuSection(selectionMenu,"Clipboard")
-            menuItem(selectionMenu,"Copy",copySelectedBlock,"",{iconClass:"icon-copy"})
-            menuItem(selectionMenu,"Cut",cutSelectedBlock,"",{iconClass:"icon-cut"})
-            menuItem(selectionMenu,"Paste",pasteBlock,"",{iconClass:"icon-paste"})
-            const selectionStatus = document.createElement("span")
-            selectionStatus.className = "selection-status"
-            selectionStatus.id = "selectionStatus"
-            selectionStatus.textContent = "No selection"
-            selectionGroup.appendChild(selectionStatus)
-        },
         calendar(item){
             const calendarGroup = group("calendar-tools")
             const calendarMenu = menuButton(calendarGroup,item.label,"calendarMenuButton","icon-calendar")
@@ -3241,13 +3376,6 @@ function rebuildToolbar(){
             appendExportScope(calendarMenu)
             menuSection(calendarMenu,"Remove")
             menuItem(calendarMenu,"Remove Imported Calendar",removeImportedCalendar,"",{iconClass:"icon-trash",className:"danger"})
-            menuItem(calendarMenu,"Remove All Events",deleteAllBlocks,"",{iconClass:"icon-trash",className:"danger"})
-        },
-        search(item){
-            const searchGroup = group("search-tools")
-            const searchMenu = menuButton(searchGroup,item.label,"searchMenuButton","icon-search")
-            menuSection(searchMenu,"Search")
-            menuItem(searchMenu,"Open Search",openFullSearch,"fullSearchButton",{iconClass:"icon-search"})
         },
         view(item){
             const viewGroup = group("view-tools")
@@ -3269,28 +3397,8 @@ function rebuildToolbar(){
             zoomStatus.id = "zoomStatus"
             zoomStatus.textContent = "100%"
             viewMenu.appendChild(zoomStatus)
-        },
-        zoom(item){
-            const zoomGroup = group("zoom-tools")
-            const zoomMenu = menuButton(zoomGroup,item.label,"zoomMenuButton","icon-zoom")
-            menuItem(zoomMenu,"Zoom In",zoomInTimeline,"zoomInButton",{iconClass:"icon-zoom-in"})
-            menuItem(zoomMenu,"Zoom Out",zoomOutTimeline,"zoomOutButton",{iconClass:"icon-zoom-out"})
-            menuItem(zoomMenu,"Reset Zoom",resetTimelineZoom,"resetZoomButton",{iconClass:"icon-zoom-reset"})
-            const zoomStatus = document.createElement("span")
-            zoomStatus.className = "zoom-status"
-            zoomStatus.id = "zoomStatus"
-            zoomStatus.textContent = "100%"
-            zoomGroup.appendChild(zoomStatus)
-        },
-        theme(item){
-            const themeGroup = group("theme-tools")
-            const themeMenu = menuButton(themeGroup,item.label,"themeToggleButton","icon-theme")
-            const darkButton = menuItem(themeMenu,"Dark Mode",()=>setThemeMode("dark"),"",{iconClass:"icon-moon"})
-            darkButton.dataset.themeMode = "dark"
-            const lightButton = menuItem(themeMenu,"Light Mode",()=>setThemeMode("light"),"",{iconClass:"icon-sun"})
-            lightButton.dataset.themeMode = "light"
-            menuSection(themeMenu,"Quick switch")
-            menuItem(themeMenu,"Toggle Theme",toggleThemeMode,"",{iconClass:"icon-theme"})
+            menuSection(viewMenu,"Find")
+            menuItem(viewMenu,"Open Search",openFullSearch,"fullSearchButton",{iconClass:"icon-search"})
         },
         tools(item){
             const toolsGroup = group("tools-tools")
@@ -4344,6 +4452,13 @@ document.getElementById("otDateRangeExportBackdrop")?.addEventListener("click", 
 document.getElementById("conflictReviewBackdrop")?.addEventListener("click", event=>{
     if(event.target.id === "conflictReviewBackdrop") closeConflictReview()
 })
+
+// Dismiss block quick-menu when tapping outside it
+document.addEventListener("pointerdown", event=>{
+    if(!document.getElementById("blockQuickMenu")?.classList.contains("is-hidden")){
+        if(!event.target.closest("#blockQuickMenu")) hideBlockQuickMenu()
+    }
+}, {capture:true})
 
 window.addEventListener("resize",()=>{
     scheduleViewportMetricUpdate()
@@ -7415,6 +7530,10 @@ function scheduleViewportMetricUpdate(){
     clearTimeout(viewportUpdateTimer)
     viewportUpdateTimer = setTimeout(()=>{
         updateAppViewportMetrics()
+        // Re-evaluate device-mode classes (mode-phone/ipad/desktop) so the
+        // layout follows orientation changes — e.g. rotating a phone into
+        // landscape must keep the phone shell, not fall back to the grid.
+        syncInputCapabilityClasses?.()
         applyWorkspaceLayout(currentWorkspaceLayout())
         applyTimelineZoom({render:false})
     },120)
@@ -7444,8 +7563,10 @@ function clampWorkspaceLayout(layout){
     let railDock = ["left","right"].includes(layout?.railDock) ? layout.railDock : "left"
     let agendaDock = ["left","right","bottom"].includes(layout?.agendaDock) ? layout.agendaDock : "right"
     if(ipadLayout && agendaDock === "bottom") agendaDock = "right"
-    let railFloating = parseWorkspaceBool(layout?.railFloating ?? (ipadLayout ? true : false))
-    let agendaFloating = parseWorkspaceBool(layout?.agendaFloating ?? (ipadLayout ? true : false))
+    // iPad defaults to a docked 3-column layout (like desktop) so panels never
+    // overlap the calendar; the user can opt into floating via the Undock button.
+    let railFloating = parseWorkspaceBool(layout?.railFloating ?? false)
+    let agendaFloating = parseWorkspaceBool(layout?.agendaFloating ?? false)
     if(agendaDock !== "bottom" && agendaDock === railDock){
         agendaDock = railDock === "left" ? "right" : "left"
     }
@@ -7780,9 +7901,8 @@ const DESKTOP_MENU_ORDER = [
     {id:"fileMenuButton", label:"File", icon:"icon-folder"},
     {id:"editMenuButton", label:"Edit", icon:"icon-edit"},
     {id:"calendarMenuButton", label:"Calendar", icon:"icon-calendar"},
-    {id:"searchMenuButton", label:"Search", icon:"icon-search"},
-    {id:"toolsMenuButton", label:"Tools", icon:"icon-settings"},
-    {id:"viewMenuButton", label:"View", icon:"icon-view"}
+    {id:"viewMenuButton", label:"View", icon:"icon-view"},
+    {id:"toolsMenuButton", label:"Tools", icon:"icon-settings"}
 ]
 
 function findMenuButton(menu){

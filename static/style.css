@@ -502,6 +502,15 @@ button {
     opacity: 1;
 }
 
+/* Unified accent for all top-level menu triggers (File/Edit/Calendar/View/Tools)
+   so the menu bar reads as one cohesive set, in both the compact (optimized)
+   and wide (top-menu-bar) layouts. The trigger button always carries
+   .toolbar-menu-button; its dropdown items live in a sibling .file-menu, so
+   in-menu item icons keep their category colours (e.g. red = danger/delete). */
+#controls .toolbar-menu-button .button-icon {
+    --icon-accent: #4285f4;
+}
+
 .file-menu-item .button-icon,
 .toolbar-menu button .button-icon {
     color: #fff;
@@ -2095,6 +2104,9 @@ body.selecting-blocks * {
 }
 
 .block-editor-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2185,13 +2197,16 @@ body.selecting-blocks * {
 }
 
 .block-editor-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     padding: 14px 16px;
     border-top: 1px solid var(--line-soft);
-    background: rgba(255, 255, 255, 0.032);
+    background: var(--surface);
 }
 
 .block-editor-actions div {
@@ -3118,7 +3133,7 @@ input[type="file"] {
 .month-header {
     background:
         linear-gradient(180deg, rgba(255, 252, 244, 0.052), rgba(255, 252, 244, 0.012)),
-        #171713;
+        var(--surface-2);
 }
 
 .timeline-header {
@@ -3130,7 +3145,7 @@ input[type="file"] {
 #timeline,
 #timeRuler,
 .month-grid {
-    background: #11110f;
+    background: var(--timeline-bg);
 }
 
 .week-grid-header {
@@ -3808,6 +3823,7 @@ body.resizing-workspace.resizing-workspace-vertical {
 .mobile-sheet-close,
 .mobile-sheet-backdrop,
 .mobile-calendar-bar,
+.mobile-actions-sheet,
 .mobile-bottom-nav {
     display: none;
 }
@@ -4795,7 +4811,7 @@ body,
 }
 
 /* Android/mobile layout hardening */
-@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse) {
+@media (max-width: 760px), (max-width: 1180px) and (pointer: coarse), (pointer: coarse) and (orientation: landscape) and (max-height: 650px) {
     html,
     body {
         width: 100%;
@@ -5142,6 +5158,156 @@ body,
         pointer-events: auto;
     }
 
+    /* Actions sheet — mirrors agenda-pane layout */
+    .mobile-actions-sheet {
+        position: fixed;
+        right: max(8px, env(safe-area-inset-right));
+        bottom: calc(76px + max(8px, env(safe-area-inset-bottom)));
+        left: max(8px, env(safe-area-inset-left));
+        z-index: 720;
+        display: flex;
+        flex-direction: column;
+        max-height: min(calc(var(--app-vh, 1vh) * 80), 640px);
+        border: 1px solid rgba(238, 232, 219, 0.14);
+        border-radius: 16px 16px 12px 12px;
+        background:
+            linear-gradient(180deg, rgba(255, 252, 244, 0.07), rgba(255, 252, 244, 0.018)),
+            rgba(17, 22, 29, 0.97);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.52);
+        -webkit-backdrop-filter: blur(18px) saturate(130%);
+        backdrop-filter: blur(18px) saturate(130%);
+        transform: translateY(calc(100% + 110px));
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    body.mobile-actions-open .mobile-actions-sheet {
+        transform: translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    body.mobile-actions-open .mobile-sheet-backdrop {
+        display: block;
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .mobile-actions-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(238, 232, 219, 0.1);
+        flex-shrink: 0;
+    }
+
+    .mobile-actions-header strong {
+        font-size: 15px;
+        font-weight: 840;
+    }
+
+    .mobile-actions-body {
+        overflow-y: auto;
+        flex: 1;
+        padding: 6px 6px 10px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-action-section {
+        padding: 10px 8px 4px;
+        font-size: 10px;
+        font-weight: 860;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+
+    .mobile-action-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 10px;
+        border-radius: 8px;
+        font-size: 15px;
+        text-align: left;
+        color: var(--text);
+        background: transparent;
+        border: 1px solid transparent;
+    }
+
+    .mobile-action-item:active {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .mobile-action-item.danger {
+        color: #f87171;
+    }
+
+    .mobile-action-item .button-icon {
+        width: 18px;
+        height: 18px;
+        flex-basis: 18px;
+        flex-shrink: 0;
+        opacity: 0.72;
+    }
+
+    /* Block long-press quick menu */
+    .block-quick-menu {
+        position: fixed;
+        z-index: 960;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+        padding: 7px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 14px;
+        background:
+            linear-gradient(180deg, rgba(255, 252, 244, 0.07), rgba(255, 252, 244, 0.015)),
+            rgba(17, 22, 29, 0.97);
+        -webkit-backdrop-filter: blur(18px) saturate(130%);
+        backdrop-filter: blur(18px) saturate(130%);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+        transition: opacity 0.12s ease, transform 0.12s ease;
+        transform-origin: center bottom;
+    }
+
+    .block-quick-menu.is-hidden {
+        display: none;
+    }
+
+    .block-quick-action {
+        display: grid;
+        justify-items: center;
+        gap: 5px;
+        min-width: 64px;
+        padding: 10px 6px 8px;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.055);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .block-quick-action:active {
+        background: rgba(255, 255, 255, 0.11);
+    }
+
+    .block-quick-action.danger {
+        color: #f87171;
+    }
+
+    .block-quick-action .button-icon {
+        width: 20px;
+        height: 20px;
+        flex-basis: 20px;
+    }
+
     .calendar-rail {
         grid-template-columns: 1fr;
     }
@@ -5373,9 +5539,16 @@ body,
     }
 }
 
+/* Landscape phone: hide nav when a modal is open */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 650px) {
+    body:has(.modal-backdrop:not(.is-hidden)) .mobile-bottom-nav {
+        display: none;
+    }
+}
+
 @media (max-width: 760px) and (orientation: portrait) {
     .mobile-bottom-nav {
-        grid-template-columns: repeat(7, minmax(0, 1fr));
+        grid-template-columns: repeat(8, minmax(0, 1fr));
     }
 
     .mobile-nav-button {
@@ -11244,4 +11417,118 @@ textarea:focus-visible {
     body[data-timeline-days="1"] #timeline {
         min-width: 0 !important;
     }
+}
+
+/* =========================================================================
+   Phone shell — driven by the JS-set `body.mode-phone` class instead of
+   width media queries, so the layout is also correct in LANDSCAPE. A
+   landscape phone is wide (761–1180px) but short, so the width-based phone
+   queries fall into the tablet range, which used to leave the navigation
+   rail and the docked agenda visible over a cramped desktop grid. These
+   rules re-assert the single-column phone shell at any width/orientation
+   and override those tablet media queries.
+   ========================================================================= */
+body.mode-phone {
+    padding-right: max(8px, env(safe-area-inset-right)) !important;
+    padding-bottom: calc(74px + max(8px, env(safe-area-inset-bottom))) !important;
+}
+
+body.mode-phone .toolbar,
+body.mode-phone .outlook-topbar {
+    display: none !important;
+}
+
+body.mode-phone .calendar-workspace {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+}
+
+body.mode-phone .calendar-rail,
+body.mode-phone .workspace-resizer {
+    display: none !important;
+}
+
+body.mode-phone .calendar-main {
+    order: 1;
+    min-width: 0;
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+}
+
+body.mode-phone .mobile-calendar-bar {
+    display: grid !important;
+}
+
+/* Docked agenda becomes the off-canvas bottom sheet, shown on mobile-agenda-open */
+body.mode-phone .agenda-pane {
+    position: fixed !important;
+    top: auto !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    bottom: calc(82px + max(8px, env(safe-area-inset-bottom))) !important;
+    left: max(8px, env(safe-area-inset-left)) !important;
+    z-index: 720 !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: min(calc(var(--app-vh, 1vh) * 70), 600px) !important;
+    transform: translateY(calc(100% + 160px)) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+body.mode-phone.mobile-agenda-open .agenda-pane {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Actions sheet (holds Export PDF etc.) — same off-canvas behaviour */
+body.mode-phone .mobile-actions-sheet {
+    position: fixed !important;
+    top: auto !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    bottom: calc(82px + max(8px, env(safe-area-inset-bottom))) !important;
+    left: max(8px, env(safe-area-inset-left)) !important;
+    z-index: 720 !important;
+    display: flex !important;
+    flex-direction: column;
+    max-height: min(calc(var(--app-vh, 1vh) * 78), 620px);
+    transform: translateY(calc(100% + 160px)) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+body.mode-phone.mobile-actions-open .mobile-actions-sheet {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Bottom navigation as a fixed horizontal bar in any orientation */
+body.mode-phone .mobile-bottom-nav {
+    position: fixed !important;
+    top: auto !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    left: max(8px, env(safe-area-inset-left)) !important;
+    width: auto !important;
+    height: auto !important;
+    z-index: 760 !important;
+    display: grid !important;
+    grid-auto-flow: column !important;
+    grid-auto-rows: auto !important;
+    grid-auto-columns: minmax(0, 1fr) !important;
+    grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+    grid-template-rows: auto !important;
+    gap: 4px !important;
+    padding: 6px !important;
+    border-radius: 14px !important;
+}
+
+body.mode-phone .mobile-bottom-nav .mobile-nav-button {
+    width: auto !important;
+    min-height: 46px !important;
+    writing-mode: horizontal-tb !important;
 }

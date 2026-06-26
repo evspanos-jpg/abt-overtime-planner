@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=158">
+    <link rel="stylesheet" href="static/style.css?v=162">
     <link rel="stylesheet" href="static/planner-ui.css?v=2">
 
     <!-- ✅ LIBRARIES -->
@@ -504,6 +504,12 @@
                 </section>
 
                 <section class="settings-card">
+                    <h4>Export</h4>
+                    <button type="button" class="secondary" onclick="exportPDF()">Export PDF</button>
+                    <button type="button" class="secondary" onclick="exportICS()">Export Calendar (.ics)</button>
+                </section>
+
+                <section class="settings-card">
                     <h4>Diagnostics</h4>
                     <div class="settings-diagnostics" aria-live="polite">
                         <div><strong>Mode</strong><span id="settingsModeValue">desktop</span></div>
@@ -627,6 +633,31 @@
     <!-- Phone: agenda sheet backdrop -->
     <div class="mobile-sheet-backdrop" onclick="closeMobileSheet()" aria-hidden="true"></div>
 
+    <!-- Phone: actions sheet -->
+    <div class="mobile-actions-sheet" id="mobileActionsSheet" role="dialog" aria-modal="true" aria-label="Actions">
+        <div class="mobile-actions-header">
+            <strong>Actions</strong>
+            <button type="button" class="secondary icon-button mobile-sheet-close" onclick="closeMobileSheet()" aria-label="Close actions">&times;</button>
+        </div>
+        <div class="mobile-actions-body" id="mobileActionsBody"></div>
+    </div>
+
+    <!-- Block long-press quick menu -->
+    <div class="block-quick-menu is-hidden" id="blockQuickMenu" role="menu" aria-label="Block actions">
+        <button type="button" class="block-quick-action danger" onclick="blockQuickDelete()" aria-label="Delete block">
+            <span class="button-icon icon-trash" aria-hidden="true"></span>
+            <span>Delete</span>
+        </button>
+        <button type="button" class="block-quick-action" onclick="blockQuickEdit()" aria-label="Edit block">
+            <span class="button-icon icon-edit" aria-hidden="true"></span>
+            <span>Edit</span>
+        </button>
+        <button type="button" class="block-quick-action" onclick="blockQuickCopy()" aria-label="Copy block">
+            <span class="button-icon icon-copy" aria-hidden="true"></span>
+            <span>Copy</span>
+        </button>
+    </div>
+
     <!-- Phone: bottom navigation bar -->
     <nav class="mobile-bottom-nav" aria-label="Phone navigation">
         <button type="button" class="mobile-nav-button" data-mobile-nav="today" onclick="goToCurrentWeek()" aria-label="Go to today">
@@ -656,6 +687,10 @@
         <button type="button" class="mobile-nav-button" data-mobile-nav="search" onclick="openFullSearch()" aria-label="Search">
             <span class="mobile-nav-icon" aria-hidden="true"><span class="button-icon icon-search"></span></span>
             <span>Search</span>
+        </button>
+        <button type="button" class="mobile-nav-button" data-mobile-nav="actions" onclick="openMobileSheet('actions')" aria-label="Actions menu">
+            <span class="mobile-nav-icon" aria-hidden="true"><span class="button-icon icon-file-menu"></span></span>
+            <span>Actions</span>
         </button>
     </nav>
 
@@ -713,7 +748,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=2"></script>
+<script src="static/planner-app.js?v=5"></script>
 
 </body>
 </html>
