@@ -2,7 +2,7 @@ const timeline = document.getElementById("timeline")
 
 const HOURS = 13
 const START_HOUR = 10
-const SNAP = 0.25
+const SNAP = 5 / 60 // 5-minute snapping/increments
 const OVERTIME_RULES = window.overtimeRules || {}
 const OVERTIME_RULES_BASE = window.overtimeRulesBase || OVERTIME_RULES
 const CUSTOM_OVERTIME_RULES_KEY = window.customOvertimeRulesStorageKey || "abtOvertimePlannerCustomOvertimeRules"
@@ -220,22 +220,29 @@ function buildTimeline(){
     timeline.appendChild(header)
     timeline.appendChild(body)
 
-    let steps = HOURS / SNAP
+    // Draw a line at every SNAP step (5 min). Hours and quarter-hours are
+    // labelled; the in-between 5-minute lines render as faint "minor" ticks so
+    // the grid reads at 5-minute resolution without label clutter.
+    let stepMinutes = Math.max(1, Math.round(SNAP * 60))
+    let totalSteps = Math.round((HOURS * 60) / stepMinutes)
 
-    for(let i=0;i<=steps;i++){
-        let hourOffset = i * SNAP
-        let hour = START_HOUR + Math.floor(hourOffset)
-        let minute = Math.round((hourOffset % 1) * 60)
+    for(let i=0;i<=totalSteps;i++){
+        let totalMinutes = i * stepMinutes
+        let hourOffset = totalMinutes / 60
+        let hour = START_HOUR + Math.floor(totalMinutes / 60)
+        let minute = totalMinutes % 60
         let isHour = minute === 0
+        let isQuarter = minute % 15 === 0
+        let tier = isHour ? "hour" : (isQuarter ? "quarter" : "minor")
 
         let line=document.createElement("div")
-        line.className=isHour ? "time-line hour" : "time-line quarter"
+        line.className="time-line "+tier
         line.style.top=(hourOffset/HOURS*100)+"%"
-        line.innerText=formatTime(hour + (minute / 60))
+        if(isHour || isQuarter) line.innerText=formatTime(hour + (minute / 60))
         ruler.appendChild(line)
 
         let gridLine=document.createElement("div")
-        gridLine.className=isHour ? "grid-line hour" : "grid-line quarter"
+        gridLine.className="grid-line "+tier
         gridLine.style.top=(hourOffset/HOURS*100)+"%"
         columns.appendChild(gridLine)
     }

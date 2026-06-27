@@ -1533,6 +1533,17 @@ input[type="file"] {
     border-top: 1px solid rgba(255, 255, 255, 0.045);
 }
 
+/* 5-minute ticks between quarter-hours: very faint, unlabelled */
+.grid-line.minor {
+    border-top: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.time-line.minor {
+    border-top: 1px solid rgba(255, 255, 255, 0.02);
+    min-height: 0;
+    padding: 0;
+}
+
 .time-line {
     position: absolute;
     left: 0;
@@ -7895,7 +7906,7 @@ body.desktop-touch.resizing-workspace {
 :root:not([data-theme]) .day-column.active,
 :root:not([data-theme]) .day-heading.active {
     background:
-        linear-gradient(180deg, rgba(0, 120, 212, 0.22), rgba(0, 120, 212, 0.055)),
+        linear-gradient(180deg, rgba(0, 120, 212, 0.1), rgba(0, 120, 212, 0.025)),
         #101820;
 }
 
@@ -11629,4 +11640,303 @@ body.mode-phone .mobile-bottom-nav .mobile-nav-button {
     width: auto !important;
     min-height: 46px !important;
     writing-mode: horizontal-tb !important;
+}
+
+/* =========================================================
+   Cohesive, distinguishable menu buttons across every surface
+   (desktop/iPad ribbon triggers, dropdown items, and the phone
+   actions sheet). One shared token set keeps the three layouts
+   visually in sync; danger items keep their red treatment.
+   ========================================================= */
+:root {
+    --menu-chip-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.012)),
+        var(--surface-2);
+    --menu-chip-border: rgba(255, 255, 255, 0.14);
+    --menu-chip-bg-hover:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+        var(--surface-3);
+    --menu-chip-border-hover: rgba(120, 170, 230, 0.6);
+    --menu-chip-active-bg: linear-gradient(180deg, rgba(0, 120, 212, 0.96), #0067bd);
+    --menu-chip-active-border: #2f8ae0;
+    --menu-chip-active-text: #ffffff;
+}
+
+:root[data-theme="light"] {
+    --menu-chip-bg: linear-gradient(180deg, #ffffff, rgba(247, 249, 252, 0.92));
+    --menu-chip-border: rgba(28, 42, 66, 0.16);
+    --menu-chip-bg-hover: linear-gradient(180deg, #ffffff, rgba(231, 239, 255, 0.94));
+    --menu-chip-border-hover: rgba(37, 99, 235, 0.45);
+    --menu-chip-active-bg: linear-gradient(135deg, #2563eb, #3c82e6);
+    --menu-chip-active-border: rgba(37, 99, 235, 0.5);
+    --menu-chip-active-text: #ffffff;
+}
+
+/* Top-level ribbon triggers (File / Edit / Calendar / View / Tools) now read
+   as discrete buttons, with a clear open/active state. */
+.outlook-topbar .toolbar-menu-button {
+    border: 1px solid var(--menu-chip-border);
+    background: var(--menu-chip-bg);
+    color: var(--text);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.outlook-topbar .toolbar-menu-button:hover {
+    border-color: var(--menu-chip-border-hover);
+    background: var(--menu-chip-bg-hover);
+}
+
+.outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button,
+.outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button .button-label {
+    color: var(--menu-chip-active-text);
+}
+
+.outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button {
+    background: var(--menu-chip-active-bg);
+    border-color: var(--menu-chip-active-border);
+}
+
+/* Dropdown items in every ribbon menu read as distinct, uniform cards. */
+.outlook-topbar .file-menu .file-menu-item:not(.danger) {
+    border: 1px solid var(--menu-chip-border);
+    border-radius: 8px;
+    background: var(--menu-chip-bg);
+    transition: background 0.14s ease, border-color 0.14s ease, transform 0.12s ease;
+}
+
+.outlook-topbar .file-menu .file-menu-item:not(.danger):hover,
+.outlook-topbar .file-menu .file-menu-item:not(.danger):focus-visible {
+    border-color: var(--menu-chip-border-hover);
+    background: var(--menu-chip-bg-hover);
+    transform: translateY(-1px);
+}
+
+.outlook-topbar .file-menu .file-menu-item.active-view {
+    border-color: var(--menu-chip-active-border);
+    background: var(--menu-chip-active-bg);
+    color: var(--menu-chip-active-text);
+}
+
+/* Phone actions sheet items share the same chip language. */
+.mobile-action-item:not(.danger) {
+    border: 1px solid var(--menu-chip-border);
+    background: var(--menu-chip-bg);
+}
+
+.mobile-action-item:not(.danger):active {
+    border-color: var(--menu-chip-border-hover);
+    background: var(--menu-chip-bg-hover);
+}
+
+/* =========================================================
+   Settings page: compact, cohesive controls that match the
+   menu chip language. Stops the segmented buttons inflating
+   into ovals and gives the theme/timeline toggles a clear
+   selected state; diagnostics rows become legible.
+   ========================================================= */
+
+/* Keep card rows at their natural height so buttons never stretch into ovals. */
+.settings-card {
+    align-content: start;
+}
+
+/* Theme / Timeline segmented toggles read as chips with a clear active state. */
+.settings-card .segmented-control button {
+    min-height: 40px;
+    border-radius: 8px;
+    border: 1px solid var(--menu-chip-border);
+    background: var(--menu-chip-bg);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 780;
+    box-shadow: none;
+}
+
+.settings-card .segmented-control button:hover {
+    border-color: var(--menu-chip-border-hover);
+    background: var(--menu-chip-bg-hover);
+}
+
+.settings-card .segmented-control button.active-view {
+    border-color: var(--menu-chip-active-border);
+    background: var(--menu-chip-active-bg);
+    color: var(--menu-chip-active-text);
+}
+
+/* Full-width action buttons in a card (Reset…, Export…) share the chip look. */
+.settings-card > .secondary {
+    min-height: 40px;
+    border-radius: 8px;
+    border: 1px solid var(--menu-chip-border);
+    background: var(--menu-chip-bg);
+    color: var(--text);
+    box-shadow: none;
+    font-size: 13px;
+    font-weight: 780;
+}
+
+.settings-card > .secondary:hover {
+    border-color: var(--menu-chip-border-hover);
+    background: var(--menu-chip-bg-hover);
+}
+
+/* Diagnostics / OT-overview rows: label left, value right, both legible. */
+.settings-diagnostics {
+    display: grid;
+    gap: 4px;
+}
+
+.settings-diagnostics > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 9px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--menu-chip-border);
+    font-size: 12px;
+}
+
+.settings-diagnostics > div strong {
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 10px;
+}
+
+.settings-diagnostics > div span {
+    min-width: 0;
+    color: var(--text);
+    font-weight: 720;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+/* The dark/light themes hard-code these toggle buttons flat with !important and
+   ignore the selected state, so the active accent must be scoped + !important. */
+:root[data-theme="dark"] #settingsDarkButton.active-view,
+:root[data-theme="dark"] #settingsLightButton.active-view,
+:root[data-theme="dark"] #settingsFitButton.active-view,
+:root[data-theme="dark"] #settingsComfortButton.active-view,
+:root[data-theme="light"] #settingsDarkButton.active-view,
+:root[data-theme="light"] #settingsLightButton.active-view,
+:root[data-theme="light"] #settingsFitButton.active-view,
+:root[data-theme="light"] #settingsComfortButton.active-view {
+    background: var(--menu-chip-active-bg) !important;
+    border-color: var(--menu-chip-active-border) !important;
+    color: var(--menu-chip-active-text) !important;
+}
+
+/* The open ribbon-menu trigger shares the same active accent. */
+:root[data-theme="dark"] .outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button,
+:root[data-theme="light"] .outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button {
+    background: var(--menu-chip-active-bg) !important;
+    border-color: var(--menu-chip-active-border) !important;
+}
+
+:root[data-theme="dark"] .outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button,
+:root[data-theme="dark"] .outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button .button-label,
+:root[data-theme="light"] .outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button,
+:root[data-theme="light"] .outlook-topbar .toolbar-menu-wrap.is-open .toolbar-menu-button .button-label {
+    color: var(--menu-chip-active-text) !important;
+}
+
+/* =========================================================
+   Phone month calendar legibility: bigger dates, event titles
+   that wrap to two lines instead of clipping to one letter, and
+   a softer selected-week highlight so events stay readable.
+   ========================================================= */
+body.mode-phone .month-day {
+    min-height: 94px;
+    padding: 6px 5px;
+}
+
+body.mode-phone .month-date {
+    font-size: 16px;
+}
+
+body.mode-phone .month-total {
+    font-size: 11px;
+}
+
+body.mode-phone .month-event {
+    margin-top: 4px;
+    padding: 4px 5px;
+}
+
+body.mode-phone .month-event strong {
+    font-size: 11px;
+    line-height: 1.16;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+body.mode-phone .month-event span {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+body.mode-phone .month-day.selected-week {
+    box-shadow: inset 0 0 0 2px rgba(120, 170, 230, 0.32);
+}
+
+/* =========================================================
+   Phone agenda: the filter controls were stacking into tall
+   cards that pushed the actual events below the fold. Lay the
+   pane out as a flex column with compact filters so the event
+   list gets the room and is visible immediately.
+   ========================================================= */
+body.mode-phone .agenda-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-height: 0;
+}
+
+body.mode-phone .agenda-search-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+body.mode-phone .agenda-search-toolbar .agenda-filter {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-height: 38px;
+    padding: 3px 9px;
+    border-radius: 8px;
+}
+
+body.mode-phone .agenda-search-toolbar .agenda-filter > span {
+    font-size: 9px;
+    letter-spacing: 0.02em;
+}
+
+body.mode-phone .agenda-search-toolbar .agenda-filter-trigger {
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 12px;
+}
+
+body.mode-phone .agenda-search {
+    flex: 0 0 auto;
+    min-height: 40px;
+}
+
+body.mode-phone .agenda-list {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 150px;
+    overflow: auto;
 }
