@@ -5227,16 +5227,21 @@ body,
     .mobile-action-item {
         display: flex;
         align-items: center;
+        justify-content: flex-start;
         gap: 12px;
         width: 100%;
         min-height: 44px;
-        padding: 10px 10px;
+        padding: 10px 12px;
         border-radius: 8px;
         font-size: 15px;
         text-align: left;
         color: var(--text);
         background: transparent;
         border: 1px solid transparent;
+    }
+
+    .mobile-action-item > span:last-child {
+        flex: 1 1 auto;
     }
 
     .mobile-action-item:active {
@@ -5253,7 +5258,15 @@ body,
         height: 18px;
         flex-basis: 18px;
         flex-shrink: 0;
-        opacity: 0.72;
+        /* Force the light text colour so icons whose base rule pins a dark
+           glyph for their desktop colour-chip (pdf, filter, theme, sun, moon)
+           stay visible on the dark sheet. */
+        color: var(--text);
+        opacity: 0.82;
+    }
+
+    .mobile-action-item.danger .button-icon {
+        color: #f87171;
     }
 
     .mobile-action-scope {
@@ -8424,6 +8437,20 @@ body.ribbon-auto-hide .outlook-ribbon-tab {
 .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .zoom-status {
     width: 100%;
     min-height: 38px;
+}
+
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .export-scope {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 9px;
+    padding: 0 4px;
+}
+
+.outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .export-scope select {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) .selection-status,

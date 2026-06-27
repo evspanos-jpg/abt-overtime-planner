@@ -3132,6 +3132,30 @@ function appendMobileExportScope(parent){
     parent.appendChild(field)
 }
 
+// Single source of truth for the Google Calendar menu actions so the desktop
+// ribbon and the phone actions sheet stay identical. Each entry is rendered by
+// the caller with whatever menu-item helper that surface uses.
+function googleCalendarMenuEntries(){
+    const hasIcsUrl = !!localStorage.getItem(GCAL_ICS_URL_KEY)
+    const entries = []
+    if(hasIcsUrl){
+        entries.push({label:"Sync This Week", handler:()=>gcalIcsPull(false), iconClass:"icon-cloud-download"})
+        entries.push({label:"Sync This Month", handler:gcalIcsPullMonth, iconClass:"icon-cloud-download"})
+    }
+    if(gcalConnected){
+        entries.push({label:"Pull via OAuth", handler:gcalPull, iconClass:"icon-cloud-download"})
+    }
+    entries.push({
+        label: hasIcsUrl || gcalConnected ? "Google Calendar Settings" : "Set Up Google Calendar",
+        handler:()=>{
+            openSettings()
+            setTimeout(()=>document.getElementById("settingsGcalSection")?.scrollIntoView({behavior:"smooth", block:"start"}), 120)
+        },
+        iconClass:"icon-settings"
+    })
+    return entries
+}
+
 function buildMobileActionsSheet(){
     const body = document.getElementById("mobileActionsBody")
     if(!body) return
@@ -3165,8 +3189,8 @@ function buildMobileActionsSheet(){
     section("Navigate")
     item("Go to Date", showMobileDatePicker, {iconClass:"icon-calendar"})
     item("Go to Today", goToCurrentWeek, {iconClass:"icon-current-week"})
-    item("Previous Period", ()=>changeMobilePeriod(-1), {iconClass:"icon-undo"})
-    item("Next Period", ()=>changeMobilePeriod(1), {iconClass:"icon-redo"})
+    item("Previous Period", ()=>changeMobilePeriod(-1), {iconClass:"icon-prev"})
+    item("Next Period", ()=>changeMobilePeriod(1), {iconClass:"icon-next"})
 
     section("Blocks")
     item("Add Block", addBlockAndOpenEditor, {iconClass:"icon-add"})
@@ -3193,18 +3217,7 @@ function buildMobileActionsSheet(){
     item("Remove Imported Calendar", removeImportedCalendar, {iconClass:"icon-trash", danger:true})
 
     section("Google Calendar")
-    const _hasIcsUrl = !!localStorage.getItem(GCAL_ICS_URL_KEY)
-    if(_hasIcsUrl){
-        item("Sync This Week", ()=>gcalIcsPull(false), {iconClass:"icon-cloud-download"})
-        item("Sync This Month", gcalIcsPullMonth, {iconClass:"icon-cloud-download"})
-    }
-    if(gcalConnected){
-        item("Pull via OAuth", gcalPull, {iconClass:"icon-cloud-download"})
-    }
-    item(_hasIcsUrl || gcalConnected ? "Google Calendar Settings" : "Set Up Google Calendar", ()=>{
-        openSettings()
-        setTimeout(()=>document.getElementById("settingsGcalSection")?.scrollIntoView({behavior:"smooth", block:"start"}), 120)
-    }, {iconClass:"icon-settings"})
+    googleCalendarMenuEntries().forEach(entry=>item(entry.label, entry.handler, {iconClass:entry.iconClass}))
 
     section("Export")
     appendMobileExportScope(body)
@@ -3389,7 +3402,7 @@ function rebuildToolbar(){
         const exportScope = document.createElement("label")
         exportScope.className = "export-scope file-menu-scope"
         const exportLabel = document.createElement("span")
-        exportLabel.textContent = "Export"
+        exportLabel.textContent = "Scope"
         exportScope.appendChild(exportLabel)
         const exportSelect = document.createElement("select")
         exportSelect.id = "exportScope"
@@ -3462,9 +3475,12 @@ function rebuildToolbar(){
             menuItem(calendarMenu,"Import Filters",openImportFilterEditor,"",{iconClass:"icon-filter"})
             menuSection(calendarMenu,"Review")
             menuItem(calendarMenu,"Review Conflicts",openConflictReviewFromImport,"",{iconClass:"icon-calendar-check"})
+            menuSection(calendarMenu,"Google Calendar")
+            googleCalendarMenuEntries().forEach(entry=>menuItem(calendarMenu,entry.label,entry.handler,"",{iconClass:entry.iconClass}))
             menuSection(calendarMenu,"Export")
             menuItem(calendarMenu,"Export Calendar",exportICS,"",{iconClass:"icon-export"})
             menuItem(calendarMenu,"Export PDF",exportPDF,"",{iconClass:"icon-pdf"})
+            menuItem(calendarMenu,"Export PDF (OT only)",exportWeekOtPDF,"",{iconClass:"icon-pdf"})
             appendExportScope(calendarMenu)
             menuSection(calendarMenu,"Remove")
             menuItem(calendarMenu,"Remove Imported Calendar",removeImportedCalendar,"",{iconClass:"icon-trash",className:"danger"})
@@ -3472,9 +3488,11 @@ function rebuildToolbar(){
         view(item){
             const viewGroup = group("view-tools")
             const viewMenu = menuButton(viewGroup,item.label,"viewMenuButton","icon-view")
+            menuSection(viewMenu,"Navigate")
             button(viewMenu,"Current Week","secondary file-menu-item",goToCurrentWeek,"",{iconClass:"icon-current-week",title:"Jump to current week"})
-            button(viewMenu,"Previous","secondary file-menu-item",()=>changeMonth(-1),"",{iconClass:"icon-prev",ariaLabel:"Previous month",title:"Previous month"})
-            button(viewMenu,"Next","secondary file-menu-item",()=>changeMonth(1),"",{iconClass:"icon-next",ariaLabel:"Next month",title:"Next month"})
+            button(viewMenu,"Previous Month","secondary file-menu-item",()=>changeMonth(-1),"",{iconClass:"icon-prev",ariaLabel:"Previous month",title:"Previous month"})
+            button(viewMenu,"Next Month","secondary file-menu-item",()=>changeMonth(1),"",{iconClass:"icon-next",ariaLabel:"Next month",title:"Next month"})
+            menuSection(viewMenu,"Views")
             button(viewMenu,"Work Week","secondary file-menu-item",()=>setPlannerView("workweek"),"workWeekViewButton",{iconClass:"icon-week-view",ariaLabel:"Work week view",title:"Work week view"})
             button(viewMenu,"Week","secondary file-menu-item",()=>setPlannerView("week"),"weekViewButton",{iconClass:"icon-week-view",ariaLabel:"Week view",title:"Week view"})
             button(viewMenu,"3 Day","secondary file-menu-item",()=>setPlannerView("three-day"),"threeDayViewButton",{iconClass:"icon-week-view",ariaLabel:"3 day view",title:"3 day view"})
