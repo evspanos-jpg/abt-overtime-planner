@@ -1533,15 +1533,25 @@ input[type="file"] {
     border-top: 1px solid rgba(255, 255, 255, 0.045);
 }
 
-/* 5-minute ticks between quarter-hours: very faint, unlabelled */
+/* 5-minute ticks between quarter-hours: visible but subordinate, with a short
+   dash on the ruler so the 5-minute grid clearly reads. */
 .grid-line.minor {
-    border-top: 1px solid rgba(255, 255, 255, 0.02);
+    border-top: 1px dotted rgba(255, 255, 255, 0.14);
 }
 
 .time-line.minor {
-    border-top: 1px solid rgba(255, 255, 255, 0.02);
+    border-top: 1px dotted rgba(255, 255, 255, 0.16);
     min-height: 0;
     padding: 0;
+}
+
+.time-line.minor::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 7px;
+    border-top: 1px solid rgba(174, 184, 197, 0.5);
 }
 
 .time-line {
@@ -5264,20 +5274,21 @@ body,
         color: #f87171;
     }
 
+    /* Match the desktop menu's coloured icon chips so phone actions read
+       clearly and consistently (white glyph on an accent-coloured tile;
+       danger actions get the red chip via .danger's --icon-accent). */
     .mobile-action-item .button-icon {
-        width: 18px;
-        height: 18px;
-        flex-basis: 18px;
+        width: 25px;
+        height: 25px;
+        flex-basis: 25px;
         flex-shrink: 0;
-        /* Force the light text colour so icons whose base rule pins a dark
-           glyph for their desktop colour-chip (pdf, filter, theme, sun, moon)
-           stay visible on the dark sheet. */
-        color: var(--text);
-        opacity: 0.82;
-    }
-
-    .mobile-action-item.danger .button-icon {
-        color: #f87171;
+        border-radius: 6px;
+        background: var(--icon-accent, #4285f4);
+        color: #fff;
+        box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.22),
+            inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        opacity: 1;
     }
 
     .mobile-action-scope {
@@ -11939,4 +11950,41 @@ body.mode-phone .agenda-list {
     max-height: none;
     min-height: 150px;
     overflow: auto;
+}
+
+/* =========================================================
+   Touch / pen pointer polish (iPad & phone). On devices whose
+   primary pointer cannot hover, iOS/iPadOS latches :hover after
+   a tap, leaving edit buttons stuck on and items frozen in their
+   lifted state. Neutralise the hover-only affordances here while
+   keeping selection/focus ones. Does NOT apply when an iPad has a
+   trackpad/mouse attached (that reports hover: hover), so genuine
+   pointer hover still works.
+   ========================================================= */
+@media (hover: none) {
+    .event:hover,
+    .agenda-item:hover,
+    .month-event:hover,
+    .mini-month-day:hover,
+    .file-menu-item:hover,
+    .outlook-topbar .file-menu .file-menu-item:not(.danger):hover,
+    .outlook-topbar .toolbar-menu-button:hover {
+        transform: none;
+    }
+
+    /* Edit affordance on blocks should follow selection/focus, not a stuck tap-hover. */
+    .event:hover .event-edit-button {
+        opacity: 0;
+    }
+
+    .event.selected .event-edit-button,
+    .event:focus-within .event-edit-button {
+        opacity: 1;
+    }
+
+    /* Don't keep the hover border/glow latched on tapped events. */
+    .event:hover:not(.selected) {
+        border-color: var(--menu-chip-border);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.36);
+    }
 }
