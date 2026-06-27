@@ -5256,6 +5256,33 @@ body,
         opacity: 0.72;
     }
 
+    .mobile-action-scope {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+        min-height: 44px;
+        padding: 6px 10px 10px;
+    }
+
+    .mobile-action-scope > span {
+        font-size: 15px;
+        color: var(--text);
+    }
+
+    .mobile-action-scope select {
+        flex: 1 1 auto;
+        max-width: 60%;
+        min-height: 38px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 15px;
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
     /* Block long-press quick menu */
     .block-quick-menu {
         position: fixed;
@@ -11334,6 +11361,50 @@ textarea:focus-visible {
     .mobile-bottom-nav {
         gap: 5px;
     }
+}
+
+/* ---- OT badge on earnings card ----------------------------------------- */
+.earnings-card {
+    position: relative;
+}
+
+.earnings-card.has-ot span {
+    color: #f59e0b;
+}
+
+.earnings-card.has-ot strong {
+    color: #f59e0b;
+}
+
+.earnings-card.has-ot::after {
+    content: "OT";
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(245, 158, 11, 0.18);
+    color: #f59e0b;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+}
+
+/* ---- Tappable period title (phone date picker trigger) ----------------- */
+button.mobile-period-title {
+    background: transparent;
+    border: none;
+    padding: 4px 6px;
+    margin: -4px -6px;
+    border-radius: 8px;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+}
+
+button.mobile-period-title:active {
+    background: rgba(255, 252, 244, 0.12);
 }
 
 /* ---- Google Calendar sync UI ------------------------------------------ */

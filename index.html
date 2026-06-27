@@ -52,12 +52,12 @@
             <strong id="mobileDateLabel">--</strong>
         </button>
         <button type="button" class="secondary mobile-period-button" onclick="changeMobilePeriod(-1)" aria-label="Previous period">&#8249;</button>
-        <div class="mobile-period-title">
+        <button type="button" class="mobile-period-title" onclick="showMobileDatePicker()" aria-label="Go to date">
             <strong id="mobileViewLabel">Week</strong>
             <span id="mobileRangeLabel">Loading...</span>
-        </div>
+        </button>
         <button type="button" class="secondary mobile-period-button" onclick="changeMobilePeriod(1)" aria-label="Next period">&#8250;</button>
-        <button type="button" class="primary mobile-add-button" onclick="addBlock()" aria-label="Add block"></button>
+        <button type="button" class="primary mobile-add-button" onclick="addBlockAndOpenEditor()" aria-label="Add block"></button>
     </div>
 
     <section class="tablet-toolbar" aria-label="Tablet planner controls">
@@ -597,7 +597,7 @@
                     <div class="ot-rules-list ot-inspector-blocks" id="otInspectorBlockList"></div>
                 </section>
 
-                <section class="settings-card settings-card-wide">
+                <section class="settings-card settings-card-wide" id="settingsGcalSection">
                     <h4>Google Calendar</h4>
 
                     <div class="gcal-ics-section">

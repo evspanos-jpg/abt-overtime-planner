@@ -1887,6 +1887,44 @@ function addBlock(){
     update()
 }
 
+function addBlockAndOpenEditor(){
+    pushUndoState()
+    let now = new Date()
+    let hour = now.getHours() + now.getMinutes() / 60
+    hour = Math.max(START_HOUR, Math.min(hour, START_HOUR + HOURS - 1))
+    let y = hoursToPixels(snapHours(hour - START_HOUR))
+    y = Math.max(0, Math.min(y, timelineHeight() - hoursToPixels(1)))
+    let block = createBlock(y, hoursToPixels(1), {day: currentDay})
+    selectBlock(block)
+    saveDay()
+    update()
+    openBlockEditor(block)
+}
+
+function showMobileDatePicker(){
+    let input = document.createElement("input")
+    input.type = "date"
+    let activeDate = addDays(selectedWeekStartDate(), currentDayIndex())
+    input.value = dateKey(activeDate)
+    input.style.cssText = "opacity:0;position:fixed;top:50%;left:50%;width:1px;height:1px;pointer-events:none"
+    document.body.appendChild(input)
+    input.addEventListener("change", ()=>{
+        let parts = (input.value || "").split("-").map(Number)
+        let y = parts[0], m = parts[1], d = parts[2]
+        if(!y || !m || !d){ input.remove(); return }
+        let targetDate = new Date(y, m - 1, d)
+        selectedWeekStartKey = dateKey(startOfPlannerWeek(targetDate))
+        monthAnchorDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1)
+        currentDay = DAY_ORDER[(targetDate.getDay() + 6) % 7]
+        loadWeekFromMonth(selectedWeekStartKey, {currentDay})
+        renderMonthView()
+        setPlannerView(plannerView)
+        input.remove()
+    })
+    input.addEventListener("blur", ()=>{ setTimeout(()=>{ if(document.body.contains(input)) input.remove() }, 300) })
+    try{ input.showPicker?.() }catch(e){ input.click() }
+}
+
 function addBlockAtTimelinePoint(event,openEditor=false){
     let dayColumn = event.target?.closest?.(".day-column") || getDayColumnAtPoint(event.clientX,event.clientY)
     if(!dayColumn) return
@@ -3057,6 +3095,43 @@ function openMobileSheet(sheet){
     }
 }
 
+const EXPORT_SCOPE_OPTIONS = [
+    ["week","Selected week"],
+    ["month","Full month"],
+    ["selected-month-ot","Selected month OT"],
+    ["ot-date-range","OT Date Range"]
+]
+
+// Mirrors the desktop ribbon's export-scope selector inside the phone actions
+// sheet. The desktop #exportScope select is the single source of truth (it is
+// built on load and kept in the DOM even on phone), so changes here write back
+// to it and persist via the same state path used everywhere else.
+function appendMobileExportScope(parent){
+    const field = document.createElement("label")
+    field.className = "mobile-action-scope"
+
+    const labelText = document.createElement("span")
+    labelText.textContent = "Export scope"
+    field.appendChild(labelText)
+
+    const select = document.createElement("select")
+    select.id = "mobileExportScope"
+    EXPORT_SCOPE_OPTIONS.forEach(([value,label])=>{
+        const option = document.createElement("option")
+        option.value = value
+        option.textContent = label
+        select.appendChild(option)
+    })
+    select.value = getExportScope()
+    select.addEventListener("change",()=>{
+        const desktopSelect = document.getElementById("exportScope")
+        if(desktopSelect) desktopSelect.value = select.value
+        savePlannerState()
+    })
+    field.appendChild(select)
+    parent.appendChild(field)
+}
+
 function buildMobileActionsSheet(){
     const body = document.getElementById("mobileActionsBody")
     if(!body) return
@@ -3087,8 +3162,14 @@ function buildMobileActionsSheet(){
         return btn
     }
 
+    section("Navigate")
+    item("Go to Date", showMobileDatePicker, {iconClass:"icon-calendar"})
+    item("Go to Today", goToCurrentWeek, {iconClass:"icon-current-week"})
+    item("Previous Period", ()=>changeMobilePeriod(-1), {iconClass:"icon-undo"})
+    item("Next Period", ()=>changeMobilePeriod(1), {iconClass:"icon-redo"})
+
     section("Blocks")
-    item("Add Block", addBlock, {iconClass:"icon-add"})
+    item("Add Block", addBlockAndOpenEditor, {iconClass:"icon-add"})
     item("Edit Selected", editSelectedBlock, {iconClass:"icon-edit"})
     item("Undo", undoLastChange, {iconClass:"icon-undo"})
     item("Redo", redoLastChange, {iconClass:"icon-redo"})
@@ -3111,8 +3192,24 @@ function buildMobileActionsSheet(){
     item("Review Conflicts", openConflictReviewFromImport, {iconClass:"icon-calendar-check"})
     item("Remove Imported Calendar", removeImportedCalendar, {iconClass:"icon-trash", danger:true})
 
+    section("Google Calendar")
+    const _hasIcsUrl = !!localStorage.getItem(GCAL_ICS_URL_KEY)
+    if(_hasIcsUrl){
+        item("Sync This Week", ()=>gcalIcsPull(false), {iconClass:"icon-cloud-download"})
+        item("Sync This Month", gcalIcsPullMonth, {iconClass:"icon-cloud-download"})
+    }
+    if(gcalConnected){
+        item("Pull via OAuth", gcalPull, {iconClass:"icon-cloud-download"})
+    }
+    item(_hasIcsUrl || gcalConnected ? "Google Calendar Settings" : "Set Up Google Calendar", ()=>{
+        openSettings()
+        setTimeout(()=>document.getElementById("settingsGcalSection")?.scrollIntoView({behavior:"smooth", block:"start"}), 120)
+    }, {iconClass:"icon-settings"})
+
     section("Export")
+    appendMobileExportScope(body)
     item("Export PDF", exportPDF, {iconClass:"icon-pdf"})
+    item("Export PDF (OT only)", exportWeekOtPDF, {iconClass:"icon-pdf"})
     item("Export Calendar (.ics)", exportICS, {iconClass:"icon-export"})
 
     section("File")
@@ -3296,12 +3393,7 @@ function rebuildToolbar(){
         exportScope.appendChild(exportLabel)
         const exportSelect = document.createElement("select")
         exportSelect.id = "exportScope"
-        ;[
-            ["week","Selected week"],
-            ["month","Full month"],
-            ["selected-month-ot","Selected month OT"],
-            ["ot-date-range","OT Date Range"]
-        ].forEach(([value,label])=>{
+        EXPORT_SCOPE_OPTIONS.forEach(([value,label])=>{
             const option = document.createElement("option")
             option.value = value
             option.textContent = label
@@ -3610,6 +3702,8 @@ function update(options={}){
     let activeDaily=0
     let weeklyTotal=0
     let visibleDays = new Set(visibleTimelineDays())
+    let currentDayHasOT = false
+    let weekHasOT = false
 
     DAY_ORDER.forEach(day=>{
         let schedule=visibleDays.has(day) ? getSchedule(day) : storedSchedule(day)
@@ -3631,13 +3725,17 @@ function update(options={}){
             if(block.el) renderBlock(block)
         })
 
+        let dayOT = schedule.some(b=>(b.overtimeHours||0)>0)
+        if(dayOT) weekHasOT = true
         let dayTotal = document.getElementById(day+"-total")
         if(dayTotal) dayTotal.innerText="$"+daily.toFixed(0)
-        if(day===currentDay) activeDaily=daily
+        if(day===currentDay){ activeDaily=daily; currentDayHasOT=dayOT }
     })
 
     document.getElementById("daily").innerText="$"+activeDaily.toFixed(0)
     document.getElementById("weekly").innerText="$"+weeklyTotal.toFixed(0)
+    document.getElementById("daily")?.closest(".earnings-card")?.classList.toggle("has-ot", currentDayHasOT)
+    document.getElementById("weekly")?.closest(".earnings-card")?.classList.toggle("has-ot", weekHasOT)
 
     if(options.persist !== false){
         syncSelectedWeekToMonth()
@@ -3902,7 +4000,7 @@ timeline.addEventListener("pointerup", e=>{
     let scroller = document.getElementById("timeline-container")
     let moved = Math.hypot(e.clientX - touchTimelineStart.x,e.clientY - touchTimelineStart.y)
     let scrolled = Math.abs((scroller?.scrollLeft || 0) - touchTimelineStart.scrollLeft) + Math.abs((scroller?.scrollTop || 0) - touchTimelineStart.scrollTop)
-    suppressNextTouchTimelineClick = moved > 10 || scrolled > 6
+    suppressNextTouchTimelineClick = moved > 18 || scrolled > 8
     touchTimelineStart = null
 },{passive:true})
 
@@ -4279,6 +4377,39 @@ async function gcalPushAll(){
 
     document.addEventListener("pointerup", ()=>{ swipeStart = null }, {passive: true})
     document.addEventListener("pointercancel", ()=>{ swipeStart = null }, {passive: true})
+})()
+
+// Phone: swipe the main timeline body left/right to navigate periods (day & 3-day views)
+;(function(){
+    const SWIPE_THRESHOLD = 60
+    const SWIPE_RATIO = 2.5
+    let swipeStart = null
+
+    document.addEventListener("pointerdown", e=>{
+        if(!isPhoneLayout() || e.pointerType !== "touch") return
+        if(e.target.closest(".mobile-calendar-bar")) return
+        if(!e.target.closest("#timeline-container")) return
+        if(e.target.closest(".event")) return
+        let scroller = document.getElementById("timeline-container")
+        swipeStart = {x:e.clientX, y:e.clientY, id:e.pointerId, scrollTop:scroller?.scrollTop||0}
+    },{passive:true})
+
+    document.addEventListener("pointermove", e=>{
+        if(!swipeStart || e.pointerId !== swipeStart.id) return
+        let dx = e.clientX - swipeStart.x
+        let dy = e.clientY - swipeStart.y
+        let scroller = document.getElementById("timeline-container")
+        let scrolled = Math.abs((scroller?.scrollTop||0) - swipeStart.scrollTop)
+        if(scrolled > 12 || Math.abs(dy) > Math.abs(dx) * 0.8){ swipeStart = null; return }
+        if(Math.abs(dx) >= SWIPE_THRESHOLD && Math.abs(dx) >= Math.abs(dy) * SWIPE_RATIO){
+            let direction = dx < 0 ? 1 : -1
+            swipeStart = null
+            changeMobilePeriod(direction)
+        }
+    },{passive:true})
+
+    document.addEventListener("pointerup", ()=>{ swipeStart = null },{passive:true})
+    document.addEventListener("pointercancel", ()=>{ swipeStart = null },{passive:true})
 })()
 
 function isEditableShortcutTarget(target){
@@ -6199,6 +6330,16 @@ function getSelectedWeekExportBlocks(){
     })
 }
 
+function getSelectedWeekOtExportBlocks(){
+    let grouped = new Map()
+    getSelectedWeekExportBlocks().forEach(block=>{
+        let key = dateKey(block.date)
+        if(!grouped.has(key)) grouped.set(key,[])
+        grouped.get(key).push({...block})
+    })
+    return collectOtExportBlocksFromDateEntries(Array.from(grouped.entries()))
+}
+
 function renderMonthView(){
     let grid = document.getElementById("monthGrid")
     let title = document.getElementById("monthTitle")
@@ -7487,6 +7628,23 @@ function exportPDF(){
         summary:"Week: "+weekLabel+" | Daily total: "+document.getElementById("daily").innerText+" | Weekly total: "+document.getElementById("weekly").innerText+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours+"\n"+effectiveOvertimeRulesSummaryText(),
         filename:"planner.pdf",
         emptyMessage:"No scheduled blocks were found in the selected week."
+    })
+}
+
+function exportWeekOtPDF(){
+    saveDay()
+    let exportBlocks = getSelectedWeekOtExportBlocks()
+    let totals = calculatePdfOtTotals(exportBlocks)
+    const { jsPDF } = window.jspdf
+    let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
+    let weekLabel = selectedWeekStartKey
+        ? weekRangeLabel(parseDateKey(selectedWeekStartKey))
+        : "Current week"
+    renderAgendaPdfBlocks(doc,exportBlocks,{
+        title:"ABT Overtime Planner - Week OT",
+        summary:"Week: "+weekLabel+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours+"\n"+effectiveOvertimeRulesSummaryText(),
+        filename:"planner-week-ot.pdf",
+        emptyMessage:"No overtime events were found in the selected week."
     })
 }
 
