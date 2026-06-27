@@ -345,40 +345,38 @@ test("ipad panes can undock and dock back", async ({ page }) => {
     };
   });
 
-  // iPad default: panels float so main timeline gets full width
+  // iPad default: panels are docked in a 3-column grid (not floating) so they
+  // never overlap the calendar; the user opts into floating via the Undock button.
   expect(initial.deviceMode).toBe("ipad");
-  expect(initial.railFloatButton).toBe("Dock");
-  expect(initial.agendaFloatButton).toBe("Dock");
-  expect(initial.railFloating).toBe("true");
-  expect(initial.agendaFloating).toBe("true");
+  expect(initial.railFloatButton).toBe("Undock");
+  expect(initial.agendaFloatButton).toBe("Undock");
+  expect(initial.railFloating).toBe("false");
+  expect(initial.agendaFloating).toBe("false");
   expect(initial.agendaDock).toBe("right");
   expect(initial.workspaceDisplay).toBe("grid");
   expect(initial.agendaWidth).toBeGreaterThan(240);
 
-  // Dock both panels via setPaneDock (which also sets floating=false)
+  // Undock both panels (opt into floating); buttons flip to "Dock"
   const floating = await page.evaluate(() => {
-    setPaneDock("rail", "left");
-    setPaneDock("agenda", "right");
+    setPaneFloating("rail", true);
+    setPaneFloating("agenda", true);
     const workspace = document.querySelector(".calendar-workspace");
     return {
       railFloating: workspace?.dataset.railFloating || "false",
       agendaFloating: workspace?.dataset.agendaFloating || "false",
       railButton: document.getElementById("railFloatToggleButton")?.textContent?.trim() || "",
-      agendaButton: document.getElementById("agendaFloatToggleButton")?.textContent?.trim() || "",
-      railPosition: getComputedStyle(document.querySelector(".calendar-rail")).position,
-      agendaPosition: getComputedStyle(document.querySelector(".agenda-pane")).position
+      agendaButton: document.getElementById("agendaFloatToggleButton")?.textContent?.trim() || ""
     };
   });
 
   expect(floating).toEqual({
-    railFloating: "false",
-    agendaFloating: "false",
-    railButton: "Undock",
-    agendaButton: "Undock",
-    railPosition: "relative",
-    agendaPosition: "relative"
+    railFloating: "true",
+    agendaFloating: "true",
+    railButton: "Dock",
+    agendaButton: "Dock"
   });
 
+  // Dock both panels back; floating clears and the 3-column grid returns
   const docked = await page.evaluate(() => {
     setPaneDock("rail", "left");
     setPaneDock("agenda", "right");
@@ -469,8 +467,8 @@ test("phone layout nav bar, agenda sheet, and period navigation work on Pixel vi
   expect(initial.hasBottomNav).toBe(true);
   expect(initial.hasBackdrop).toBe(true);
   expect(initial.hasSheetClose).toBe(true);
-  // All 7 nav buttons are wired up
-  expect(initial.navButtons).toEqual(["today", "week", "day", "month", "agenda", "settings", "search"]);
+  // All 8 nav buttons are wired up
+  expect(initial.navButtons).toEqual(["today", "week", "day", "month", "agenda", "settings", "search", "actions"]);
   // On phone the week button label becomes "3 Day"
   expect(initial.weekButtonLabel).toBe("3 Day");
   // Calendar bar shows today's month abbreviation and date number
