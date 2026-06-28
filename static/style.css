@@ -4415,6 +4415,10 @@ body.resizing-workspace.resizing-workspace-vertical {
 
 :root[data-theme="light"] button.danger {
     color: #ffffff;
+    border-color: #b91c1c;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+        linear-gradient(135deg, #ef4444, #c0271f);
 }
 
 :root[data-theme="light"] #timeline-container,
