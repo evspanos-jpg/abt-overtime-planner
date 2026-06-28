@@ -10769,17 +10769,22 @@ textarea:focus-visible {
 
     /* Finger-sized, clearly visible docked resizer on iPad. A coarse-pointer
        rule collapses it (align-self:center + min-height:0 -> 0x6 sliver), so
-       force it to fill its 24px column and stretch the full row height. */
+       force it to fill its column and stretch the full row height. The element
+       is widened with negative margins so the touch target spills ~10px into
+       each neighbouring pane, and lifted above the panes so taps land on it. */
     body.mode-ipad .workspace-resizer {
         touch-action: none;
         align-self: stretch !important;
         justify-self: stretch !important;
-        width: auto !important;
-        min-width: 24px !important;
+        box-sizing: border-box !important;
+        width: 44px !important;
+        margin-inline: -10px !important;
         height: auto !important;
         min-height: 120px !important;
         position: relative !important;
         top: auto !important;
+        z-index: 60 !important;
+        pointer-events: auto !important;
     }
 
     body.mode-ipad .workspace-resizer::before {

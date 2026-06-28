@@ -3194,7 +3194,9 @@ function googleCalendarMenuEntries(){
         entries.push({label:"Sync Full Calendar", handler:gcalIcsPullAll, iconClass:"icon-cloud-download"})
     }
     if(gcalConnected){
-        entries.push({label:"Pull via OAuth", handler:gcalPull, iconClass:"icon-cloud-download"})
+        entries.push({label:"Sync now (2-way)", handler:gcalSyncNow, iconClass:"icon-cloud-upload"})
+        entries.push({label:"Pull from Google", handler:gcalPull, iconClass:"icon-cloud-download"})
+        entries.push({label:"Push to Google", handler:gcalPushAll, iconClass:"icon-cloud-upload"})
     }
     // Always end with a clear link to the single setup location (Settings), so
     // it reads as "sync here, configure there" rather than a duplicate setup.
@@ -4258,6 +4260,7 @@ function _gcalUpdateUI(data){
         connectedPanel?.classList.remove("is-hidden")
         disconnectedPanel?.classList.add("is-hidden")
         if(emailEl) emailEl.textContent = data.email || ""
+        updateGcalLastSyncLabel()
     }else{
         connectedPanel?.classList.add("is-hidden")
         disconnectedPanel?.classList.remove("is-hidden")
@@ -4465,6 +4468,44 @@ async function gcalPushAll(){
     let summary = parts.length ? parts.join(", ") : "nothing to push"
     setSaveStatus("Google Calendar: " + summary)
     _gcalShowResult(summary + ".", errors > 0)
+}
+
+const GCAL_LAST_SYNC_KEY = "gcalLastSync"
+
+// One-tap cross-device sync: push this week's blocks up to Google, then pull
+// anything new (e.g. added on another device) back down. Run on each device to
+// keep them aligned. OAuth-only (the iCal URL path is read-only).
+async function gcalSyncNow(){
+    if(!gcalConnected){
+        _gcalShowResult("Connect Google Calendar in Settings first — then Sync now keeps every device in step.", true)
+        openSettings()
+        setTimeout(()=>document.getElementById("settingsGcalSection")?.scrollIntoView({behavior:"smooth", block:"start"}), 120)
+        return
+    }
+    setSaveStatus("Syncing with Google Calendar…")
+    try{
+        await gcalPushAll()
+        if(!gcalConnected) return  // push detected an expired session
+        await gcalPull()
+        let now = new Date()
+        try{ localStorage.setItem(GCAL_LAST_SYNC_KEY, now.toISOString()) }catch(e){}
+        updateGcalLastSyncLabel()
+        setSaveStatus("Google Calendar sync complete")
+        _gcalShowResult("Two-way sync complete at " + now.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + ".")
+    }catch(e){
+        console.warn("Google Calendar sync failed:", e)
+        setSaveStatus("Google Calendar sync hit an error")
+        _gcalShowResult("Sync could not finish — check your connection and try again.", true)
+    }
+}
+
+function updateGcalLastSyncLabel(){
+    let el = document.getElementById("gcalLastSync")
+    if(!el) return
+    let iso = localStorage.getItem(GCAL_LAST_SYNC_KEY)
+    el.textContent = iso
+        ? "Last synced " + new Date(iso).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})
+        : "Not synced yet on this device"
 }
 
 // Phone: swipe the mobile calendar bar left/right to navigate periods

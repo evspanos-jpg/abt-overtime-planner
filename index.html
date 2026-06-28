@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=86aa1a6713">
+    <link rel="stylesheet" href="static/style.css?v=1ee00a69db">
     <link rel="stylesheet" href="static/planner-ui.css?v=f4298cc824">
 
     <!-- ✅ LIBRARIES -->
@@ -627,10 +627,12 @@
 
                     <div id="gcalConnectedPanel" class="is-hidden gcal-oauth-row">
                         <p class="gcal-account" id="gcalEmail"></p>
-                        <p class="gcal-hint">Two-way sync (push back to the calendar) is Google-only.</p>
+                        <p class="gcal-hint">Sign in with the same Google account on each device, then tap <strong>Sync now</strong> to keep them all in step. (Two-way sync is Google-only.)</p>
+                        <p class="gcal-hint" id="gcalLastSync">Not synced yet on this device</p>
                         <div class="gcal-actions">
-                            <button type="button" class="primary" onclick="gcalPull()">Pull via OAuth</button>
-                            <button type="button" class="primary" onclick="gcalPushAll()">Push to Google Calendar</button>
+                            <button type="button" class="primary" onclick="gcalSyncNow()">Sync now (two-way)</button>
+                            <button type="button" class="secondary" onclick="gcalPull()">Pull only</button>
+                            <button type="button" class="secondary" onclick="gcalPushAll()">Push only</button>
                             <button type="button" class="secondary" onclick="gcalDisconnect()">Sign out from Google</button>
                         </div>
                     </div>
@@ -760,7 +762,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=69d67bec68"></script>
+<script src="static/planner-app.js?v=18d977ed44"></script>
 
 </body>
 </html>
