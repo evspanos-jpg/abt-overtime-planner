@@ -10752,27 +10752,43 @@ textarea:focus-visible {
     body.mode-ipad:not(.navigation-auto-hide):not(.agenda-auto-hide) .calendar-workspace[data-rail-dock="left"][data-agenda-dock="right"][data-rail-floating="false"][data-agenda-floating="false"] {
         grid-template-columns:
             minmax(168px, min(var(--workspace-rail-width), 34vw))
-            14px
+            24px
             minmax(0, 1fr)
-            14px
+            24px
             minmax(260px, min(var(--workspace-agenda-width), 44vw)) !important;
     }
 
     body.mode-ipad:not(.navigation-auto-hide):not(.agenda-auto-hide) .calendar-workspace[data-rail-dock="right"][data-agenda-dock="left"][data-rail-floating="false"][data-agenda-floating="false"] {
         grid-template-columns:
             minmax(260px, min(var(--workspace-agenda-width), 44vw))
-            14px
+            24px
             minmax(0, 1fr)
-            14px
+            24px
             minmax(168px, min(var(--workspace-rail-width), 34vw)) !important;
     }
 
+    /* Finger-sized, clearly visible docked resizer on iPad. */
     body.mode-ipad .workspace-resizer {
         touch-action: none;
     }
 
     body.mode-ipad .workspace-resizer::before {
-        inset-inline: 4px;
+        inset-inline: 7px !important;
+        background: rgba(120, 160, 210, 0.35) !important;
+        border-radius: 4px;
+    }
+
+    body.mode-ipad .workspace-resizer::after {
+        content: "" !important;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 4px;
+        height: 40px;
+        transform: translate(-50%, -50%);
+        border-radius: 3px;
+        background: rgba(210, 224, 240, 0.75);
+        box-shadow: 0 0 0 4px rgba(120, 160, 210, 0.18);
     }
 
     /* iPad menu readability: the ribbon tabs and flyout items are sized for a
@@ -12163,9 +12179,15 @@ body.mode-ipad .outlook-topbar #controls.optimized-controls {
     flex-wrap: nowrap !important;
     align-items: center !important;
     min-height: 44px !important;
+    scrollbar-width: none;
+}
+
+/* Scroll the bar only when no menu is open. The topbar's backdrop-filter makes
+   the fixed dropdown a contained descendant, so an overflow here would clip it
+   while it's open. */
+body.mode-ipad .outlook-topbar:not(.ribbon-menu-open) #controls.optimized-controls {
     overflow-x: auto !important;
     overflow-y: visible !important;
-    scrollbar-width: none;
 }
 
 body.mode-ipad .outlook-topbar #controls.optimized-controls::-webkit-scrollbar {
@@ -12246,4 +12268,53 @@ body.mode-ipad .calendar-workspace[data-agenda-floating="true"] .agenda-resize-g
         repeating-linear-gradient(135deg, transparent 0 4px, rgba(255, 255, 255, 0.6) 4px 6px),
         rgba(20, 27, 35, 0.96);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.34);
+}
+
+/* iPad ribbon dropdowns: the mobile bottom-sheet rules and the desktop flyout
+   JS fought each other and the menu ended up positioned off the top of the
+   screen. Pin it deterministically as a fixed dropdown just under the ribbon,
+   on-screen and above the floating panes. */
+body.mode-ipad .outlook-topbar .file-menu,
+body.mode-ipad .outlook-topbar .toolbar-menu,
+body.mode-ipad .outlook-topbar .ribbon-window-menu {
+    position: fixed !important;
+    top: 74px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(720px, calc(100vw - 20px)) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: min(calc(var(--app-vh) * 72), 640px) !important;
+    overflow: auto !important;
+    z-index: 940 !important;
+}
+
+body.mode-ipad .outlook-topbar .file-backstage-menu {
+    width: min(900px, calc(100vw - 20px)) !important;
+}
+
+/* The ribbon's own stacking context (z-index 860) would otherwise trap its
+   dropdown below the floating panes (900/902). Lift the whole ribbon above
+   everything while a menu is open so the dropdown shows on top. The
+   backdrop-filter is dropped while open because it makes the fixed dropdown a
+   contained, clipped/trapped descendant instead of a viewport-rooted layer. */
+body.mode-ipad .outlook-topbar.ribbon-menu-open {
+    z-index: 940 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* The toolbar uses `contain: paint` and several wrappers use backdrop-filter.
+   Both establish a containing block for the fixed dropdown AND clip it to the
+   thin toolbar box, hiding it. Drop them on the chain while a menu is open so
+   the dropdown roots to the viewport, unclipped and on top. */
+body.mode-ipad .outlook-topbar.ribbon-menu-open .toolbar,
+body.mode-ipad .outlook-topbar.ribbon-menu-open #controls.optimized-controls,
+body.mode-ipad .outlook-topbar.ribbon-menu-open .tool-group,
+body.mode-ipad .outlook-topbar.ribbon-menu-open .file-menu-wrap {
+    contain: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    overflow: visible !important;
 }

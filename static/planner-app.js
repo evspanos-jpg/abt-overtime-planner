@@ -7907,15 +7907,21 @@ function clampWorkspaceLayout(layout){
     let viewport = currentViewportBounds()
     let margin = 12
     let ipadLayout = isFloatingTabletLayout()
+    let railFloating = parseWorkspaceBool(layout?.railFloating ?? false)
+    let agendaFloating = parseWorkspaceBool(layout?.agendaFloating ?? false)
     let railDefault = ipadLayout ? 192 : 208
     let agendaDefault = ipadLayout ? 320 : 380
     let railMin = ipadLayout ? 168 : 160
-    // Give the iPad a genuinely useful drag range (was a near-fixed 168–260 /
-    // 280–360) while keeping the calendar column usable: cap each pane to a
-    // fraction of the viewport with a sensible ceiling.
-    let railMax = ipadLayout ? Math.max(railMin,Math.min(360,Math.round(viewport.width * 0.34))) : Math.max(220,viewport.width - (margin * 2))
-    let agendaMin = ipadLayout ? 260 : 260
-    let agendaMax = ipadLayout ? Math.max(agendaMin,Math.min(460,Math.round(viewport.width * 0.44))) : Math.max(280,viewport.width - (margin * 2))
+    let viewportWidthCap = Math.max(220,viewport.width - (margin * 2))
+    // Docked iPad panes share the row with the calendar, so cap them to a
+    // fraction of the viewport. Floating panes overlay the calendar, so they
+    // can grow much wider — otherwise left/right resize feels stuck near the
+    // cap while up/down stays free.
+    let railMax = !ipadLayout ? viewportWidthCap
+        : (railFloating ? viewportWidthCap : Math.max(railMin,Math.min(360,Math.round(viewport.width * 0.34))))
+    let agendaMin = 260
+    let agendaMax = !ipadLayout ? viewportWidthCap
+        : (agendaFloating ? viewportWidthCap : Math.max(agendaMin,Math.min(460,Math.round(viewport.width * 0.44))))
     let railWidth = Math.min(Math.max(Number(layout?.rail) || railDefault,railMin),Math.max(railMax,railMin))
     let agendaWidth = Math.min(Math.max(Number(layout?.agenda) || agendaDefault,agendaMin),Math.max(agendaMax,agendaMin))
     let agendaHeight = Math.min(Math.max(Number(layout?.agendaHeight) || 360,220),Math.max(240,viewport.height - (margin * 2)))
@@ -7925,8 +7931,6 @@ function clampWorkspaceLayout(layout){
     if(ipadLayout && agendaDock === "bottom") agendaDock = "right"
     // iPad defaults to a docked 3-column layout (like desktop) so panels never
     // overlap the calendar; the user can opt into floating via the Undock button.
-    let railFloating = parseWorkspaceBool(layout?.railFloating ?? false)
-    let agendaFloating = parseWorkspaceBool(layout?.agendaFloating ?? false)
     if(agendaDock !== "bottom" && agendaDock === railDock){
         agendaDock = railDock === "left" ? "right" : "left"
     }
