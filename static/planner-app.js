@@ -7596,6 +7596,22 @@ function collectOtExportBlocksFromDateEntries(entries){
         })
 }
 
+// jsPDF's built-in helvetica only renders Latin-1 text. Emoji, pictographs and
+// other symbols (common in calendar titles) otherwise come out as garbled
+// boxes that look like stray icons — strip them so the PDF stays clean,
+// readable text. Common typographic characters are folded to ASCII first.
+function sanitizePdfText(value){
+    return String(value == null ? "" : value)
+        .replace(/[‘’‚‛]/g, "'")
+        .replace(/[“”„‟]/g, '"')
+        .replace(/[‐-―]/g, "-")
+        .replace(/…/g, "...")
+        .replace(/[  -​  　]/g, " ")
+        .replace(/[^\x20-\x7E¡-ÿ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+}
+
 function renderAgendaPdfBlocks(doc,blocks,{title,summary,filename,emptyMessage="No agenda items match this export."}){
     let pageWidth = doc.internal.pageSize.getWidth()
     let pageHeight = doc.internal.pageSize.getHeight()
@@ -7605,12 +7621,12 @@ function renderAgendaPdfBlocks(doc,blocks,{title,summary,filename,emptyMessage="
 
     doc.setFont("helvetica","bold")
     doc.setFontSize(18)
-    doc.text(title,margin,y)
+    doc.text(sanitizePdfText(title),margin,y)
     y += 8
 
     doc.setFont("helvetica","normal")
     doc.setFontSize(10)
-    let summaryLines = doc.splitTextToSize(summary,contentWidth)
+    let summaryLines = doc.splitTextToSize(sanitizePdfText(summary),contentWidth)
     doc.text(summaryLines,margin,y)
     y += summaryLines.length * 5 + 4
 
@@ -7671,10 +7687,10 @@ function renderAgendaPdfBlocks(doc,blocks,{title,summary,filename,emptyMessage="
         events.forEach(block=>{
             let cellValues = {
                 time:formatTime(block.start)+" - "+formatTime(block.start + block.dur),
-                title:block.title || "Block",
-                location:block.location || " ",
+                title:sanitizePdfText(block.title) || "Block",
+                location:sanitizePdfText(block.location) || " ",
                 ot:otSummaryLabel(block),
-                notes:block.description || " "
+                notes:sanitizePdfText(block.description) || " "
             }
             let wrappedCells = columns.map(column=>doc.splitTextToSize(String(cellValues[column.key] || " "),Math.max(column.width - 4,12)))
             let rowLineCount = wrappedCells.reduce((maxCount,lines)=>Math.max(maxCount,lines.length || 1),1)
