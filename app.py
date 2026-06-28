@@ -1,3 +1,4 @@
+import hashlib
 import json
 import mimetypes
 import os
@@ -59,7 +60,13 @@ def safe_static_response(filename, mimetype=None):
         abort(404)
 
     content_type = mimetype or mimetypes.guess_type(target.name)[0] or "application/octet-stream"
-    return Response(data, mimetype=content_type)
+    response = Response(data, mimetype=content_type)
+    # Tag every asset with a content hash and require revalidation. Browsers then
+    # get a cheap 304 when nothing changed and a fresh 200 the moment a file
+    # changes — so a stale (un-bumped) ?v= query can never serve an old asset.
+    response.set_etag(hashlib.sha256(data).hexdigest())
+    response.cache_control.no_cache = True
+    return response.make_conditional(request)
 
 
 # ---------------------------------------------------------------------------

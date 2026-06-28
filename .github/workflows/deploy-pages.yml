@@ -26,24 +26,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Single source of truth is templates/index.html; cache_bust.py rewrites
+          # the asset ?v= queries to content hashes and mirrors it to index.html.
+          python scripts/cache_bust.py
           mkdir -p public/static
           cp -R static/. public/static/
-          python - <<'PY'
-          from pathlib import Path
-
-          html = Path("templates/index.html").read_text(encoding="utf-8")
-          replacements = {
-              "{{ url_for('webmanifest') }}": "static/manifest.webmanifest",
-              "{{ url_for('static', filename='icon.svg') }}": "static/icon.svg",
-              "{{ url_for('static', filename='apple-touch-icon.png') }}": "static/apple-touch-icon.png",
-              "{{ url_for('static', filename='style.css') }}?v=50": "static/style.css?v=50",
-              "{{ url_for('static', filename='pwa.js') }}?v=1": "static/pwa.js?v=1",
-              "../static/style.css?v=50": "static/style.css?v=50",
-          }
-          for source, target in replacements.items():
-              html = html.replace(source, target)
-          Path("public/index.html").write_text(html, encoding="utf-8")
-          PY
+          cp templates/index.html public/index.html
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

@@ -76,7 +76,9 @@ Client-side overtime rules live in `static/overtime-rules.js` as a fallback (use
 
 ### Templates
 
-Both `index.html` (root) and `templates/index.html` are kept in sync — Flask serves from `templates/`, the root copy is for GitHub Pages static export. When editing HTML, update both.
+`templates/index.html` is the single source of truth (Flask serves it; the Pages export copies it). The repo-root `index.html` is a generated mirror used by the static export and the Playwright tests — **do not hand-edit it**.
+
+After changing HTML or any CSS/JS, run `python scripts/cache_bust.py`. It content-hashes the `static/*.css|js?v=` query strings and rewrites the mirror, so you never hand-bump `?v=` and the two files can't drift. The deploy-pages workflow runs it too. On the Flask side, the static route sends an ETag + `Cache-Control: no-cache`, so a stale `?v=` can never serve an old asset.
 
 ### Deployment
 
