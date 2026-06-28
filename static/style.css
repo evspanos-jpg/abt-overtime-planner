@@ -4135,7 +4135,8 @@ body.resizing-workspace.resizing-workspace-vertical {
 
 .settings-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    align-items: start;
     gap: 10px;
 }
 
@@ -4146,6 +4147,12 @@ body.resizing-workspace.resizing-workspace-vertical {
     border: 1px solid rgba(238, 232, 219, 0.11);
     border-radius: 8px;
     background: rgba(255, 252, 244, 0.035);
+}
+
+/* Form-heavy cards (OT Rules, OT Day Inspector, Calendar Sync) span the full
+   dialog width so their inputs aren't squeezed into one narrow column. */
+.settings-card-wide {
+    grid-column: 1 / -1;
 }
 
 .settings-card h4 {
