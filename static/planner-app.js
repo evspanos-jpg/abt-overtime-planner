@@ -3170,6 +3170,7 @@ function googleCalendarMenuEntries(){
     if(hasIcsUrl){
         entries.push({label:"Sync This Week", handler:()=>gcalIcsPull(false), iconClass:"icon-cloud-download"})
         entries.push({label:"Sync This Month", handler:gcalIcsPullMonth, iconClass:"icon-cloud-download"})
+        entries.push({label:"Sync Full Calendar", handler:gcalIcsPullAll, iconClass:"icon-cloud-download"})
     }
     if(gcalConnected){
         entries.push({label:"Pull via OAuth", handler:gcalPull, iconClass:"icon-cloud-download"})
@@ -4100,7 +4101,7 @@ function gcalLoadIcsUrl(){
     let input = document.getElementById("gcalIcsUrl")
     if(input) input.value = url
     let hasUrl = Boolean(url)
-    ;["gcalIcsPullButton","gcalIcsPullMonthButton"].forEach(id=>{
+    ;["gcalIcsPullButton","gcalIcsPullMonthButton","gcalIcsPullAllButton"].forEach(id=>{
         let btn = document.getElementById(id)
         if(btn) btn.disabled = !hasUrl
     })
@@ -4111,19 +4112,27 @@ function gcalSaveIcsUrl(){
     if(url) localStorage.setItem(GCAL_ICS_URL_KEY, url)
     else localStorage.removeItem(GCAL_ICS_URL_KEY)
     let hasUrl = Boolean(url)
-    ;["gcalIcsPullButton","gcalIcsPullMonthButton"].forEach(id=>{
+    ;["gcalIcsPullButton","gcalIcsPullMonthButton","gcalIcsPullAllButton"].forEach(id=>{
         let btn = document.getElementById(id)
         if(btn) btn.disabled = !hasUrl
     })
 }
 
-async function gcalIcsPull(silent = false, monthRange = false){
+async function gcalIcsPull(silent = false, range = false){
     let url = (document.getElementById("gcalIcsUrl")?.value || "").trim()
     if(!url){ if(!silent) _gcalShowResult("Paste an iCal URL first.", true); return }
 
+    // range: false/'week' = current week, true/'month' = current month, 'all' = full calendar
+    let rangeMode = range === "all" ? "all" : (range ? "month" : "week")
+    let scopeLabel = rangeMode === "all" ? "calendar" : rangeMode
+    let monthRange = rangeMode !== "week" // events outside the current week land in monthEvents
+
     let anchorDate = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : startOfPlannerWeek(new Date())
     let rangeStart, rangeEnd
-    if(monthRange){
+    if(rangeMode === "all"){
+        rangeStart = new Date(anchorDate.getFullYear() - 1, 0, 1)
+        rangeEnd   = new Date(anchorDate.getFullYear() + 2, 0, 1)
+    }else if(rangeMode === "month"){
         rangeStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1)
         rangeEnd   = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 1)
     }else{
@@ -4131,7 +4140,7 @@ async function gcalIcsPull(silent = false, monthRange = false){
         rangeEnd   = addDays(anchorDate, 7)
     }
 
-    if(!silent) setSaveStatus(monthRange ? "Fetching month iCal events…" : "Fetching iCal events…")
+    if(!silent) setSaveStatus("Fetching "+scopeLabel+" iCal events…")
     let resp
     try{
         resp = await fetch(
@@ -4206,8 +4215,14 @@ async function gcalIcsPull(silent = false, monthRange = false){
         _gcalShowResult(`Added ${added} new block${added === 1 ? "" : "s"}.`)
     }else if(!silent){
         setSaveStatus("iCal sync — no new ABT events found")
-        _gcalShowResult(`No new matching events in this ${monthRange ? "month" : "week"}.`)
+        _gcalShowResult(rangeMode === "all"
+            ? "No new matching events in your calendar."
+            : `No new matching events in this ${scopeLabel}.`)
     }
+}
+
+async function gcalIcsPullAll(){
+    await gcalIcsPull(false, "all")
 }
 
 async function gcalIcsPullMonth(){
@@ -4313,12 +4328,13 @@ async function gcalPull(){
     let data = await resp.json()
     let events = data.events || []
     let existingIds = _gcalExistingIds()
+    let existingSignatures = _gcalExistingSignatures(weekStart)
     let added = 0
 
     for(let event of events){
         if(!event.start?.dateTime) continue  // skip all-day events
         if(!isImportRelevantEvent(event.summary || "", event.location || "", event.description || "")) continue
-        if(existingIds.has(event.id)) continue
+        if(event.id && existingIds.has(event.id)) continue
 
         let startDate = new Date(event.start.dateTime)
         let endDate = new Date(event.end?.dateTime || event.start.dateTime)
@@ -4329,18 +4345,25 @@ async function gcalPull(){
         if(dateKey(addDays(weekStart, dayIndex)) !== dateKey(startDate)) continue
 
         let startHour = startDate.getHours() + startDate.getMinutes() / 60
-        let durHours = Math.max(0.25, (endDate - startDate) / 3600000)
-
-        if(!weekData[day]) weekData[day] = []
-        weekData[day].push({
+        let durHours = Math.max(SNAP, (endDate - startDate) / 3600000)
+        let block = {
             start: startHour,
             dur: durHours,
             title: event.summary || "Block",
             location: event.location || "",
             description: event.description || "",
             gcalId: event.id
-        })
-        existingIds.add(event.id)
+        }
+
+        // Same date + time + duration + title means it is the same event even
+        // if the calendar reissued its id, so never add it twice.
+        let signature = dateKey(startDate) + "|" + plannerBlockSignature(block)
+        if(existingSignatures.has(signature)) continue
+
+        if(!weekData[day]) weekData[day] = []
+        weekData[day].push(block)
+        if(event.id) existingIds.add(event.id)
+        existingSignatures.add(signature)
         added++
     }
 
