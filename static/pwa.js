@@ -25,3 +25,25 @@ if ("caches" in window) {
             .catch(() => {})
     })
 }
+
+// Visiting the app with "?diag" (or "#diag") pops up the raw signals used for
+// device detection, so issues can be reported from any device without a
+// console or digging through menus.
+if (location.search.indexOf("diag") !== -1 || location.hash.indexOf("diag") !== -1) {
+    window.addEventListener("load", () => {
+        var coarse = window.matchMedia ? window.matchMedia("(pointer: coarse)").matches : "?"
+        var hoverNone = window.matchMedia ? window.matchMedia("(hover: none)").matches : "?"
+        var lines = [
+            "BUILD: pwa diag v1",
+            "mode: " + (typeof window.currentDeviceMode === "function" ? window.currentDeviceMode() : "?"),
+            "isIpadDevice: " + (typeof window.isIpadDevice === "function" ? window.isIpadDevice() : "?"),
+            "platform: " + navigator.platform,
+            "maxTouchPoints: " + navigator.maxTouchPoints,
+            "pointer coarse: " + coarse,
+            "hover none: " + hoverNone,
+            "viewport: " + window.innerWidth + " x " + window.innerHeight,
+            "UA: " + navigator.userAgent
+        ]
+        alert(lines.join("\n"))
+    })
+}
