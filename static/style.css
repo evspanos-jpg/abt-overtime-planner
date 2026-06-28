@@ -10767,9 +10767,19 @@ textarea:focus-visible {
             minmax(168px, min(var(--workspace-rail-width), 34vw)) !important;
     }
 
-    /* Finger-sized, clearly visible docked resizer on iPad. */
+    /* Finger-sized, clearly visible docked resizer on iPad. A coarse-pointer
+       rule collapses it (align-self:center + min-height:0 -> 0x6 sliver), so
+       force it to fill its 24px column and stretch the full row height. */
     body.mode-ipad .workspace-resizer {
         touch-action: none;
+        align-self: stretch !important;
+        justify-self: stretch !important;
+        width: auto !important;
+        min-width: 24px !important;
+        height: auto !important;
+        min-height: 120px !important;
+        position: relative !important;
+        top: auto !important;
     }
 
     body.mode-ipad .workspace-resizer::before {
