@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=164">
+    <link rel="stylesheet" href="static/style.css?v=165">
     <link rel="stylesheet" href="static/planner-ui.css?v=2">
 
     <!-- ✅ LIBRARIES -->
@@ -128,7 +128,9 @@
                         <span id="weekTitle">Weekly calls</span>
                         <span id="weekRangeText">10:00 AM - 11:00 PM</span>
                     </div>
-                    <div class="timeline-header-actions" role="group" aria-label="Timeline width">
+                    <div class="timeline-header-actions" role="group" aria-label="Timeline actions">
+                        <button type="button" class="secondary icon-button" data-history="undo" onclick="undoLastChange()" aria-label="Undo" title="Undo" disabled><span class="button-icon icon-undo" aria-hidden="true"></span></button>
+                        <button type="button" class="secondary icon-button" data-history="redo" onclick="redoLastChange()" aria-label="Redo" title="Redo" disabled><span class="button-icon icon-redo" aria-hidden="true"></span></button>
                         <button type="button" class="secondary" id="timelineFitButton" onclick="setTimelineLayoutMode('fit')">Fit</button>
                         <button type="button" class="secondary" id="timelineComfortButton" onclick="setTimelineLayoutMode('comfort')">Comfort</button>
                     </div>
@@ -757,7 +759,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=7"></script>
+<script src="static/planner-app.js?v=8"></script>
 
 </body>
 </html>

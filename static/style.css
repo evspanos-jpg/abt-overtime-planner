@@ -12017,3 +12017,27 @@ body.mode-phone .agenda-list {
         box-shadow: 0 12px 30px rgba(0, 0, 0, 0.36);
     }
 }
+
+/* Inline action button inside the app toast (e.g. Undo a duration change). */
+.app-toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.app-toast-action {
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 4px 12px;
+    border-radius: 7px;
+    border: 1px solid rgba(120, 170, 230, 0.55);
+    background: rgba(0, 120, 212, 0.18);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.app-toast-action:hover {
+    background: rgba(0, 120, 212, 0.32);
+}

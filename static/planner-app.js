@@ -1145,10 +1145,14 @@ function pushUndoState(){
 }
 
 function updateHistoryButtons(){
+    let canUndo = undoStack.length === 0
+    let canRedo = redoStack.length === 0
     let undoButton = document.getElementById("undoButton")
     let redoButton = document.getElementById("redoButton")
-    if(undoButton) undoButton.disabled = undoStack.length === 0
-    if(redoButton) redoButton.disabled = redoStack.length === 0
+    if(undoButton) undoButton.disabled = canUndo
+    if(redoButton) redoButton.disabled = canRedo
+    document.querySelectorAll('[data-history="undo"]').forEach(button=>{ button.disabled = canUndo })
+    document.querySelectorAll('[data-history="redo"]').forEach(button=>{ button.disabled = canRedo })
 }
 
 function updateUndoButton(){
@@ -1490,6 +1494,11 @@ function attachBlockPointerControls(el){
             }else if(undoRecorded){
                 saveDay()
                 update()
+                if(mode === "resize-top" || mode === "resize-bottom"){
+                    let startDur = pixelsToSnappedHours(startHeight)
+                    let endDur = pixelsToSnappedHours(el.offsetHeight)
+                    if(Math.abs(endDur - startDur) > 0.001) notifyDurationChange(startDur,endDur)
+                }
             }else if(isDirectPointer(upEvent) && !pointerMoved){
                 el.dataset.skipClickSelect = "1"
                 selectBlock(el)
@@ -1773,6 +1782,7 @@ function saveEditedBlock(){
 
     pushUndoState()
 
+    let previousDur = parseFloat(editingBlock.dataset.dur) || 0
     let day = document.getElementById("blockDayInput").value || currentDay
     let start = Math.max(START_HOUR,Math.min(START_HOUR + HOURS - SNAP,timeValueToHours(document.getElementById("blockStartInput").value)))
     let dur = Math.max(SNAP,parseFloat(document.getElementById("blockDurationInput").value) || SNAP)
@@ -1815,6 +1825,18 @@ function saveEditedBlock(){
     saveDay()
     update()
     updateActiveDay()
+
+    // Safety: surface duration changes with a one-tap Undo.
+    if(Math.abs(dur - previousDur) > 0.001 && previousDur > 0){
+        notifyDurationChange(previousDur,dur)
+    }
+}
+
+function notifyDurationChange(fromHours,toHours){
+    showAppToast(
+        "Duration changed: "+formatDurationLabel(fromHours)+" → "+formatDurationLabel(toHours),
+        {label:"Undo", handler:undoLastChange}
+    )
 }
 
 function deleteEditedBlock(){
@@ -5026,13 +5048,37 @@ function setSaveStatus(message){
     if(status) status.innerText = message
 }
 
-function showAppToast(message){
+function showAppToast(message, action){
     let toast = document.getElementById("appToast")
     if(!toast || !message) return
-    toast.textContent = message
+    toast.innerHTML = ""
+    let text = document.createElement("span")
+    text.textContent = message
+    toast.appendChild(text)
+    if(action && action.label && typeof action.handler === "function"){
+        let button = document.createElement("button")
+        button.type = "button"
+        button.className = "app-toast-action"
+        button.textContent = action.label
+        button.addEventListener("click",()=>{
+            clearTimeout(toastTimer)
+            toast.classList.add("is-hidden")
+            action.handler()
+        })
+        toast.appendChild(button)
+    }
     toast.classList.remove("is-hidden")
     clearTimeout(toastTimer)
-    toastTimer = setTimeout(()=>toast.classList.add("is-hidden"),3200)
+    toastTimer = setTimeout(()=>toast.classList.add("is-hidden"), action ? 6000 : 3200)
+}
+
+function formatDurationLabel(hours){
+    let total = Math.round((Number(hours) || 0) * 60)
+    let h = Math.floor(total / 60)
+    let m = total % 60
+    if(h && m) return h+"h "+m+"m"
+    if(h) return h+"h"
+    return m+"m"
 }
 
 function plannerStatusLabel(prefix){
