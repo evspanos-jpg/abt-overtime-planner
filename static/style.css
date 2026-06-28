@@ -12126,3 +12126,80 @@ body.mode-phone .agenda-list {
 .app-toast-action:hover {
     background: rgba(0, 120, 212, 0.32);
 }
+
+/* ============================================================
+   iPad: always the full planner in BOTH orientations.
+   The mobile chrome fires for touch widths <= 1180px, which also
+   caught iPads and produced a broken half-hidden menu (e.g.
+   "Calendar" clipped to "Ca"). These overrides re-assert the
+   desktop ribbon + 3-pane layout for body.mode-ipad and let the
+   command bar scroll horizontally so it fits any iPad width.
+   Scoped to .mode-ipad so phones (<=760px) are untouched.
+   ============================================================ */
+body.mode-ipad .outlook-topbar {
+    display: grid !important;
+}
+
+body.mode-ipad .outlook-topbar .toolbar {
+    display: block !important;
+}
+
+body.mode-ipad .mobile-calendar-bar,
+body.mode-ipad .mobile-bottom-nav {
+    display: none !important;
+}
+
+/* No bottom nav on iPad, so reclaim the space the mobile rules reserved. */
+body.mode-ipad {
+    padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+}
+
+/* Keep the command bar on one row and let it scroll instead of
+   collapsing the menu labels when width is tight. */
+body.mode-ipad .outlook-topbar #controls.optimized-controls {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    min-height: 44px !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    scrollbar-width: none;
+}
+
+body.mode-ipad .outlook-topbar #controls.optimized-controls::-webkit-scrollbar {
+    display: none;
+}
+
+/* The wraps are display:contents in compact mode, so they give the flex row no
+   height and the buttons escape it. Make them real, non-shrinking flex items. */
+body.mode-ipad .outlook-topbar #controls.optimized-controls > * {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+}
+
+/* The mobile chrome (<=1180px + coarse) visually hides these menu buttons
+   (position:absolute; width:1px) on the assumption the menu moves to a bottom
+   bar. iPad keeps the ribbon, so un-hide them and give them real size. */
+body.mode-ipad .outlook-topbar .file-menu-button,
+body.mode-ipad .outlook-topbar .toolbar-menu-button {
+    position: relative !important;
+    width: auto !important;
+    min-width: 92px !important;
+    height: auto !important;
+    min-height: 40px !important;
+    margin: 0 !important;
+    padding: 7px 12px !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    overflow: visible !important;
+    clip: auto !important;
+    border: 1px solid rgba(141, 169, 196, 0.22);
+}
+
+body.mode-ipad .outlook-topbar .toolbar-menu-button .button-label {
+    display: inline !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    width: auto !important;
+}
