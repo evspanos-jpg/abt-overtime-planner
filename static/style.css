@@ -1134,8 +1134,14 @@ button:active {
 
 button:disabled {
     cursor: not-allowed;
-    opacity: 0.45;
+    opacity: 0.5;
     transform: none;
+}
+
+/* Light mode: disabled controls fade toward the light page, so keep them a
+   touch more visible than the dark-theme default. */
+:root[data-theme="light"] button:disabled {
+    opacity: 0.62;
 }
 
 button.primary {
@@ -11123,7 +11129,7 @@ textarea:focus-visible {
 }
 
 :root[data-theme="light"] .mini-month-day.outside-month {
-    color: #9aa6b2 !important;
+    color: #717b88 !important;
     opacity: 1 !important;
 }
 
