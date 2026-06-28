@@ -134,6 +134,8 @@ let penTimelineTap = null
 let cachedTimelineHeight = null
 let resizeUpdateTimer = null
 let viewportUpdateTimer = null
+let lastViewportWidth = null
+let lastViewportHeight = null
 window.modeBadgeVisible = false
 let projectFileHandle = null
 let currentProjectName = "abt-overtime-planner.abt-planner.json"
@@ -1498,6 +1500,11 @@ function attachBlockPointerControls(el){
                     let startDur = pixelsToSnappedHours(startHeight)
                     let endDur = pixelsToSnappedHours(el.offsetHeight)
                     if(Math.abs(endDur - startDur) > 0.001) notifyDurationChange(startDur,endDur)
+                }else if(mode === "drag"){
+                    let finalY = parseFloat(el.dataset.y) || 0
+                    if(Math.abs(finalY - startY) > 0.5){
+                        notifyBlockMove(formatTime(START_HOUR + pixelsToSnappedHours(finalY)))
+                    }
                 }
             }else if(isDirectPointer(upEvent) && !pointerMoved){
                 el.dataset.skipClickSelect = "1"
@@ -1559,6 +1566,15 @@ function moveBlockToDay(el,targetDay){
     saveDay()
     update()
     updateActiveDay()
+
+    // Safety: confirm the day change with a one-tap Undo.
+    let firstStart = Number.isFinite(blocks[0]?.start)
+        ? blocks[0].start
+        : START_HOUR + pixelsToSnappedHours(blocks[0]?.y || 0)
+    let moveLabel = blocks.length === 1
+        ? DAY_LABELS[targetDay]+" "+formatTime(firstStart)
+        : blocks.length+" blocks → "+DAY_LABELS[targetDay]
+    notifyBlockMove(moveLabel)
 }
 
 function copySelectedBlock(){
@@ -1837,6 +1853,11 @@ function notifyDurationChange(fromHours,toHours){
         "Duration changed: "+formatDurationLabel(fromHours)+" → "+formatDurationLabel(toHours),
         {label:"Undo", handler:undoLastChange}
     )
+}
+
+// Safety: surface an accidental drag (reposition or day change) with a one-tap Undo.
+function notifyBlockMove(label){
+    showAppToast("Moved to "+label, {label:"Undo", handler:undoLastChange})
 }
 
 function deleteEditedBlock(){
@@ -7796,6 +7817,18 @@ function updateAppViewportMetrics(){
     syncInputCapabilityClasses()
 }
 
+// iOS/iPadOS Safari fires visualViewport "resize" continuously while the URL
+// bar collapses/expands during scroll. Treat sub-threshold height-only changes
+// as scroll chrome (cosmetic), not a real layout change, so the docked panes
+// — whose sizing depends on --app-vh — don't jitter/flicker on every scroll.
+const VIEWPORT_RELAYOUT_THRESHOLD = 90
+function viewportChangeIsSignificant(){
+    let bounds = currentViewportBounds()
+    if(lastViewportWidth === null || lastViewportHeight === null) return true
+    if(Math.round(bounds.width) !== Math.round(lastViewportWidth)) return true
+    return Math.abs(bounds.height - lastViewportHeight) >= VIEWPORT_RELAYOUT_THRESHOLD
+}
+
 function currentViewportBounds(){
     return {
         width:window.innerWidth || document.documentElement.clientWidth || 1024,
@@ -7806,6 +7839,12 @@ function currentViewportBounds(){
 function scheduleViewportMetricUpdate(){
     clearTimeout(viewportUpdateTimer)
     viewportUpdateTimer = setTimeout(()=>{
+        // Skip the relayout cascade for scroll-driven URL-bar resizes (the iPad
+        // flicker): only commit when the viewport meaningfully changed.
+        if(!viewportChangeIsSignificant()) return
+        let bounds = currentViewportBounds()
+        lastViewportWidth = bounds.width
+        lastViewportHeight = bounds.height
         updateAppViewportMetrics()
         // Re-evaluate device-mode classes (mode-phone/ipad/desktop) so the
         // layout follows orientation changes — e.g. rotating a phone into
@@ -7831,9 +7870,12 @@ function clampWorkspaceLayout(layout){
     let railDefault = ipadLayout ? 192 : 208
     let agendaDefault = ipadLayout ? 320 : 380
     let railMin = ipadLayout ? 168 : 160
-    let railMax = ipadLayout ? 260 : Math.max(220,viewport.width - (margin * 2))
-    let agendaMin = ipadLayout ? 280 : 260
-    let agendaMax = ipadLayout ? 360 : Math.max(280,viewport.width - (margin * 2))
+    // Give the iPad a genuinely useful drag range (was a near-fixed 168–260 /
+    // 280–360) while keeping the calendar column usable: cap each pane to a
+    // fraction of the viewport with a sensible ceiling.
+    let railMax = ipadLayout ? Math.max(railMin,Math.min(360,Math.round(viewport.width * 0.34))) : Math.max(220,viewport.width - (margin * 2))
+    let agendaMin = ipadLayout ? 260 : 260
+    let agendaMax = ipadLayout ? Math.max(agendaMin,Math.min(460,Math.round(viewport.width * 0.44))) : Math.max(280,viewport.width - (margin * 2))
     let railWidth = Math.min(Math.max(Number(layout?.rail) || railDefault,railMin),Math.max(railMax,railMin))
     let agendaWidth = Math.min(Math.max(Number(layout?.agenda) || agendaDefault,agendaMin),Math.max(agendaMax,agendaMin))
     let agendaHeight = Math.min(Math.max(Number(layout?.agendaHeight) || 360,220),Math.max(240,viewport.height - (margin * 2)))
@@ -8047,34 +8089,40 @@ function initWorkspaceResizers(){
             let startX = event.clientX
             let start = currentWorkspaceLayout()
             let pane = handle.dataset.resizePane
+            // The agenda only resizes vertically when it's docked to the bottom
+            // (a desktop-only option); when side-docked (always on iPad, and the
+            // default on desktop) it resizes by width like the rail. Keying off
+            // the dock — not the viewport size — is what makes the iPad agenda
+            // resizer actually move the pane.
+            let agendaIsBottom = start.agendaDock === "bottom"
             handle.setAttribute("aria-valuemin",pane === "agenda" ? "260" : "160")
             handle.setAttribute("aria-valuemax",pane === "agenda" ? "760" : "360")
             handle.setAttribute("aria-valuenow",String(Math.round(
                 pane === "agenda"
-                    ? (isDesktopLayout() ? start.agenda : start.agendaHeight)
+                    ? (agendaIsBottom ? start.agendaHeight : start.agenda)
                     : start.rail
             )))
 
             function onMove(moveEvent){
                 let next = {...start}
+                let dx = moveEvent.clientX - startX
                 if(pane === "rail"){
-                    let dx = moveEvent.clientX - startX
-                    next.rail = start.rail + dx
+                    // Resizer sits opposite the dock edge, so invert for a right dock.
+                    next.rail = start.railDock === "right" ? start.rail - dx : start.rail + dx
                 }
                 if(pane === "agenda"){
-                    if(isDesktopLayout()){
-                        let dx = moveEvent.clientX - startX
-                        next.agenda = start.agenda - dx
-                    }else{
+                    if(agendaIsBottom){
                         let dy = moveEvent.clientY - event.clientY
                         next.agendaHeight = start.agendaHeight + dy
+                    }else{
+                        next.agenda = start.agendaDock === "left" ? start.agenda + dx : start.agenda - dx
                     }
                 }
                 applyWorkspaceLayout(next)
                 let current = currentWorkspaceLayout()
-                if(pane === "agenda" && !isDesktopLayout()) syncTabletAgendaControls(current.agendaHeight,"")
+                if(pane === "agenda" && agendaIsBottom) syncTabletAgendaControls(current.agendaHeight,"")
                 let valueNow = pane === "agenda"
-                    ? (isDesktopLayout() ? current.agenda : current.agendaHeight)
+                    ? (agendaIsBottom ? current.agendaHeight : current.agenda)
                     : current.rail
                 handle.setAttribute("aria-valuenow",String(Math.round(valueNow)))
             }
@@ -8506,6 +8554,7 @@ rebuildToolbar = function(...args){
 // INIT
 applyCustomOvertimeRulesState(readCustomOvertimeRulesFromStorage())
 updateAppViewportMetrics()
+;({width:lastViewportWidth,height:lastViewportHeight} = currentViewportBounds())
 loadModeBadgePreference()
 syncInputCapabilityClasses()
 loadWorkspaceLayout()

@@ -15,6 +15,11 @@ playwright-report/
 *-LAPTOP-*.css
 *-LAPTOP-*.js
 *-LAPTOP-*.html
+*-LAPTOP-*.py
+
+# Scratch screenshots and logs at the repo root (not app assets in static/)
+/*.png
+debug.log
 
 # Local scratch directories
 tmp/

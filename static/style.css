@@ -10744,6 +10744,74 @@ textarea:focus-visible {
         position: relative;
     }
 
+    /* Docked iPad layout: let the saved pane widths actually drive the grid
+       (the generic 761px rule capped them to 22vw/26vw, so the resizers barely
+       moved). Wider vw ceilings + a chunkier, touch-draggable resizer. */
+    body.mode-ipad:not(.navigation-auto-hide):not(.agenda-auto-hide) .calendar-workspace[data-rail-dock="left"][data-agenda-dock="right"][data-rail-floating="false"][data-agenda-floating="false"] {
+        grid-template-columns:
+            minmax(168px, min(var(--workspace-rail-width), 34vw))
+            14px
+            minmax(0, 1fr)
+            14px
+            minmax(260px, min(var(--workspace-agenda-width), 44vw)) !important;
+    }
+
+    body.mode-ipad:not(.navigation-auto-hide):not(.agenda-auto-hide) .calendar-workspace[data-rail-dock="right"][data-agenda-dock="left"][data-rail-floating="false"][data-agenda-floating="false"] {
+        grid-template-columns:
+            minmax(260px, min(var(--workspace-agenda-width), 44vw))
+            14px
+            minmax(0, 1fr)
+            14px
+            minmax(168px, min(var(--workspace-rail-width), 34vw)) !important;
+    }
+
+    body.mode-ipad .workspace-resizer {
+        touch-action: none;
+    }
+
+    body.mode-ipad .workspace-resizer::before {
+        inset-inline: 4px;
+    }
+
+    /* iPad menu readability: the ribbon tabs and flyout items are sized for a
+       mouse (12px tabs, 11px items). Bump type and tap-target size, and drop
+       the flyouts to two roomy columns so labels are legible on a touch iPad. */
+    body.mode-ipad .outlook-ribbon-tab {
+        min-height: 38px !important;
+        padding: 0 14px !important;
+        font-size: 13.5px !important;
+        color: var(--text) !important;
+    }
+
+    body.mode-ipad .outlook-topbar .file-menu-item,
+    body.mode-ipad .outlook-topbar .file-picker,
+    body.mode-ipad .outlook-topbar .export-scope,
+    body.mode-ipad .outlook-topbar .save-status,
+    body.mode-ipad .outlook-topbar .selection-status,
+    body.mode-ipad .outlook-topbar .zoom-status {
+        min-height: 44px !important;
+    }
+
+    body.mode-ipad .outlook-topbar .file-menu-item,
+    body.mode-ipad .outlook-topbar .file-picker,
+    body.mode-ipad .outlook-topbar .export-scope {
+        padding: 10px 12px !important;
+        font-size: 13px !important;
+    }
+
+    body.mode-ipad .outlook-topbar .file-menu-section {
+        font-size: 11px !important;
+    }
+
+    body.mode-ipad .outlook-topbar .ribbon-window-menu:not(.file-backstage-menu) {
+        width: min(680px, calc(100vw - 28px)) !important;
+        grid-template-columns: repeat(2, minmax(180px, 1fr)) !important;
+    }
+
+    body.mode-ipad .outlook-topbar .file-backstage-menu {
+        grid-template-columns: repeat(3, minmax(160px, 1fr)) !important;
+    }
+
     body.mode-ipad .nav-pane-pin {
         display: inline-flex !important;
     }
