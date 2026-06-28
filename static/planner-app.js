@@ -3152,8 +3152,10 @@ function googleCalendarMenuEntries(){
     if(gcalConnected){
         entries.push({label:"Pull via OAuth", handler:gcalPull, iconClass:"icon-cloud-download"})
     }
+    // Always end with a clear link to the single setup location (Settings), so
+    // it reads as "sync here, configure there" rather than a duplicate setup.
     entries.push({
-        label: hasIcsUrl || gcalConnected ? "Google Calendar Settings" : "Set Up Google Calendar",
+        label: hasIcsUrl || gcalConnected ? "Settings…" : "Set up in Settings…",
         handler:()=>{
             openSettings()
             setTimeout(()=>document.getElementById("settingsGcalSection")?.scrollIntoView({behavior:"smooth", block:"start"}), 120)
@@ -3223,7 +3225,7 @@ function buildMobileActionsSheet(){
     item("Review Conflicts", openConflictReviewFromImport, {iconClass:"icon-calendar-check"})
     item("Remove Imported Calendar", removeImportedCalendar, {iconClass:"icon-trash", danger:true})
 
-    section("Google Calendar")
+    section("Calendar Sync")
     googleCalendarMenuEntries().forEach(entry=>item(entry.label, entry.handler, {iconClass:entry.iconClass}))
 
     section("Export")
@@ -3482,7 +3484,7 @@ function rebuildToolbar(){
             menuItem(calendarMenu,"Import Filters",openImportFilterEditor,"",{iconClass:"icon-filter"})
             menuSection(calendarMenu,"Review")
             menuItem(calendarMenu,"Review Conflicts",openConflictReviewFromImport,"",{iconClass:"icon-calendar-check"})
-            menuSection(calendarMenu,"Google Calendar")
+            menuSection(calendarMenu,"Calendar Sync")
             googleCalendarMenuEntries().forEach(entry=>menuItem(calendarMenu,entry.label,entry.handler,"",{iconClass:entry.iconClass}))
             menuSection(calendarMenu,"Export")
             menuItem(calendarMenu,"Export Calendar",exportICS,"",{iconClass:"icon-export"})
@@ -4129,6 +4131,7 @@ async function gcalIcsPull(silent = false, monthRange = false){
     let data = await resp.json()
     let events = data.events || []
     let existingIds = _gcalExistingIds()
+    let existingSignatures = _gcalExistingSignatures(anchorDate)
     let added = 0
 
     let weekStart = anchorDate
@@ -4137,7 +4140,8 @@ async function gcalIcsPull(silent = false, monthRange = false){
     for(let event of events){
         if(!event.start?.dateTime) continue
         if(!isImportRelevantEvent(event.summary || "", event.location || "", event.description || "")) continue
-        if(existingIds.has(event.id)) continue
+        // Skip events already present by calendar UID (re-syncing the same feed).
+        if(event.id && existingIds.has(event.id)) continue
 
         let startDate  = new Date(event.start.dateTime)
         let endDate    = new Date(event.end?.dateTime || event.start.dateTime)
@@ -4145,7 +4149,7 @@ async function gcalIcsPull(silent = false, monthRange = false){
         let day        = DAY_ORDER[dayIndex]
         let eventDKey  = dateKey(startDate)
         let startHour  = startDate.getHours() + startDate.getMinutes() / 60
-        let durHours   = Math.max(0.25, (endDate - startDate) / 3600000)
+        let durHours   = Math.max(SNAP, (endDate - startDate) / 3600000)
         let block = {
             start:startHour, dur:durHours,
             title:event.summary || "Block",
@@ -4153,6 +4157,11 @@ async function gcalIcsPull(silent = false, monthRange = false){
             description:event.description || "",
             gcalId:event.id
         }
+
+        // Semantic guard: same date + time + duration + title means it's the
+        // same event even if its UID changed or it was imported from a file.
+        let signature = eventDKey + "|" + plannerBlockSignature(block)
+        if(existingSignatures.has(signature)) continue
 
         if(startDate >= weekStart && startDate < weekEnd){
             if(!weekData[day]) weekData[day] = []
@@ -4163,7 +4172,8 @@ async function gcalIcsPull(silent = false, monthRange = false){
         }else{
             continue
         }
-        existingIds.add(event.id)
+        if(event.id) existingIds.add(event.id)
+        existingSignatures.add(signature)
         added++
     }
 
@@ -4230,6 +4240,21 @@ function _gcalExistingIds(){
         ;(dayEvents || []).forEach(e => { if(e.gcalId) ids.add(e.gcalId) })
     })
     return ids
+}
+
+// Date-aware semantic signatures of every block already in the planner, so a
+// re-sync of the same calendar never adds a duplicate even when the calendar
+// UID changed or the event was previously imported from a file.
+function _gcalExistingSignatures(weekStart){
+    let signatures = new Set()
+    DAY_ORDER.forEach((day,index) => {
+        let dKey = dateKey(addDays(weekStart,index))
+        ;(weekData[day] || []).forEach(block => signatures.add(dKey + "|" + plannerBlockSignature(block)))
+    })
+    Object.entries(monthEvents).forEach(([dKey,dayEvents]) => {
+        ;(dayEvents || []).forEach(block => signatures.add(dKey + "|" + plannerBlockSignature(block)))
+    })
+    return signatures
 }
 
 // Pull Google Calendar events for the current planner week and add matching blocks

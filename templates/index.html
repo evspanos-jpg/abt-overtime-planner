@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=163">
+    <link rel="stylesheet" href="static/style.css?v=164">
     <link rel="stylesheet" href="static/planner-ui.css?v=2">
 
     <!-- ✅ LIBRARIES -->
@@ -598,24 +598,33 @@
                 </section>
 
                 <section class="settings-card settings-card-wide" id="settingsGcalSection">
-                    <h4>Google Calendar</h4>
+                    <h4>Calendar Sync</h4>
+                    <p class="settings-card-subtitle">Set up Google, Outlook, or iCloud here once — then use Sync from the menu.</p>
 
                     <div class="gcal-ics-section">
                         <label class="settings-field">
-                            <span>iCal URL</span>
+                            <span>iCal / ICS URL</span>
                             <input type="url" id="gcalIcsUrl" autocomplete="off" spellcheck="false"
-                                   placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"
+                                   placeholder="Paste a Google, Outlook, or iCloud iCal URL (webcal:// is OK)"
                                    oninput="gcalSaveIcsUrl()">
                         </label>
                         <div class="gcal-ics-actions">
                             <button type="button" class="primary" id="gcalIcsPullButton" onclick="gcalIcsPull()" disabled>Sync week</button>
                             <button type="button" id="gcalIcsPullMonthButton" onclick="gcalIcsPullMonth()" disabled>Sync month</button>
                         </div>
-                        <p class="gcal-hint">Google Calendar → ⚙ Settings → [your calendar] → Integrate calendar → <em>Secret address in iCal format</em></p>
+                        <details class="gcal-hint-details">
+                            <summary>Where do I find my calendar's iCal URL?</summary>
+                            <ul class="gcal-hint-list">
+                                <li><strong>Google:</strong> ⚙ Settings → your calendar → Integrate calendar → <em>Secret address in iCal format</em>.</li>
+                                <li><strong>Outlook:</strong> outlook.com → Settings → Calendar → Shared calendars → Publish a calendar → copy the <em>ICS</em> link.</li>
+                                <li><strong>iCloud:</strong> iCloud Calendar → share a calendar → make it <em>Public</em> → copy the link.</li>
+                            </ul>
+                        </details>
                     </div>
 
                     <div id="gcalConnectedPanel" class="is-hidden gcal-oauth-row">
                         <p class="gcal-account" id="gcalEmail"></p>
+                        <p class="gcal-hint">Two-way sync (push back to the calendar) is Google-only.</p>
                         <div class="gcal-actions">
                             <button type="button" class="primary" onclick="gcalPull()">Pull via OAuth</button>
                             <button type="button" class="primary" onclick="gcalPushAll()">Push to Google Calendar</button>
@@ -748,7 +757,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=6"></script>
+<script src="static/planner-app.js?v=7"></script>
 
 </body>
 </html>

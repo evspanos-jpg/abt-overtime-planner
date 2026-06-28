@@ -3,6 +3,7 @@ import mimetypes
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests as http_requests
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request, session, url_for
@@ -420,8 +421,19 @@ def gcal_ics_pull():
     if not is_logged_in():
         return {"error": "Unauthorized"}, 403
     url = request.args.get("url", "").strip()
-    if not url.startswith("https://calendar.google.com/"):
-        return {"error": "Only Google Calendar iCal URLs are supported"}, 400
+    if url.lower().startswith("webcal://"):
+        url = "https://" + url[len("webcal://"):]
+    host = (urlparse(url).hostname or "").lower()
+    allowed_host = (
+        host == "calendar.google.com"
+        or host.endswith(".google.com")
+        or host.endswith(".outlook.com")
+        or host.endswith(".office365.com")
+        or host.endswith(".live.com")
+        or host.endswith(".icloud.com")
+    )
+    if not (url.startswith("https://") and allowed_host):
+        return {"error": "Only Google, Outlook, or iCloud iCal URLs are supported"}, 400
     time_min = request.args.get("start", "")
     time_max = request.args.get("end", "")
     win_start = time_min[:10].replace("-", "") if time_min else ""
