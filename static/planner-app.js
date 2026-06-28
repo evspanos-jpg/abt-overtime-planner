@@ -7612,6 +7612,30 @@ function sanitizePdfText(value){
         .trim()
 }
 
+// Output a finished PDF. On devices that support sharing files (iPad/iOS,
+// Android, some desktops) this opens the native share sheet — AirDrop, Mail,
+// Messages, Save to Files, Print, copy to another app — instead of only a
+// local download. Everywhere else it falls back to a normal download.
+async function savePdfDocument(doc,filename){
+    try{
+        if(typeof navigator.share === "function" && typeof File !== "undefined" && navigator.canShare){
+            let file = new File([doc.output("blob")],filename,{type:"application/pdf"})
+            if(navigator.canShare({files:[file]})){
+                try{
+                    await navigator.share({files:[file],title:"ABT Overtime Planner"})
+                    return
+                }catch(error){
+                    if(error?.name === "AbortError") return
+                    console.warn("PDF share failed, downloading instead.",error)
+                }
+            }
+        }
+    }catch(error){
+        console.warn("PDF share unavailable, downloading instead.",error)
+    }
+    doc.save(filename)
+}
+
 function renderAgendaPdfBlocks(doc,blocks,{title,summary,filename,emptyMessage="No agenda items match this export."}){
     let pageWidth = doc.internal.pageSize.getWidth()
     let pageHeight = doc.internal.pageSize.getHeight()
@@ -7633,7 +7657,7 @@ function renderAgendaPdfBlocks(doc,blocks,{title,summary,filename,emptyMessage="
     if(!blocks.length){
         doc.setFontSize(12)
         doc.text(emptyMessage,margin,y)
-        doc.save(filename)
+        savePdfDocument(doc,filename)
         return
     }
 
@@ -7728,7 +7752,7 @@ function renderAgendaPdfBlocks(doc,blocks,{title,summary,filename,emptyMessage="
         y += 4
     })
 
-    doc.save(filename)
+    savePdfDocument(doc,filename)
 }
 
 //--------------------------------
@@ -7895,6 +7919,7 @@ function clampWorkspaceLayout(layout){
     let railWidth = Math.min(Math.max(Number(layout?.rail) || railDefault,railMin),Math.max(railMax,railMin))
     let agendaWidth = Math.min(Math.max(Number(layout?.agenda) || agendaDefault,agendaMin),Math.max(agendaMax,agendaMin))
     let agendaHeight = Math.min(Math.max(Number(layout?.agendaHeight) || 360,220),Math.max(240,viewport.height - (margin * 2)))
+    let railHeight = Math.min(Math.max(Number(layout?.railHeight) || 420,220),Math.max(240,viewport.height - (margin * 2)))
     let railDock = ["left","right"].includes(layout?.railDock) ? layout.railDock : "left"
     let agendaDock = ["left","right","bottom"].includes(layout?.agendaDock) ? layout.agendaDock : "right"
     if(ipadLayout && agendaDock === "bottom") agendaDock = "right"
@@ -7928,6 +7953,7 @@ function clampWorkspaceLayout(layout){
         rail:railWidth,
         agenda:agendaWidth,
         agendaHeight:agendaHeight,
+        railHeight:railHeight,
         railDock,
         agendaDock,
         railFloating,
@@ -7945,6 +7971,7 @@ function applyWorkspaceLayout(layout){
     document.documentElement.style.setProperty("--workspace-rail-width",next.rail+"px")
     document.documentElement.style.setProperty("--workspace-agenda-width",next.agenda+"px")
     document.documentElement.style.setProperty("--tablet-agenda-height",next.agendaHeight+"px")
+    document.documentElement.style.setProperty("--workspace-rail-height",next.railHeight+"px")
     document.documentElement.style.setProperty("--workspace-rail-left",next.railX+"px")
     document.documentElement.style.setProperty("--workspace-rail-top",next.railY+"px")
     document.documentElement.style.setProperty("--workspace-agenda-left",next.agendaX+"px")
@@ -7983,6 +8010,7 @@ function currentWorkspaceLayout(){
         rail:parseFloat(styles.getPropertyValue("--workspace-rail-width")),
         agenda:parseFloat(styles.getPropertyValue("--workspace-agenda-width")),
         agendaHeight:parseFloat(styles.getPropertyValue("--tablet-agenda-height")),
+        railHeight:parseFloat(styles.getPropertyValue("--workspace-rail-height")),
         railX:parseFloat(styles.getPropertyValue("--workspace-rail-left")),
         railY:parseFloat(styles.getPropertyValue("--workspace-rail-top")),
         agendaX:parseFloat(styles.getPropertyValue("--workspace-agenda-left")),
@@ -8619,4 +8647,5 @@ updateUndoButton()
 updateOutlookPanels()
 initWorkspaceResizers()
 initFloatingPaneDrag()
+ensurePaneResizeGrips()
 initGCal()

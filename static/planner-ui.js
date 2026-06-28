@@ -93,6 +93,7 @@
         document.body.dataset.deviceMode = mode
         document.body.classList.toggle("show-mode-badge",Boolean(window.modeBadgeVisible))
         window.ensurePaneFloatButtons?.()
+        window.ensurePaneResizeGrips?.()
         document.querySelectorAll(".pane-dock-controls, .tablet-agenda-size-controls").forEach(node=>{
             if(ipad){
                 node.hidden = false
@@ -236,5 +237,75 @@
         })
 
         window.syncPaneFloatButtons?.()
+    }
+
+    // Undocked panes can be moved (header) but also need resizing. Add a corner
+    // grip anchored to each floating pane's bottom-right via the same layout
+    // vars (it lives in the workspace, not inside the scrolling pane, so it
+    // never scrolls out of reach).
+    window.ensurePaneResizeGrips = function ensurePaneResizeGrips(){
+        const workspace = document.querySelector(".calendar-workspace")
+        if(!workspace) return
+        const grips = [
+            {cls:"rail-resize-grip", pane:"rail"},
+            {cls:"agenda-resize-grip", pane:"agenda"}
+        ]
+        grips.forEach(config=>{
+            if(workspace.querySelector(":scope > ."+config.cls)) return
+            let grip = document.createElement("div")
+            grip.className = "pane-resize-grip " + config.cls
+            grip.dataset.resizePane = config.pane
+            grip.setAttribute("aria-hidden","true")
+            grip.title = "Drag to resize"
+            workspace.appendChild(grip)
+        })
+        window.initFloatingPaneResize?.()
+    }
+
+    window.initFloatingPaneResize = function initFloatingPaneResize(){
+        const configs = [
+            {pane:"rail", selector:".rail-resize-grip", widthKey:"rail", heightKey:"railHeight"},
+            {pane:"agenda", selector:".agenda-resize-grip", widthKey:"agenda", heightKey:"agendaHeight"}
+        ]
+        configs.forEach(config=>{
+            let grip = document.querySelector(config.selector)
+            if(!grip || grip.dataset.resizeInit === "true") return
+            grip.dataset.resizeInit = "true"
+            grip.addEventListener("pointerdown",event=>{
+                if(!window.isFloatingTabletLayout()) return
+                if(typeof window.isPaneFloating === "function" && !window.isPaneFloating(config.pane)) return
+                event.preventDefault()
+                event.stopPropagation()
+                grip.setPointerCapture?.(event.pointerId)
+
+                let start = typeof window.currentWorkspaceLayout === "function" ? window.currentWorkspaceLayout() : {}
+                let startX = event.clientX
+                let startY = event.clientY
+                let startW = Number(start[config.widthKey]) || 0
+                let startH = Number(start[config.heightKey]) || 0
+                document.body.classList.add("resizing-floating-pane")
+
+                function onMove(moveEvent){
+                    let next = {...start}
+                    next[config.widthKey] = startW + (moveEvent.clientX - startX)
+                    next[config.heightKey] = startH + (moveEvent.clientY - startY)
+                    window.applyWorkspaceLayout?.(next)
+                }
+
+                function onUp(){
+                    document.body.classList.remove("resizing-floating-pane")
+                    document.removeEventListener("pointermove",onMove)
+                    document.removeEventListener("pointerup",onUp)
+                    document.removeEventListener("pointercancel",onUp)
+                    if(typeof window.currentWorkspaceLayout === "function"){
+                        window.saveWorkspaceLayout?.(window.currentWorkspaceLayout())
+                    }
+                }
+
+                document.addEventListener("pointermove",onMove)
+                document.addEventListener("pointerup",onUp)
+                document.addEventListener("pointercancel",onUp)
+            })
+        })
     }
 })()

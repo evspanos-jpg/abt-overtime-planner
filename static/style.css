@@ -1381,8 +1381,10 @@ input[type="file"] {
 }
 
 .timeline-header-actions {
-    display: inline-grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
     gap: 6px;
     flex: 0 0 auto;
 }
@@ -1395,7 +1397,7 @@ input[type="file"] {
 }
 
 #timeline-container {
-    height: min(68vh, 680px);
+    height: min(74vh, 800px);
     min-height: 520px;
     overflow: auto;
     background: #0d1116;
@@ -2813,7 +2815,7 @@ body.selecting-blocks * {
     }
 
     #timeline-container {
-        height: 66vh;
+        height: 72vh;
     }
 
     .event {
@@ -2868,8 +2870,8 @@ body.selecting-blocks * {
 
 @media (min-width: 1000px) and (max-width: 1400px) and (pointer: coarse) {
     #timeline-container {
-        height: min(72dvh, 760px);
-        min-height: 640px;
+        height: min(82dvh, 900px);
+        min-height: 680px;
     }
 
     .modal-backdrop {
@@ -2879,8 +2881,8 @@ body.selecting-blocks * {
 
 @media (min-width: 900px) and (max-width: 1100px) and (pointer: coarse) {
     #timeline-container {
-        height: calc(100dvh - 290px);
-        min-height: 660px;
+        height: calc(100dvh - 250px);
+        min-height: 700px;
     }
 
     .block-editor {
@@ -3164,7 +3166,7 @@ input[type="file"] {
 }
 
 .timeline-header {
-    padding: 14px 16px;
+    padding: 8px 16px;
     color: var(--muted);
 }
 
@@ -12202,4 +12204,46 @@ body.mode-ipad .outlook-topbar .toolbar-menu-button .button-label {
     overflow: visible !important;
     text-overflow: clip !important;
     width: auto !important;
+}
+
+/* ---- Undocked pane resizing -------------------------------------------
+   Floating panes are moved by the header and resized by a corner grip.
+   The grip lives in the workspace (not inside the scrolling pane) and is
+   pinned to the pane's bottom-right corner via the same layout vars, so it
+   never scrolls away. The floating rail's height follows --workspace-rail-
+   height so the grip and pane stay in sync. */
+.pane-resize-grip {
+    display: none;
+}
+
+body.mode-ipad .calendar-workspace[data-rail-floating="true"] .calendar-rail {
+    height: min(var(--workspace-rail-height), calc((var(--app-vh) * 100) - 24px)) !important;
+}
+
+body.mode-ipad .calendar-workspace[data-rail-floating="true"] .rail-resize-grip {
+    display: block;
+    left: calc(var(--workspace-rail-left) + min(var(--workspace-rail-width), 100vw - 24px) - 34px);
+    top: calc(var(--workspace-rail-top) + min(var(--workspace-rail-height), (var(--app-vh) * 100) - 24px) - 34px);
+}
+
+body.mode-ipad .calendar-workspace[data-agenda-floating="true"] .agenda-resize-grip {
+    display: block;
+    left: calc(var(--workspace-agenda-left) + min(var(--workspace-agenda-width), 100vw - 24px) - 34px);
+    top: calc(var(--workspace-agenda-top) + min(var(--tablet-agenda-height), (var(--app-vh) * 100) - 24px) - 34px);
+}
+
+body.mode-ipad .calendar-workspace[data-rail-floating="true"] .rail-resize-grip,
+body.mode-ipad .calendar-workspace[data-agenda-floating="true"] .agenda-resize-grip {
+    position: fixed;
+    z-index: 903;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    cursor: nwse-resize;
+    touch-action: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background:
+        repeating-linear-gradient(135deg, transparent 0 4px, rgba(255, 255, 255, 0.6) 4px 6px),
+        rgba(20, 27, 35, 0.96);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.34);
 }
