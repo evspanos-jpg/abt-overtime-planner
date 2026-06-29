@@ -5438,51 +5438,6 @@ function chooseSaveLocation(){
     return saveProject({saveAs:true})
 }
 
-async function importProjectFromCloud(provider){
-    let providerName = provider === "google" ? "Google Drive" : "OneDrive"
-    let providerUrl = provider === "google" ? "https://drive.google.com/drive/my-drive" : "https://onedrive.live.com/"
-    let input = document.getElementById("projectFileInput")
-
-    pendingCloudImportProvider = providerName
-    setSaveStatus("Choose a planner file from " + providerName)
-
-    try{
-        if(window.showOpenFilePicker){
-            let [handle] = await window.showOpenFilePicker({
-                multiple:false,
-                types:[{
-                    description:"ABT Planner Project",
-                    accept:{"application/json":[".json"]}
-                }]
-            })
-
-            if(!handle) return
-
-            let file = await handle.getFile()
-            projectFileHandle = handle
-            try{
-                isRestoringState = true
-                await openProjectBlob(file,providerName)
-            }finally{
-                isRestoringState = false
-                pendingCloudImportProvider = ""
-                savePlannerState()
-            }
-            return
-        }
-    }catch(error){
-        if(error?.name === "AbortError") return
-        console.warn("Cloud file picker failed.",error)
-    }
-
-    if(input){
-        input.click()
-        window.open(providerUrl,"_blank","noopener,noreferrer")
-    }else{
-        window.open(providerUrl,"_blank","noopener,noreferrer")
-    }
-}
-
 async function openProjectBlob(file,sourceName=""){
     let state = JSON.parse(await file.text())
     if(state.fileType && state.fileType !== PROJECT_FILE_TYPE){
@@ -5514,46 +5469,6 @@ async function openProjectFile(fileOverride=null){
         if(input) input.value = ""
         savePlannerState()
     }
-}
-
-async function uploadProjectToCloud(provider){
-    let fileName = normalizeProjectFileName(currentProjectName)
-    let text = projectJsonText()
-    let providerName = provider === "google" ? "Google Drive" : "OneDrive"
-    let providerUrl = provider === "google" ? "https://drive.google.com/drive/my-drive" : "https://onedrive.live.com/"
-
-    // Best path (iPad/phone): the native share sheet lets you save the file
-    // straight into the OneDrive or Google Drive app.
-    try{
-        if(typeof File !== "undefined" && navigator.canShare){
-            let file = new File([text],fileName,{type:"application/json"})
-            if(navigator.canShare({files:[file]})){
-                await navigator.share({
-                    files:[file],
-                    title:"ABT Overtime Planner",
-                    text:"Save this planner file to " + providerName + ".",
-                })
-                recordBackup()
-                setSaveStatus("Sent to " + providerName + " (share sheet)")
-                return
-            }
-        }
-    }catch(error){
-        if(error?.name === "AbortError") return
-        console.warn("Cloud share failed, falling back to download.",error)
-    }
-
-    // Desktop fallback: open the provider, then download the file so you can drop
-    // it in. window.open runs first (no await before it) so it isn't blocked as
-    // an unrequested popup.
-    let opened = window.open(providerUrl,"_blank","noopener,noreferrer")
-    downloadTextFile(text,fileName)
-    recordBackup()
-    setSaveStatus(
-        opened
-            ? "Downloaded " + fileName + " — drop it into the " + providerName + " tab"
-            : "Downloaded " + fileName + " — open " + providerName + " and upload it",
-    )
 }
 
 // Provider-agnostic "back up a copy": opens the OS share sheet (so you can pick
