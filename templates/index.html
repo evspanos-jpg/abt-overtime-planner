@@ -16,7 +16,7 @@
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
     <link rel="stylesheet" href="static/style.css?v=1ee00a69db">
-    <link rel="stylesheet" href="static/planner-ui.css?v=f4298cc824">
+    <link rel="stylesheet" href="static/planner-ui.css?v=f268e971ce">
 
     <!-- ✅ LIBRARIES -->
     <script src="static/vendor/jspdf.umd.min.js"></script>
@@ -75,6 +75,8 @@
                 <div class="pane-dock-controls" aria-label="Move navigation pane" hidden>
                     <button type="button" class="secondary" id="railDockLeftButton" data-dock-target="rail" data-dock-value="left" onclick="setPaneDock('rail','left')" aria-pressed="true">Left</button>
                     <button type="button" class="secondary" id="railDockRightButton" data-dock-target="rail" data-dock-value="right" onclick="setPaneDock('rail','right')" aria-pressed="false">Right</button>
+                    <button type="button" class="secondary pane-width-button" onclick="stepPaneWidth('rail',-40)" aria-label="Make navigation pane narrower" title="Narrower">&#8722;</button>
+                    <button type="button" class="secondary pane-width-button" onclick="stepPaneWidth('rail',40)" aria-label="Make navigation pane wider" title="Wider">&#43;</button>
                     <button type="button" class="secondary icon-button nav-pane-pin" id="navPanePinButton" onclick="toggleNavigationPaneAutoHide()" aria-label="Auto-hide navigation pane" title="Auto-hide navigation pane">
                         <span class="button-icon icon-pane-pin" aria-hidden="true"></span>
                     </button>
@@ -182,6 +184,8 @@
                     <button type="button" class="secondary" id="agendaDockLeftButton" data-dock-target="agenda" data-dock-value="left" onclick="setPaneDock('agenda','left')" aria-pressed="false">Left</button>
                     <button type="button" class="secondary" id="agendaDockRightButton" data-dock-target="agenda" data-dock-value="right" onclick="setPaneDock('agenda','right')" aria-pressed="true">Right</button>
                     <button type="button" class="secondary" id="agendaDockBottomButton" data-dock-target="agenda" data-dock-value="bottom" onclick="setPaneDock('agenda','bottom')" aria-pressed="false">Bottom</button>
+                    <button type="button" class="secondary pane-width-button" onclick="stepPaneWidth('agenda',-40)" aria-label="Make agenda pane narrower" title="Narrower">&#8722;</button>
+                    <button type="button" class="secondary pane-width-button" onclick="stepPaneWidth('agenda',40)" aria-label="Make agenda pane wider" title="Wider">&#43;</button>
                     <button type="button" class="secondary icon-button nav-pane-pin" id="agendaPanePinButton" onclick="toggleAgendaPaneAutoHide()" aria-label="Auto-hide agenda pane" title="Auto-hide agenda pane">
                         <span class="button-icon icon-pane-pin" aria-hidden="true"></span>
                     </button>
@@ -762,7 +766,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=18d977ed44"></script>
+<script src="static/planner-app.js?v=9d19d35f07"></script>
 
 </body>
 </html>

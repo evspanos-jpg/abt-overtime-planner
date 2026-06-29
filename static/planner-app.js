@@ -8072,6 +8072,21 @@ function isPaneFloating(pane,layout=currentWorkspaceLayout()){
     return pane === "rail" ? next.railFloating : next.agendaFloating
 }
 
+// Tap-based pane resize — reliable on touch where dragging the thin divider is
+// fiddly. Works for both docked and floating panes (adjusts the same width var).
+function stepPaneWidth(pane,delta){
+    let layout = currentWorkspaceLayout()
+    if(pane === "rail") layout.rail = (Number(layout.rail) || 0) + delta
+    else layout.agenda = (Number(layout.agenda) || 0) + delta
+    saveWorkspaceLayout(layout)
+    if(typeof window.showAppToast === "function"){
+        let current = currentWorkspaceLayout()
+        let width = Math.round(pane === "rail" ? current.rail : current.agenda)
+        showAppToast((pane === "rail" ? "Navigation" : "Agenda") + " width: " + width + "px")
+    }
+    cachedTimelineHeight = null
+}
+
 function syncPaneDockControls(layout=currentWorkspaceLayout()){
     let next = clampWorkspaceLayout(layout)
     document.querySelectorAll("[data-dock-target]").forEach(button=>{
