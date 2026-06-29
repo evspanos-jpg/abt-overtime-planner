@@ -3804,6 +3804,13 @@ function update(options={}){
     document.getElementById("daily")?.closest(".earnings-card")?.classList.toggle("has-ot", currentDayHasOT)
     document.getElementById("weekly")?.closest(".earnings-card")?.classList.toggle("has-ot", weekHasOT)
 
+    let monthly = calculateMonthlyTotals()
+    let monthlyEl = document.getElementById("monthly")
+    if(monthlyEl){
+        monthlyEl.innerText="$"+monthly.total.toFixed(0)
+        monthlyEl.closest(".earnings-card")?.classList.toggle("has-ot", monthly.hasOT)
+    }
+
     if(options.persist !== false){
         syncSelectedWeekToMonth()
         savePlannerState()
@@ -5671,6 +5678,24 @@ function cloneScheduleForPay(items){
 
 function calculateMonthDayPay(items){
     return calculateDailyPay(cloneScheduleForPay(items))
+}
+
+function calculateMonthlyTotals(){
+    let total = 0
+    let hasOT = false
+    let year = monthAnchorDate.getFullYear()
+    let month = monthAnchorDate.getMonth()
+    let daysInMonth = new Date(year, month + 1, 0).getDate()
+    for(let day=1; day<=daysInMonth; day++){
+        let key = dateKey(new Date(year, month, day))
+        let items = monthDayItems(key)
+        if(!items.length) continue
+        // calculateMonthDayPay (like Daily/Weekly) already returns OT-only pay.
+        let otPay = calculateMonthDayPay(items)
+        total += otPay
+        if(otPay > 0) hasOT = true
+    }
+    return {total, hasOT}
 }
 
 function buildImportSummary(importedCount=importedEventCount){

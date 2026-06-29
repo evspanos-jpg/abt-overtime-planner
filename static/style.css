@@ -6147,15 +6147,15 @@ body,
 
 .outlook-topbar .earnings-summary {
     display: grid;
-    grid-template-columns: repeat(2, minmax(94px, 1fr));
+    grid-template-columns: repeat(3, minmax(64px, 1fr));
     gap: 6px;
     align-items: stretch;
 }
 
 .outlook-topbar .earnings-card {
     min-width: 0;
-    min-height: 36px;
-    padding: 6px 10px;
+    min-height: 32px;
+    padding: 4px 8px;
     border-radius: 7px;
     box-shadow: none;
     text-align: right;
@@ -6168,7 +6168,7 @@ body,
 
 .outlook-topbar .earnings-card strong {
     margin-top: 1px;
-    font-size: 20px;
+    font-size: 16px;
 }
 
 .outlook-topbar .file-menu,
@@ -6229,18 +6229,18 @@ body,
     }
 
     .outlook-topbar .earnings-summary {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 5px;
         padding: 0;
     }
 
     .outlook-topbar .earnings-card {
-        min-height: 40px;
-        padding: 6px 7px;
+        min-height: 34px;
+        padding: 4px 6px;
     }
 
     .outlook-topbar .earnings-card strong {
-        font-size: 18px;
+        font-size: 15px;
     }
 
     .mobile-calendar-bar {
@@ -7515,14 +7515,14 @@ body[data-timeline-days="1"] .day-column {
 }
 
 .outlook-topbar .earnings-summary {
-    grid-template-columns: repeat(2, minmax(84px, 1fr));
+    grid-template-columns: repeat(3, minmax(64px, 1fr));
     gap: 4px;
     align-self: center;
 }
 
 .outlook-topbar .earnings-card {
-    min-height: 34px;
-    padding: 4px 9px;
+    min-height: 32px;
+    padding: 3px 8px;
     border: 0;
     border-left: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 0;
@@ -7537,7 +7537,7 @@ body[data-timeline-days="1"] .day-column {
 
 .outlook-topbar .earnings-card strong {
     color: #ffd166;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .outlook-topbar .file-menu,
@@ -7580,11 +7580,11 @@ body[data-timeline-days="1"] .day-column {
     }
 
     .outlook-topbar .earnings-summary {
-        grid-template-columns: repeat(2, minmax(76px, 1fr));
+        grid-template-columns: repeat(3, minmax(56px, 1fr));
     }
 
     .outlook-topbar .earnings-card {
-        min-height: 38px;
+        min-height: 34px;
     }
 
     .outlook-topbar .file-menu,
