@@ -5524,28 +5524,42 @@ async function openProjectFile(fileOverride=null){
 
 async function uploadProjectToCloud(provider){
     let fileName = normalizeProjectFileName(currentProjectName)
-    let file = new File([projectJsonText()],fileName,{type:"application/json"})
+    let text = projectJsonText()
     let providerName = provider === "google" ? "Google Drive" : "OneDrive"
     let providerUrl = provider === "google" ? "https://drive.google.com/drive/my-drive" : "https://onedrive.live.com/"
 
+    // Best path (iPad/phone): the native share sheet lets you save the file
+    // straight into the OneDrive or Google Drive app.
     try{
-        if(navigator.canShare && navigator.canShare({files:[file]})){
-            await navigator.share({
-                files:[file],
-                title:"ABT Overtime Planner",
-                text:"Upload this planner file to " + providerName + "."
-            })
-            setSaveStatus("Shared for " + providerName)
-            return
+        if(typeof File !== "undefined" && navigator.canShare){
+            let file = new File([text],fileName,{type:"application/json"})
+            if(navigator.canShare({files:[file]})){
+                await navigator.share({
+                    files:[file],
+                    title:"ABT Overtime Planner",
+                    text:"Save this planner file to " + providerName + ".",
+                })
+                recordBackup()
+                setSaveStatus("Sent to " + providerName + " (share sheet)")
+                return
+            }
         }
     }catch(error){
         if(error?.name === "AbortError") return
-        console.warn("Cloud share failed.",error)
+        console.warn("Cloud share failed, falling back to download.",error)
     }
 
-    downloadTextFile(await file.text(),fileName)
-    window.open(providerUrl,"_blank","noopener,noreferrer")
-    setSaveStatus("Downloaded for " + providerName)
+    // Desktop fallback: open the provider, then download the file so you can drop
+    // it in. window.open runs first (no await before it) so it isn't blocked as
+    // an unrequested popup.
+    let opened = window.open(providerUrl,"_blank","noopener,noreferrer")
+    downloadTextFile(text,fileName)
+    recordBackup()
+    setSaveStatus(
+        opened
+            ? "Downloaded " + fileName + " — drop it into the " + providerName + " tab"
+            : "Downloaded " + fileName + " — open " + providerName + " and upload it",
+    )
 }
 
 function savePlannerState(){
