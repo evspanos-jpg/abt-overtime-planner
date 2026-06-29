@@ -44,7 +44,7 @@ No linting is configured. No build step — frontend is plain HTML/CSS/JS served
 | `APP_PASSWORD` | Optional login gate | (none = open) |
 | `PORT` | Server port | 5000 |
 | `FLASK_DEBUG` | Enable debug mode | off |
-| `GCAL_CLIENT_ID` / `GCAL_CLIENT_SECRET` | Google OAuth | embedded fallback |
+| `GCAL_CLIENT_ID` / `GCAL_CLIENT_SECRET` | Google OAuth (required for OAuth calendar sync; if unset, OAuth is "not configured" and only the iCal-URL path works). Or place a gitignored `client_secret.json` next to `app.py` for local dev. | (none) |
 | `GCAL_REDIRECT_URI` | OAuth callback URL | Render production URL |
 | `WEB_CONCURRENCY` | Gunicorn workers | 2 |
 
