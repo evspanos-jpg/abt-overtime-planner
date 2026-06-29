@@ -10749,22 +10749,25 @@ textarea:focus-visible {
     /* Docked iPad layout: let the saved pane widths actually drive the grid
        (the generic 761px rule capped them to 22vw/26vw, so the resizers barely
        moved). Wider vw ceilings + a chunkier, touch-draggable resizer. */
+    /* Use the saved width vars directly — the JS clamp already bounds them to a
+       sensible range, so an extra vw cap here only froze the panes at the cap
+       (resize value changed but the column didn't). */
     body.mode-ipad:not(.navigation-auto-hide):not(.agenda-auto-hide) .calendar-workspace[data-rail-dock="left"][data-agenda-dock="right"][data-rail-floating="false"][data-agenda-floating="false"] {
         grid-template-columns:
-            minmax(168px, min(var(--workspace-rail-width), 34vw))
+            minmax(160px, var(--workspace-rail-width))
             24px
             minmax(0, 1fr)
             24px
-            minmax(260px, min(var(--workspace-agenda-width), 44vw)) !important;
+            minmax(240px, var(--workspace-agenda-width)) !important;
     }
 
     body.mode-ipad:not(.navigation-auto-hide):not(.agenda-auto-hide) .calendar-workspace[data-rail-dock="right"][data-agenda-dock="left"][data-rail-floating="false"][data-agenda-floating="false"] {
         grid-template-columns:
-            minmax(260px, min(var(--workspace-agenda-width), 44vw))
+            minmax(240px, var(--workspace-agenda-width))
             24px
             minmax(0, 1fr)
             24px
-            minmax(168px, min(var(--workspace-rail-width), 34vw)) !important;
+            minmax(160px, var(--workspace-rail-width)) !important;
     }
 
     /* Finger-sized, clearly visible docked resizer on iPad. A coarse-pointer

@@ -8026,6 +8026,27 @@ function applyWorkspaceLayout(layout){
         workspace.dataset.agendaDock = next.agendaDock
         workspace.dataset.railFloating = String(Boolean(next.railFloating))
         workspace.dataset.agendaFloating = String(Boolean(next.agendaFloating))
+
+        // Force the docked iPad column widths inline (with !important) so the
+        // saved sizes always win. The stylesheet has many overlapping
+        // breakpoint rules for .calendar-workspace columns that otherwise froze
+        // the panes (the +/- buttons changed the value but not the rendered
+        // width). Inline !important beats them all.
+        let ipadDocked = typeof isFloatingTabletLayout === "function" && isFloatingTabletLayout()
+            && !next.railFloating && !next.agendaFloating
+            && !document.body.classList.contains("navigation-auto-hide")
+            && !document.body.classList.contains("agenda-auto-hide")
+            && next.agendaDock !== "bottom"
+        if(ipadDocked){
+            let railCol = "minmax(150px, " + next.rail + "px)"
+            let agendaCol = "minmax(240px, " + next.agenda + "px)"
+            let cols = next.railDock === "right"
+                ? agendaCol + " 24px minmax(0, 1fr) 24px " + railCol
+                : railCol + " 24px minmax(0, 1fr) 24px " + agendaCol
+            workspace.style.setProperty("grid-template-columns", cols, "important")
+        }else{
+            workspace.style.removeProperty("grid-template-columns")
+        }
     }
     syncPaneDockControls(next)
 }
@@ -8463,6 +8484,9 @@ function toggleNavigationPaneAutoHide(){
     document.body.classList.toggle("navigation-auto-hide")
     updateOutlookChromeButtons()
     saveOutlookChromeState()
+    // Re-apply so the forced inline iPad column widths are cleared/restored to
+    // match the new auto-hide state (otherwise the collapsed pane can't shrink).
+    applyWorkspaceLayout(currentWorkspaceLayout())
     cachedTimelineHeight = null
 }
 
@@ -8470,6 +8494,7 @@ function toggleAgendaPaneAutoHide(){
     document.body.classList.toggle("agenda-auto-hide")
     updateOutlookChromeButtons()
     saveOutlookChromeState()
+    applyWorkspaceLayout(currentWorkspaceLayout())
     cachedTimelineHeight = null
 }
 
