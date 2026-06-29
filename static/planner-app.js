@@ -3283,11 +3283,8 @@ function buildMobileActionsSheet(){
     section("File")
     item("Save", saveProject, {iconClass:"icon-save"})
     item("Save As", saveProjectAs, {iconClass:"icon-save-as"})
-    item("Open Project", triggerProjectOpen, {iconClass:"icon-open"})
-    item("Import from OneDrive", ()=>importProjectFromCloud("onedrive"), {iconClass:"icon-cloud-download"})
-    item("Import from Google Drive", ()=>importProjectFromCloud("google"), {iconClass:"icon-cloud-download"})
-    item("Upload to OneDrive", ()=>uploadProjectToCloud("onedrive"), {iconClass:"icon-cloud-upload"})
-    item("Upload to Google Drive", ()=>uploadProjectToCloud("google"), {iconClass:"icon-cloud-upload"})
+    item("Open / Restore Backup", triggerProjectOpen, {iconClass:"icon-open"})
+    item("Back up a Copy", backupProjectCopy, {iconClass:"icon-cloud-upload"})
 }
 
 function updateMobileNav(){
@@ -3484,13 +3481,10 @@ function rebuildToolbar(){
             menuItem(fileMenu,"Save As",saveProjectAs,"",{iconClass:"icon-save-as"})
             menuItem(fileMenu,"Set Save Location",chooseSaveLocation,"",{iconClass:"icon-folder"})
             menuItem(fileMenu,autosaveEnabled ? "Autosave On" : "Autosave Off",toggleAutosave,"autosaveMenuButton",{iconClass:"icon-autosave"})
-            menuItem(fileMenu,"Open Project",triggerProjectOpen,"",{iconClass:"icon-open"})
+            menuItem(fileMenu,"Open / Restore Backup",triggerProjectOpen,"",{iconClass:"icon-open"})
 
-            menuSection(fileMenu,"Cloud")
-            menuItem(fileMenu,"Import OneDrive",()=>importProjectFromCloud("onedrive"),"",{iconClass:"icon-cloud-download"})
-            menuItem(fileMenu,"Import Google",()=>importProjectFromCloud("google"),"",{iconClass:"icon-cloud-download"})
-            menuItem(fileMenu,"Upload OneDrive",()=>uploadProjectToCloud("onedrive"),"",{iconClass:"icon-cloud-upload"})
-            menuItem(fileMenu,"Upload Google",()=>uploadProjectToCloud("google"),"",{iconClass:"icon-cloud-upload"})
+            menuSection(fileMenu,"Backup")
+            menuItem(fileMenu,"Back up a Copy",backupProjectCopy,"",{iconClass:"icon-cloud-upload"})
 
             const saveStatus = document.createElement("span")
             saveStatus.className = "save-status file-menu-status"
@@ -5366,7 +5360,7 @@ function maybeNudgeBackup(){
     if(typeof showAppToast === "function"){
         showAppToast(
             iso ? "Back up your planner — it's been over a week." : "Tip: export a backup so you don't lose your planner.",
-            {label:"Back up", handler:()=>saveProject()}
+            {label:"Back up", handler:()=>backupProjectCopy()}
         )
     }
 }
@@ -5560,6 +5554,36 @@ async function uploadProjectToCloud(provider){
             ? "Downloaded " + fileName + " — drop it into the " + providerName + " tab"
             : "Downloaded " + fileName + " — open " + providerName + " and upload it",
     )
+}
+
+// Provider-agnostic "back up a copy": opens the OS share sheet (so you can pick
+// Save to Files -> OneDrive/iCloud, Google Drive, Mail, etc.) and falls back to
+// a plain download. No OAuth, so it works on every device including
+// Advanced-Protection Google accounts.
+async function backupProjectCopy(){
+    let fileName = normalizeProjectFileName(currentProjectName)
+    let text = projectJsonText()
+    try{
+        if(typeof File !== "undefined" && navigator.canShare){
+            let file = new File([text],fileName,{type:"application/json"})
+            if(navigator.canShare({files:[file]})){
+                await navigator.share({
+                    files:[file],
+                    title:"ABT Overtime Planner backup",
+                    text:"Save this planner backup (e.g. Save to Files → OneDrive).",
+                })
+                recordBackup()
+                setSaveStatus("Backup ready — choose where to save it")
+                return
+            }
+        }
+    }catch(error){
+        if(error?.name === "AbortError") return
+        console.warn("Backup share failed, downloading instead.",error)
+    }
+    downloadTextFile(text,fileName)
+    recordBackup()
+    setSaveStatus("Backup downloaded: " + fileName)
 }
 
 function savePlannerState(){
