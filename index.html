@@ -640,7 +640,12 @@
                             <button type="button" class="secondary" onclick="gcalDisconnect()">Sign out from Google</button>
                         </div>
                     </div>
-                    <div id="gcalDisconnectedPanel" class="is-hidden"></div>
+                    <div id="gcalDisconnectedPanel" class="is-hidden gcal-oauth-row">
+                        <p class="gcal-hint">Connect Google Calendar to sync your planner across devices (two-way push &amp; pull).</p>
+                        <div class="gcal-actions">
+                            <button type="button" class="primary" onclick="gcalConnect()">Connect Google Calendar</button>
+                        </div>
+                    </div>
 
                     <p class="gcal-sync-result is-hidden" id="gcalSyncResult" aria-live="polite"></p>
                 </section>
