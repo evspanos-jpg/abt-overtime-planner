@@ -16,7 +16,7 @@
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
     <link rel="stylesheet" href="static/style.css?v=2f1033b4b7">
-    <link rel="stylesheet" href="static/planner-ui.css?v=f268e971ce">
+    <link rel="stylesheet" href="static/planner-ui.css?v=4ff79ddda9">
 
     <!-- ✅ LIBRARIES -->
     <script src="static/vendor/jspdf.umd.min.js"></script>
@@ -73,8 +73,8 @@
             <div class="navigation-pane-header">
                 <strong>Nav</strong>
                 <div class="pane-dock-controls" aria-label="Move navigation pane" hidden>
-                    <button type="button" class="secondary" id="railDockLeftButton" data-dock-target="rail" data-dock-value="left" onclick="setPaneDock('rail','left')" aria-pressed="true">Left</button>
-                    <button type="button" class="secondary" id="railDockRightButton" data-dock-target="rail" data-dock-value="right" onclick="setPaneDock('rail','right')" aria-pressed="false">Right</button>
+                    <button type="button" class="secondary pane-dock-glyph" id="railDockLeftButton" data-dock-target="rail" data-dock-value="left" onclick="setPaneDock('rail','left')" aria-pressed="true" aria-label="Dock navigation left" title="Dock left">&#9703;</button>
+                    <button type="button" class="secondary pane-dock-glyph" id="railDockRightButton" data-dock-target="rail" data-dock-value="right" onclick="setPaneDock('rail','right')" aria-pressed="false" aria-label="Dock navigation right" title="Dock right">&#9704;</button>
                     <button type="button" class="secondary pane-width-button" onclick="stepPaneWidth('rail',-40)" aria-label="Make navigation pane narrower" title="Narrower">&#8722;</button>
                     <button type="button" class="secondary pane-width-button" onclick="stepPaneWidth('rail',40)" aria-label="Make navigation pane wider" title="Wider">&#43;</button>
                     <button type="button" class="secondary icon-button nav-pane-pin" id="navPanePinButton" onclick="toggleNavigationPaneAutoHide()" aria-label="Auto-hide navigation pane" title="Auto-hide navigation pane">
@@ -181,9 +181,9 @@
                 </div>
                 <button type="button" class="secondary icon-button mobile-sheet-close" onclick="closeMobileSheet()" aria-label="Close agenda">&times;</button>
                 <div class="pane-dock-controls" aria-label="Move agenda pane" hidden>
-                    <button type="button" class="secondary" id="agendaDockLeftButton" data-dock-target="agenda" data-dock-value="left" onclick="setPaneDock('agenda','left')" aria-pressed="false">Left</button>
-                    <button type="button" class="secondary" id="agendaDockRightButton" data-dock-target="agenda" data-dock-value="right" onclick="setPaneDock('agenda','right')" aria-pressed="true">Right</button>
-                    <button type="button" class="secondary" id="agendaDockBottomButton" data-dock-target="agenda" data-dock-value="bottom" onclick="setPaneDock('agenda','bottom')" aria-pressed="false">Bottom</button>
+                    <button type="button" class="secondary pane-dock-glyph" id="agendaDockLeftButton" data-dock-target="agenda" data-dock-value="left" onclick="setPaneDock('agenda','left')" aria-pressed="false" aria-label="Dock agenda left" title="Dock left">&#9703;</button>
+                    <button type="button" class="secondary pane-dock-glyph" id="agendaDockRightButton" data-dock-target="agenda" data-dock-value="right" onclick="setPaneDock('agenda','right')" aria-pressed="true" aria-label="Dock agenda right" title="Dock right">&#9704;</button>
+                    <button type="button" class="secondary pane-dock-glyph" id="agendaDockBottomButton" data-dock-target="agenda" data-dock-value="bottom" onclick="setPaneDock('agenda','bottom')" aria-pressed="false" aria-label="Dock agenda bottom" title="Dock bottom">&#11015;</button>
                     <button type="button" class="secondary pane-width-button" onclick="stepPaneWidth('agenda',-40)" aria-label="Make agenda pane narrower" title="Narrower">&#8722;</button>
                     <button type="button" class="secondary pane-width-button" onclick="stepPaneWidth('agenda',40)" aria-label="Make agenda pane wider" title="Wider">&#43;</button>
                     <button type="button" class="secondary icon-button nav-pane-pin" id="agendaPanePinButton" onclick="toggleAgendaPaneAutoHide()" aria-label="Auto-hide agenda pane" title="Auto-hide agenda pane">

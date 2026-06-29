@@ -1,7 +1,7 @@
 .pane-dock-controls{
     display:none;
     align-items:center;
-    gap:6px;
+    gap:4px;
     flex-wrap:wrap;
 }
 
@@ -47,10 +47,13 @@ body.show-mode-badge .device-mode-badge{
     opacity:0.9;
 }
 
+/* Compact pane header controls (override the coarse 48px button min-height). */
 .pane-dock-controls .secondary{
-    min-width:34px;
-    padding:6px 10px;
-    font-size:12px;
+    min-width:auto !important;
+    min-height:28px !important;
+    padding:3px 7px !important;
+    font-size:11px !important;
+    border-radius:6px;
 }
 
 .pane-dock-controls .secondary.is-active{
@@ -61,13 +64,40 @@ body.show-mode-badge .device-mode-badge{
 
 /* Compact +/- pane width steppers (reliable tap-to-resize). */
 .pane-dock-controls .pane-width-button{
-    min-width:36px;
-    width:36px;
-    min-height:36px;
-    padding:0;
-    font-size:20px;
+    min-width:28px !important;
+    width:28px;
+    min-height:28px !important;
+    padding:0 !important;
+    font-size:15px !important;
     font-weight:800;
     line-height:1;
+}
+
+/* Compact single-glyph dock buttons (left / right / bottom). */
+.pane-dock-controls .pane-dock-glyph{
+    min-width:28px !important;
+    width:28px;
+    min-height:28px !important;
+    padding:0 !important;
+    font-size:14px !important;
+    line-height:1;
+}
+
+/* Compact agenda size controls (Compact / Default / Expanded + slider). */
+.tablet-agenda-size-controls{
+    gap:4px;
+    flex-wrap:wrap;
+}
+
+.tablet-agenda-size-controls .tablet-agenda-size-button{
+    min-width:auto !important;
+    min-height:28px !important;
+    padding:3px 8px !important;
+    font-size:11px !important;
+}
+
+.tablet-agenda-size-controls .tablet-agenda-slider{
+    font-size:11px;
 }
 
 .settings-diagnostics{
