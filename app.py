@@ -224,6 +224,13 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/privacy")
+def privacy():
+    # Public (no login gate) so the Google OAuth consent screen and users can
+    # always reach it.
+    return render_template("privacy.html")
+
+
 # ---------------------------------------------------------------------------
 # Static routes
 # ---------------------------------------------------------------------------

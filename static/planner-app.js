@@ -5342,6 +5342,35 @@ async function writeProjectFile(handle,text){
     await writable.close()
 }
 
+// Planner data lives in localStorage, which browsers (notably iOS Safari) can
+// evict after ~7 days of inactivity. Nudge the user to export a real backup
+// file when it's been a while and there's something to lose.
+const LAST_BACKUP_KEY = "abtPlannerLastBackup"
+const BACKUP_NUDGE_AFTER_MS = 7 * 24 * 60 * 60 * 1000
+
+function recordBackup(){
+    try{ localStorage.setItem(LAST_BACKUP_KEY, new Date().toISOString()) }catch(error){}
+}
+
+function plannerHasData(){
+    if(DAY_ORDER.some(day => (weekData[day] || []).length)) return true
+    return Object.values(monthEvents).some(list => (list || []).length)
+}
+
+function maybeNudgeBackup(){
+    if(!plannerHasData()) return
+    let iso = null
+    try{ iso = localStorage.getItem(LAST_BACKUP_KEY) }catch(error){}
+    let stale = !iso || (Date.now() - new Date(iso).getTime()) > BACKUP_NUDGE_AFTER_MS
+    if(!stale) return
+    if(typeof showAppToast === "function"){
+        showAppToast(
+            iso ? "Back up your planner — it's been over a week." : "Tip: export a backup so you don't lose your planner.",
+            {label:"Back up", handler:()=>saveProject()}
+        )
+    }
+}
+
 async function saveProject(options={}){
     let saveAs = Boolean(options.saveAs)
     let text = projectJsonText()
@@ -5363,6 +5392,7 @@ async function saveProject(options={}){
 
             await writeProjectFile(projectFileHandle,text)
             savePlannerState()
+            recordBackup()
             setSaveStatus(plannerStatusLabel("Saved"))
             return
         }
@@ -5377,6 +5407,7 @@ async function saveProject(options={}){
                         text:"Choose where to save this planner file."
                     })
                     savePlannerState()
+                    recordBackup()
                     setSaveStatus(plannerStatusLabel("Shared to Files"))
                     return
                 }catch(error){
@@ -5393,6 +5424,7 @@ async function saveProject(options={}){
 
         downloadTextFile(text,normalizeProjectFileName(currentProjectName))
         savePlannerState()
+        recordBackup()
         setSaveStatus(plannerStatusLabel("Downloaded"))
     }catch(error){
         if(error?.name === "AbortError") return
@@ -8741,3 +8773,4 @@ initWorkspaceResizers()
 initFloatingPaneDrag()
 ensurePaneResizeGrips()
 initGCal()
+setTimeout(maybeNudgeBackup, 2500)
