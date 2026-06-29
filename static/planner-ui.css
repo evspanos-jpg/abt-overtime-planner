@@ -119,13 +119,13 @@ body.mode-ipad .pane-dock-controls .pane-width-button,
 body.mode-ipad .pane-dock-controls .pane-dock-glyph,
 body.mode-ipad .pane-dock-controls .pane-float-toggle,
 body.mode-ipad .pane-dock-controls .nav-pane-pin{
-    min-width:20px !important;
-    width:20px !important;
-    min-height:20px !important;
-    height:20px !important;
+    min-width:26px !important;
+    width:26px !important;
+    min-height:26px !important;
+    height:26px !important;
     padding:0 !important;
-    font-size:11px !important;
-    border-radius:5px;
+    font-size:12px !important;
+    border-radius:6px;
 }
 
 /* Compact agenda size controls (Compact / Default / Expanded + slider). */

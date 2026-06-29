@@ -27,6 +27,9 @@ npx playwright test --grep "test name here"
 # Run in headed mode (see the browser)
 npx playwright test --headed
 
+# Run the Python OT-engine unit tests (pip install -r requirements-dev.txt first)
+python -m pytest tests/test_overtime.py
+
 # Production server
 gunicorn -c gunicorn.conf.py app:app
 ```
@@ -37,7 +40,7 @@ No linting is configured. No build step — frontend is plain HTML/CSS/JS served
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `SECRET_KEY` | Flask session signing | random (dev only) |
+| `SECRET_KEY` | Flask session signing (holds the Google OAuth token — **must be set in production**; falls back to an insecure constant + logs a CRITICAL warning if unset and not in debug) | insecure dev constant |
 | `APP_PASSWORD` | Optional login gate | (none = open) |
 | `PORT` | Server port | 5000 |
 | `FLASK_DEBUG` | Enable debug mode | off |

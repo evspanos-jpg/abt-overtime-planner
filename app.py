@@ -17,7 +17,22 @@ from googleapiclient.errors import HttpError
 from analyzer import DAILY_NO_OVERTIME_LIMIT, simulate_schedule
 
 app = Flask(__name__, static_folder=None)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+
+# SECRET_KEY signs the session cookie, which holds the Google OAuth token. With a
+# known/guessable key those sessions can be forged, so a real value must be set
+# in production. We keep a dev fallback for local use but log loudly (gunicorn
+# surfaces this at startup) when it would be used outside debug.
+_FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes"}
+_SECRET_KEY = os.environ.get("SECRET_KEY")
+if not _SECRET_KEY:
+    _SECRET_KEY = "dev-secret-key-change-me"
+    if not _FLASK_DEBUG:
+        app.logger.critical(
+            "SECRET_KEY is not set: using an INSECURE default. Session cookies "
+            "(including the Google Calendar OAuth token) can be forged. Set the "
+            "SECRET_KEY environment variable to a long random value in production."
+        )
+app.secret_key = _SECRET_KEY
 app.permanent_session_lifetime = timedelta(days=365)
 STATIC_DIR = Path(app.root_path) / "static"
 
@@ -541,5 +556,4 @@ def gcal_delete():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes"}
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(host="0.0.0.0", port=port, debug=_FLASK_DEBUG)
