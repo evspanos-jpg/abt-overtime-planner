@@ -8038,14 +8038,18 @@ function applyWorkspaceLayout(layout){
             && !document.body.classList.contains("agenda-auto-hide")
             && next.agendaDock !== "bottom"
         if(ipadDocked){
-            let railCol = "minmax(150px, " + next.rail + "px)"
-            let agendaCol = "minmax(240px, " + next.agenda + "px)"
+            // Plain px tracks (no minmax/min wrappers) — simplest possible value
+            // so no browser can mis-parse or re-cap it; inline !important wins.
+            let railCol = next.rail + "px"
+            let agendaCol = next.agenda + "px"
             let cols = next.railDock === "right"
-                ? agendaCol + " 24px minmax(0, 1fr) 24px " + railCol
-                : railCol + " 24px minmax(0, 1fr) 24px " + agendaCol
+                ? agendaCol + " 24px minmax(0px, 1fr) 24px " + railCol
+                : railCol + " 24px minmax(0px, 1fr) 24px " + agendaCol
+            workspace.style.setProperty("display", "grid", "important")
             workspace.style.setProperty("grid-template-columns", cols, "important")
         }else{
             workspace.style.removeProperty("grid-template-columns")
+            workspace.style.removeProperty("display")
         }
     }
     syncPaneDockControls(next)
@@ -8101,9 +8105,12 @@ function stepPaneWidth(pane,delta){
     else layout.agenda = (Number(layout.agenda) || 0) + delta
     saveWorkspaceLayout(layout)
     if(typeof window.showAppToast === "function"){
-        let current = currentWorkspaceLayout()
-        let width = Math.round(pane === "rail" ? current.rail : current.agenda)
-        showAppToast((pane === "rail" ? "Navigation" : "Agenda") + " width: " + width + "px")
+        // Report the ACTUAL rendered width (not the saved value) so it's obvious
+        // whether the pane really resized on this device.
+        let selector = pane === "rail" ? ".calendar-rail" : ".agenda-pane"
+        let el = document.querySelector(selector)
+        let rendered = el ? Math.round(el.getBoundingClientRect().width) : 0
+        showAppToast((pane === "rail" ? "Navigation" : "Agenda") + " is now " + rendered + "px wide")
     }
     cachedTimelineHeight = null
 }
