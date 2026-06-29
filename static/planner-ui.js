@@ -186,7 +186,7 @@
         configs.forEach(config=>{
             const button = document.getElementById(config.id)
             if(!button) return
-            button.textContent = config.floating ? "Dock" : "Undock"
+            button.textContent = config.floating ? "\u21b2" : "\u2922"
             button.classList.toggle("is-active",config.floating)
             button.setAttribute("aria-pressed",String(config.floating))
             button.setAttribute("aria-label",config.floating ? "Dock " + config.pane + " pane" : "Undock " + config.pane + " pane")
@@ -230,7 +230,7 @@
                 button.type = "button"
                 button.className = "secondary pane-float-toggle"
                 button.id = config.id
-                button.textContent = "Undock"
+                button.textContent = "\u2922"
                 button.addEventListener("click",()=>window.togglePaneFloating?.(config.pane))
                 container.appendChild(button)
             }

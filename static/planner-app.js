@@ -8110,7 +8110,7 @@ function stepPaneWidth(pane,delta){
         let selector = pane === "rail" ? ".calendar-rail" : ".agenda-pane"
         let el = document.querySelector(selector)
         let rendered = el ? Math.round(el.getBoundingClientRect().width) : 0
-        showAppToast((pane === "rail" ? "Navigation" : "Agenda") + " is now " + rendered + "px wide")
+        showAppToast((pane === "rail" ? "Nav" : "Agenda") + " " + rendered + "px")
     }
     cachedTimelineHeight = null
 }

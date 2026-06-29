@@ -327,10 +327,25 @@ test("ipad panes can undock and dock back", async ({ page }) => {
     const railRect = document.querySelector(".calendar-rail")?.getBoundingClientRect();
     const mainRect = document.querySelector(".calendar-main")?.getBoundingClientRect();
     const agendaRect = document.querySelector(".agenda-pane")?.getBoundingClientRect();
+    const railControlsRect = document.querySelector(".calendar-rail .pane-dock-controls")?.getBoundingClientRect();
+    const agendaControls = document.querySelector(".agenda-pane .pane-dock-controls");
+    const visibleAgendaControlRows = agendaControls
+      ? [...agendaControls.children]
+          .filter(child => getComputedStyle(child).display !== "none")
+          .map(child => Math.round(child.getBoundingClientRect().y))
+      : [];
     return {
       deviceMode: document.body.dataset.deviceMode,
       railFloatButton: document.getElementById("railFloatToggleButton")?.textContent?.trim() || "",
       agendaFloatButton: document.getElementById("agendaFloatToggleButton")?.textContent?.trim() || "",
+      railFloatLabel: document.getElementById("railFloatToggleButton")?.getAttribute("aria-label") || "",
+      agendaFloatLabel: document.getElementById("agendaFloatToggleButton")?.getAttribute("aria-label") || "",
+      railFloatWidth: document.getElementById("railFloatToggleButton")?.getBoundingClientRect().width || 0,
+      agendaFloatWidth: document.getElementById("agendaFloatToggleButton")?.getBoundingClientRect().width || 0,
+      bottomDockVisible: getComputedStyle(document.getElementById("agendaDockBottomButton")).display !== "none",
+      agendaControlRows: new Set(visibleAgendaControlRows).size,
+      railControlRight: railControlsRect?.right || 0,
+      railRight: railRect?.right || 0,
       railFloating: workspace?.dataset.railFloating || "false",
       agendaFloating: workspace?.dataset.agendaFloating || "false",
       agendaDock: workspace?.dataset.agendaDock || "",
@@ -348,15 +363,22 @@ test("ipad panes can undock and dock back", async ({ page }) => {
   // iPad default: panels are docked in a 3-column grid (not floating) so they
   // never overlap the calendar; the user opts into floating via the Undock button.
   expect(initial.deviceMode).toBe("ipad");
-  expect(initial.railFloatButton).toBe("Undock");
-  expect(initial.agendaFloatButton).toBe("Undock");
+  expect(initial.railFloatButton).toBe("\u2922");
+  expect(initial.agendaFloatButton).toBe("\u2922");
+  expect(initial.railFloatLabel).toBe("Undock rail pane");
+  expect(initial.agendaFloatLabel).toBe("Undock agenda pane");
+  expect(initial.railFloatWidth).toBeLessThanOrEqual(32);
+  expect(initial.agendaFloatWidth).toBeLessThanOrEqual(32);
+  expect(initial.bottomDockVisible).toBe(false);
+  expect(initial.agendaControlRows).toBe(1);
+  expect(initial.railControlRight).toBeLessThanOrEqual(initial.railRight);
   expect(initial.railFloating).toBe("false");
   expect(initial.agendaFloating).toBe("false");
   expect(initial.agendaDock).toBe("right");
   expect(initial.workspaceDisplay).toBe("grid");
   expect(initial.agendaWidth).toBeGreaterThan(240);
 
-  // Undock both panels (opt into floating); buttons flip to "Dock"
+  // Undock both panels (opt into floating); buttons flip to compact dock glyphs.
   const floating = await page.evaluate(() => {
     setPaneFloating("rail", true);
     setPaneFloating("agenda", true);
@@ -372,8 +394,8 @@ test("ipad panes can undock and dock back", async ({ page }) => {
   expect(floating).toEqual({
     railFloating: "true",
     agendaFloating: "true",
-    railButton: "Dock",
-    agendaButton: "Dock"
+    railButton: "\u21b2",
+    agendaButton: "\u21b2"
   });
 
   // Dock both panels back; floating clears and the 3-column grid returns
@@ -408,8 +430,8 @@ test("ipad panes can undock and dock back", async ({ page }) => {
 
   expect(docked.railFloating).toBe("false");
   expect(docked.agendaFloating).toBe("false");
-  expect(docked.railButton).toBe("Undock");
-  expect(docked.agendaButton).toBe("Undock");
+  expect(docked.railButton).toBe("\u2922");
+  expect(docked.agendaButton).toBe("\u2922");
   expect(docked.railPosition).toBe("relative");
   expect(docked.agendaPosition).toBe("relative");
   expect(docked.workspaceDisplay).toBe("grid");
@@ -421,6 +443,20 @@ test("ipad panes can undock and dock back", async ({ page }) => {
   expect(Math.abs(docked.railY - docked.mainY)).toBeLessThan(4);
   expect(docked.agendaX).toBeGreaterThan(docked.mainX);
   expect(Math.abs(docked.agendaY - docked.mainY)).toBeLessThan(4);
+
+  const resized = await page.evaluate(() => {
+    const before = document.querySelector(".agenda-pane")?.getBoundingClientRect().width || 0;
+    stepPaneWidth("agenda", 40);
+    const after = document.querySelector(".agenda-pane")?.getBoundingClientRect().width || 0;
+    return {
+      before,
+      after,
+      toast: document.getElementById("appToast")?.textContent?.trim() || ""
+    };
+  });
+
+  expect(resized.after).toBeGreaterThan(resized.before);
+  expect(resized.toast).toMatch(/^Agenda \d+px$/);
 
   const autoHidden = await page.evaluate(() => {
     toggleNavigationPaneAutoHide();

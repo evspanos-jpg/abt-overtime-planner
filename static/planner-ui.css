@@ -83,6 +83,51 @@ body.show-mode-badge .device-mode-badge{
     line-height:1;
 }
 
+.pane-dock-controls .pane-float-toggle{
+    min-width:28px !important;
+    width:28px;
+    min-height:28px !important;
+    padding:0 !important;
+    font-size:14px !important;
+    line-height:1;
+}
+
+body.ipad-device .pane-dock-controls,
+body.mode-ipad .pane-dock-controls{
+    flex-wrap:nowrap !important;
+    gap:2px !important;
+    flex:0 0 auto;
+}
+
+body.ipad-device #agendaDockBottomButton,
+body.mode-ipad #agendaDockBottomButton{
+    display:none !important;
+}
+
+body.ipad-device .navigation-pane-header,
+body.mode-ipad .navigation-pane-header{
+    gap:4px;
+}
+
+body.ipad-device .pane-dock-controls .secondary,
+body.ipad-device .pane-dock-controls .pane-width-button,
+body.ipad-device .pane-dock-controls .pane-dock-glyph,
+body.ipad-device .pane-dock-controls .pane-float-toggle,
+body.ipad-device .pane-dock-controls .nav-pane-pin,
+body.mode-ipad .pane-dock-controls .secondary,
+body.mode-ipad .pane-dock-controls .pane-width-button,
+body.mode-ipad .pane-dock-controls .pane-dock-glyph,
+body.mode-ipad .pane-dock-controls .pane-float-toggle,
+body.mode-ipad .pane-dock-controls .nav-pane-pin{
+    min-width:20px !important;
+    width:20px !important;
+    min-height:20px !important;
+    height:20px !important;
+    padding:0 !important;
+    font-size:11px !important;
+    border-radius:5px;
+}
+
 /* Compact agenda size controls (Compact / Default / Expanded + slider). */
 .tablet-agenda-size-controls{
     gap:4px;
