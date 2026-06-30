@@ -3058,6 +3058,7 @@ function syncSettingsControls(){
     let modeBadge = document.getElementById("settingsModeBadgeInput")
     if(modeBadge) modeBadge.checked = Boolean(window.modeBadgeVisible)
     if(typeof syncDeviceDiagnostics === "function") syncDeviceDiagnostics()
+    if(typeof gcalLoadIcsUrl === "function") gcalLoadIcsUrl()
     syncOvertimeRulesSettings()
     syncOvertimeDayInspector()
 }
@@ -4113,33 +4114,123 @@ async function initGCal(){
     }catch(e){
         // Running as file:// or server not available — hide gcal UI silently
     }
-    if(localStorage.getItem("gcalIcsUrl")){
-        setTimeout(()=> gcalIcsPull(true), 800)
+    if(gcalIcsHasUrl()){
+        if(gcalIcsAutoSyncEnabled()){
+            startGcalIcsAutoSync()
+            setTimeout(()=> gcalIcsAutoSyncTick("open"), 800)   // initial month pull on open
+        }else{
+            setTimeout(()=> gcalIcsPull(true), 800)             // one-time week pull when auto-sync is off
+        }
     }
 }
 
+// Re-sync when the user returns to the planner tab (throttled inside the tick).
+document.addEventListener("visibilitychange", ()=>{
+    if(document.visibilityState === "visible") gcalIcsAutoSyncTick("refocus")
+})
+window.addEventListener("focus", ()=> gcalIcsAutoSyncTick("refocus"))
+
 const GCAL_ICS_URL_KEY = "gcalIcsUrl"
+const GCAL_ICS_AUTO_SYNC_KEY = "gcalIcsAutoSync"
+const GCAL_ICS_LAST_SYNC_KEY = "gcalIcsLastSync"
+const GCAL_ICS_AUTO_SYNC_INTERVAL_MS = 30 * 60 * 1000   // 30 minutes
+const GCAL_ICS_REFOCUS_MIN_GAP_MS = 5 * 60 * 1000       // don't re-pull on focus more than once / 5 min
+let gcalIcsAutoSyncTimer = null
+let gcalIcsAutoSyncing = false
+let gcalIcsLastAutoSyncAt = 0
+
+function gcalIcsHasUrl(){
+    return Boolean(localStorage.getItem(GCAL_ICS_URL_KEY))
+}
+
+function gcalIcsAutoSyncEnabled(){
+    return localStorage.getItem(GCAL_ICS_AUTO_SYNC_KEY) === "1" && gcalIcsHasUrl()
+}
+
+function _gcalSetIcsControlsDisabled(){
+    let hasUrl = gcalIcsHasUrl()
+    ;["gcalIcsPullButton","gcalIcsPullMonthButton","gcalIcsPullAllButton"].forEach(id=>{
+        let btn = document.getElementById(id)
+        if(btn) btn.disabled = !hasUrl
+    })
+    let toggle = document.getElementById("gcalIcsAutoSyncInput")
+    if(toggle){
+        toggle.disabled = !hasUrl
+        toggle.checked = hasUrl && localStorage.getItem(GCAL_ICS_AUTO_SYNC_KEY) === "1"
+    }
+}
 
 function gcalLoadIcsUrl(){
     let url = localStorage.getItem(GCAL_ICS_URL_KEY) || ""
     let input = document.getElementById("gcalIcsUrl")
     if(input) input.value = url
-    let hasUrl = Boolean(url)
-    ;["gcalIcsPullButton","gcalIcsPullMonthButton","gcalIcsPullAllButton"].forEach(id=>{
-        let btn = document.getElementById(id)
-        if(btn) btn.disabled = !hasUrl
-    })
+    _gcalSetIcsControlsDisabled()
+    updateGcalIcsLastSyncLabel()
 }
 
 function gcalSaveIcsUrl(){
     let url = (document.getElementById("gcalIcsUrl")?.value || "").trim()
     if(url) localStorage.setItem(GCAL_ICS_URL_KEY, url)
     else localStorage.removeItem(GCAL_ICS_URL_KEY)
-    let hasUrl = Boolean(url)
-    ;["gcalIcsPullButton","gcalIcsPullMonthButton","gcalIcsPullAllButton"].forEach(id=>{
-        let btn = document.getElementById(id)
-        if(btn) btn.disabled = !hasUrl
-    })
+    _gcalSetIcsControlsDisabled()
+    // Clearing the URL turns auto-sync off so a stale timer can't keep firing.
+    if(!url) stopGcalIcsAutoSync()
+    else if(gcalIcsAutoSyncEnabled()) startGcalIcsAutoSync()
+    updateGcalIcsLastSyncLabel()
+}
+
+function gcalToggleIcsAutoSync(enabled){
+    localStorage.setItem(GCAL_ICS_AUTO_SYNC_KEY, enabled ? "1" : "")
+    if(enabled && gcalIcsHasUrl()){
+        startGcalIcsAutoSync()
+        gcalIcsAutoSyncTick("enabled")   // sync immediately on enable
+    }else{
+        stopGcalIcsAutoSync()
+    }
+    updateGcalIcsLastSyncLabel()
+}
+
+function startGcalIcsAutoSync(){
+    stopGcalIcsAutoSync()
+    if(!gcalIcsAutoSyncEnabled()) return
+    gcalIcsAutoSyncTimer = setInterval(()=> gcalIcsAutoSyncTick("interval"), GCAL_ICS_AUTO_SYNC_INTERVAL_MS)
+}
+
+function stopGcalIcsAutoSync(){
+    if(gcalIcsAutoSyncTimer){
+        clearInterval(gcalIcsAutoSyncTimer)
+        gcalIcsAutoSyncTimer = null
+    }
+}
+
+async function gcalIcsAutoSyncTick(reason){
+    if(!gcalIcsAutoSyncEnabled()) return
+    if(gcalIcsAutoSyncing) return
+    if(typeof navigator !== "undefined" && navigator.onLine === false) return
+    if(document.visibilityState === "hidden") return
+    // Refocus/open triggers are throttled so tab-flipping can't spam the server.
+    if(reason === "refocus" && Date.now() - gcalIcsLastAutoSyncAt < GCAL_ICS_REFOCUS_MIN_GAP_MS) return
+
+    gcalIcsAutoSyncing = true
+    try{
+        await gcalIcsPull(true, true)   // silent, current month
+    }catch(e){
+        console.warn("iCal auto-sync failed:", e)
+    }finally{
+        gcalIcsAutoSyncing = false
+    }
+}
+
+function updateGcalIcsLastSyncLabel(){
+    let el = document.getElementById("gcalIcsLastSync")
+    if(!el) return
+    if(!gcalIcsHasUrl()){ el.textContent = ""; return }
+    let auto = localStorage.getItem(GCAL_ICS_AUTO_SYNC_KEY) === "1"
+    let iso = localStorage.getItem(GCAL_ICS_LAST_SYNC_KEY)
+    let last = iso
+        ? "Last auto-synced " + new Date(iso).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})
+        : "Not auto-synced yet on this device"
+    el.textContent = auto ? last : "Auto-sync is off — using the buttons above pulls on demand."
 }
 
 async function gcalIcsPull(silent = false, range = false){
@@ -4184,6 +4275,11 @@ async function gcalIcsPull(silent = false, range = false){
     }
 
     let data = await resp.json()
+    // Record a successful fetch so the auto-sync label and refocus throttle stay current.
+    gcalIcsLastAutoSyncAt = Date.now()
+    try{ localStorage.setItem(GCAL_ICS_LAST_SYNC_KEY, new Date().toISOString()) }catch(e){}
+    updateGcalIcsLastSyncLabel()
+
     let events = data.events || []
     let existingIds = _gcalExistingIds()
     let existingSignatures = _gcalExistingSignatures(anchorDate)

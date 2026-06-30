@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=b3cfbb939a">
+    <link rel="stylesheet" href="static/style.css?v=3ea52d5c85">
     <link rel="stylesheet" href="static/planner-ui.css?v=87a0b1d8b7">
 
     <!-- ✅ LIBRARIES -->
@@ -130,13 +130,20 @@
         <main class="calendar-main" aria-label="Planner calendar">
             <section class="timeline-panel" aria-label="Weekly timeline">
                 <div class="timeline-header">
-                    <div class="timeline-header-copy">
-                        <span id="weekTitle">Weekly calls</span>
-                        <span id="weekRangeText">10:00 AM - 11:00 PM</span>
+                    <div class="timeline-header-lead">
+                        <div class="timeline-period-nav" role="group" aria-label="Navigate calendar period">
+                            <button type="button" class="secondary icon-button timeline-nav-button" onclick="changeMobilePeriod(-1)" aria-label="Previous period" title="Previous">&#8249;</button>
+                            <button type="button" class="secondary timeline-today-button" onclick="goToCurrentWeek()" aria-label="Go to today" title="Today">Today</button>
+                            <button type="button" class="secondary icon-button timeline-nav-button" onclick="changeMobilePeriod(1)" aria-label="Next period" title="Next">&#8250;</button>
+                        </div>
+                        <div class="timeline-header-copy">
+                            <span id="weekTitle">Weekly calls</span>
+                            <span id="weekRangeText">10:00 AM - 11:00 PM</span>
+                        </div>
                     </div>
                     <div class="timeline-header-actions" role="group" aria-label="Timeline actions">
-                        <button type="button" class="secondary icon-button" data-history="undo" onclick="undoLastChange()" aria-label="Undo" title="Undo" disabled><span class="button-icon icon-undo" aria-hidden="true"></span></button>
-                        <button type="button" class="secondary icon-button" data-history="redo" onclick="redoLastChange()" aria-label="Redo" title="Redo" disabled><span class="button-icon icon-redo" aria-hidden="true"></span></button>
+                        <button type="button" class="secondary timeline-history-button" data-history="undo" onclick="undoLastChange()" aria-label="Undo last change" title="Undo last change" disabled><span class="history-glyph" aria-hidden="true">&#8634;</span> Undo</button>
+                        <button type="button" class="secondary timeline-history-button" data-history="redo" onclick="redoLastChange()" aria-label="Redo last change" title="Redo last change" disabled>Redo <span class="history-glyph" aria-hidden="true">&#8635;</span></button>
                         <button type="button" class="secondary" id="timelineFitButton" onclick="setTimelineLayoutMode('fit')">Fit</button>
                         <button type="button" class="secondary" id="timelineComfortButton" onclick="setTimelineLayoutMode('comfort')">Comfort</button>
                     </div>
@@ -623,6 +630,11 @@
                             <button type="button" id="gcalIcsPullMonthButton" onclick="gcalIcsPullMonth()" disabled>Sync month</button>
                             <button type="button" id="gcalIcsPullAllButton" onclick="gcalIcsPullAll()" disabled>Sync full calendar</button>
                         </div>
+                        <label class="settings-toggle">
+                            <input type="checkbox" id="gcalIcsAutoSyncInput" onchange="gcalToggleIcsAutoSync(this.checked)" disabled>
+                            <span>Auto-sync this calendar (every 30 min, plus on open)</span>
+                        </label>
+                        <p class="gcal-hint" id="gcalIcsLastSync"></p>
                         <details class="gcal-hint-details">
                             <summary>Where do I find my calendar's iCal URL?</summary>
                             <ul class="gcal-hint-list">
@@ -776,7 +788,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=df75980892"></script>
+<script src="static/planner-app.js?v=c8a48563f4"></script>
 
 </body>
 </html>
