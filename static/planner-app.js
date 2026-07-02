@@ -133,6 +133,7 @@ let suppressNextTouchTimelineClick = false
 let penTimelineTap = null
 let cachedTimelineHeight = null
 let resizeUpdateTimer = null
+let orientationSettleTimer = null
 let viewportUpdateTimer = null
 let lastViewportWidth = null
 let lastViewportHeight = null
@@ -5157,20 +5158,42 @@ document.addEventListener("pointerdown", event=>{
     }
 }, {capture:true})
 
+// Re-apply the responsive layout for the current viewport. Forces past the
+// scheduleViewportMetricUpdate significance gate, so it also fixes the case
+// where an earlier relayout committed stale (pre-rotation) dimensions.
+function commitResponsiveLayout(){
+    cachedTimelineHeight = null
+    let bounds = currentViewportBounds()
+    lastViewportWidth = bounds.width
+    lastViewportHeight = bounds.height
+    updateAppViewportMetrics()
+    syncInputCapabilityClasses?.()
+    applyWorkspaceLayout(currentWorkspaceLayout())
+    applyTimelineZoom({render:false})
+    if(!isMobileLayout()) closeMobileSheet()
+    renderWeek()
+    update()
+}
+
 window.addEventListener("resize",()=>{
     scheduleViewportMetricUpdate()
     cachedTimelineHeight = null
     clearTimeout(resizeUpdateTimer)
-    resizeUpdateTimer = setTimeout(()=>{
-        applyWorkspaceLayout(currentWorkspaceLayout())
-        applyTimelineZoom({render:false})
-        if(!isMobileLayout()) closeMobileSheet()
-        renderWeek()
-        update()
-    },150)
+    resizeUpdateTimer = setTimeout(commitResponsiveLayout,150)
 })
 
-window.addEventListener("orientationchange",scheduleViewportMetricUpdate,{passive:true})
+window.addEventListener("orientationchange",()=>{
+    scheduleViewportMetricUpdate()
+    // iOS Safari often still reports the pre-rotation viewport size when the
+    // resize/orientationchange handlers first run, so the docked iPad panes get
+    // clamped to the old orientation's width and landscape looks broken until the
+    // next resize. Re-apply once the new orientation has settled — twice, since
+    // the settle time varies by device.
+    clearTimeout(orientationSettleTimer)
+    orientationSettleTimer = setTimeout(commitResponsiveLayout,350)
+    setTimeout(commitResponsiveLayout,600)
+},{passive:true})
+
 window.visualViewport?.addEventListener("resize",scheduleViewportMetricUpdate,{passive:true})
 
 //--------------------------------
