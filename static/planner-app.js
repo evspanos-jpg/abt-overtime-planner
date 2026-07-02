@@ -8152,12 +8152,20 @@ function downloadCsv(text, filename){
 
 function exportCSV(){
     saveDay()
-    let {blocks, month} = chooseExportBlocks()
+    // Honour the same export-scope selector as PDF/ICS so the CSV matches what
+    // the user picked, not just the current view.
+    let scope = getExportScope()
+    let blocks, label
+    if(scope === "selected-month-ot"){ blocks = getSelectedMonthOtExportBlocks(); label = "month-ot" }
+    else if(scope === "ot-date-range"){ blocks = getOtDateRangeExportBlocks(); label = "ot-range" }
+    else if(scope === "month"){ blocks = getMonthPdfExportBlocks(); label = "month" }
+    else { let chosen = chooseExportBlocks(); blocks = chosen.blocks; label = chosen.month ? "month" : "week" }
+
     if(!blocks.length){
         alert("No scheduled blocks to export to CSV.")
         return
     }
-    downloadCsv(blocksToCsv(blocks), "abt-overtime-" + (month ? "month" : "week") + ".csv")
+    downloadCsv(blocksToCsv(blocks), "abt-overtime-" + label + ".csv")
     setSaveStatus("Exported " + blocks.length + " row" + (blocks.length === 1 ? "" : "s") + " to CSV")
 }
 
