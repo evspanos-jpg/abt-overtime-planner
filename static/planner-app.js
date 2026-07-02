@@ -8035,6 +8035,47 @@ function getWeekPdfExportBlocks(){
         })
 }
 
+// All events in the anchor month, from monthEvents (synced/imported calendar)
+// AND the selected week's planner blocks, with dateKey + OT applied. View-
+// independent so Export PDF works even when the current week has no typed-in
+// blocks. Dedupes identical events that exist in both stores.
+function getMonthPdfExportBlocks(anchor){
+    let anchorDate = anchor || monthAnchorDate ||
+        (selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : new Date())
+    let inMonth = d => d && !isNaN(d.getTime()) &&
+        d.getFullYear() === anchorDate.getFullYear() && d.getMonth() === anchorDate.getMonth()
+
+    let grouped = new Map()
+    let seen = new Set()
+    let add = (dKey, ev) => {
+        let start = Number(ev.start) || START_HOUR
+        let dur = Number(ev.dur) || 0
+        let sig = dKey + "|" + start + "|" + dur + "|" + (ev.title || "")
+        if(seen.has(sig)) return
+        seen.add(sig)
+        if(!grouped.has(dKey)) grouped.set(dKey, [])
+        grouped.get(dKey).push({start, dur, title:ev.title || "Block", location:ev.location || "", description:ev.description || ""})
+    }
+
+    Object.keys(monthEvents).forEach(key=>{
+        if(inMonth(parseDateKey(key))) (monthEvents[key] || []).forEach(ev=>add(key, ev))
+    })
+    getSelectedWeekExportBlocks().forEach(block=>{
+        if(inMonth(block.date)) add(dateKey(block.date), block)
+    })
+
+    return Array.from(grouped.entries())
+        .sort((a,b)=>String(a[0]).localeCompare(String(b[0])))
+        .flatMap(([dKey,events])=>{
+            let schedule = events.map(event=>({...event}))
+            applyDailyOvertime(schedule)
+            let date = parseDateKey(dKey)
+            return schedule
+                .sort((a,b)=>a.start-b.start)
+                .map(block=>({date, dateKey:dKey, ...block}))
+        })
+}
+
 function csvEscape(value){
     let s = String(value == null ? "" : value)
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
@@ -8298,6 +8339,9 @@ function exportPDF(){
     if(scope === "month"){
         let filterSummary = monthAgendaFilterSummary()
         let exportBlocks = visibleAgendaBlocks()
+        // visibleAgendaBlocks is view-filtered and comes back empty outside month
+        // view; fall back to the whole month so the export isn't wrongly empty.
+        if(!exportBlocks.length) exportBlocks = getMonthPdfExportBlocks()
         let totals = calculatePdfOtTotals(exportBlocks)
         const { jsPDF } = window.jspdf
         let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
@@ -8310,10 +8354,33 @@ function exportPDF(){
         return
     }
 
-    let exportBlocks = getWeekPdfExportBlocks()
+    // Default: export the selected week. But if you're in month view, or the
+    // selected week has no typed-in blocks while the month has events (e.g. a
+    // synced calendar lands in monthEvents), export the whole month so the PDF
+    // is never wrongly empty.
+    let weekBlocks = getWeekPdfExportBlocks()
+    let useMonth = plannerView === "month" || weekBlocks.length === 0
+    let exportBlocks = useMonth ? getMonthPdfExportBlocks() : weekBlocks
+    if(useMonth && !exportBlocks.length && weekBlocks.length === 0 && plannerView !== "month"){
+        // Month is also empty — keep the week's "no blocks" message.
+        useMonth = false
+        exportBlocks = weekBlocks
+    }
+
     let totals = calculatePdfOtTotals(exportBlocks)
     const { jsPDF } = window.jspdf
     let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
+
+    if(useMonth){
+        renderAgendaPdfBlocks(doc,exportBlocks,{
+            title:"ABT Overtime Planner - "+monthName(monthAnchorDate),
+            summary:"Month: "+monthName(monthAnchorDate)+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours+"\n"+effectiveOvertimeRulesSummaryText(),
+            filename:"planner-month.pdf",
+            emptyMessage:"No scheduled blocks were found this month."
+        })
+        return
+    }
+
     let weekLabel = selectedWeekStartKey
         ? weekRangeLabel(parseDateKey(selectedWeekStartKey))
         : "Current week"
