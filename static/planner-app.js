@@ -3279,6 +3279,7 @@ function buildMobileActionsSheet(){
     appendMobileExportScope(body)
     item("Export PDF", exportPDF, {iconClass:"icon-pdf"})
     item("Export PDF (OT only)", exportWeekOtPDF, {iconClass:"icon-pdf"})
+    item("Export CSV", exportCSV, {iconClass:"icon-export"})
     item("Export Calendar (.ics)", exportICS, {iconClass:"icon-export"})
 
     section("File")
@@ -3531,6 +3532,7 @@ function rebuildToolbar(){
             menuItem(calendarMenu,"Export Calendar",exportICS,"",{iconClass:"icon-export"})
             menuItem(calendarMenu,"Export PDF",exportPDF,"",{iconClass:"icon-pdf"})
             menuItem(calendarMenu,"Export PDF (OT only)",exportWeekOtPDF,"",{iconClass:"icon-pdf"})
+            menuItem(calendarMenu,"Export CSV",exportCSV,"",{iconClass:"icon-export"})
             appendExportScope(calendarMenu)
             menuSection(calendarMenu,"Remove")
             menuItem(calendarMenu,"Remove Imported Calendar",removeImportedCalendar,"",{iconClass:"icon-trash",className:"danger"})
@@ -3874,6 +3876,18 @@ function renderBlock(block){
     })
     el.appendChild(editButton)
 
+    let copyButton=document.createElement("button")
+    copyButton.type="button"
+    copyButton.className="event-edit-button event-copy-button"
+    copyButton.innerText="Copy"
+    copyButton.setAttribute("aria-label","Copy block details to clipboard")
+    copyButton.addEventListener("pointerdown",event=>event.stopPropagation())
+    copyButton.addEventListener("click",event=>{
+        event.stopPropagation()
+        openBlockCopyMenu(block,copyButton)
+    })
+    el.appendChild(copyButton)
+
     let label=document.createElement("div")
     label.className="label"
 
@@ -3917,6 +3931,296 @@ function renderBlock(block){
     ].filter(Boolean).join("\n")
 
     el.appendChild(label)
+}
+
+// Build the clipboard payload for a single block, matching what the block shows.
+// Returns both plain text (for plain fields) and HTML (for rich paste into
+// email / Word / Slack).
+function eventClipboardPayload(block){
+    let timeRange = formatTime(block.start)+" - "+formatTime(block.start+block.dur)
+    let pay = calculateBlockPay(block)
+    let dateLabel = ""
+    if(block.dateKey){
+        let d = parseDateKey(block.dateKey)
+        if(d && !isNaN(d.getTime())){
+            dateLabel = d.toLocaleDateString([], {weekday:"long", month:"long", day:"numeric", year:"numeric"})
+        }
+    }
+    let ot = calculateBlockOvertime(block)
+    let dbl = calculateBlockDoubleOvertime(block)
+
+    let payLine = "Pay: "+formatCurrencyAmount(pay)
+    let otBits = []
+    if(ot > 0) otBits.push((+ot.toFixed(2))+"h OT")
+    if(dbl > 0) otBits.push((+dbl.toFixed(2))+"h double OT")
+    if(otBits.length) payLine += " ("+otBits.join(", ")+")"
+
+    let lines = [block.title || "Block"]
+    let subLine = [dateLabel,timeRange].filter(Boolean).join(" · ")
+    if(subLine) lines.push(subLine)
+    if(block.location) lines.push(block.location)
+    if(block.description) lines.push(block.description)
+    lines.push(payLine)
+    let text = lines.join("\n")
+
+    let esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    let htmlLines = ["<strong>"+esc(block.title || "Block")+"</strong>"]
+    let htmlSub = [dateLabel,timeRange].filter(Boolean).map(esc).join(" &middot; ")
+    if(htmlSub) htmlLines.push(htmlSub)
+    if(block.location) htmlLines.push(esc(block.location))
+    if(block.description) htmlLines.push(esc(block.description))
+    htmlLines.push(esc(payLine))
+    let html = "<div>"+htmlLines.join("<br>")+"</div>"
+
+    return {text,html}
+}
+
+async function writeRichClipboard(text,html){
+    try{
+        if(navigator.clipboard && window.ClipboardItem){
+            await navigator.clipboard.write([new ClipboardItem({
+                "text/plain": new Blob([text],{type:"text/plain"}),
+                "text/html":  new Blob([html],{type:"text/html"})
+            })])
+            return true
+        }
+    }catch(e){ /* fall through to plain text */ }
+    try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+            await navigator.clipboard.writeText(text)
+            return true
+        }
+    }catch(e){ /* fall through to legacy */ }
+    try{
+        let ta = document.createElement("textarea")
+        ta.value = text
+        ta.setAttribute("readonly","")
+        ta.style.position = "fixed"
+        ta.style.top = "-1000px"
+        ta.style.opacity = "0"
+        document.body.appendChild(ta)
+        ta.select()
+        let ok = document.execCommand("copy")
+        document.body.removeChild(ta)
+        return ok
+    }catch(e){ return false }
+}
+
+async function copyPlainText(text){
+    try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+            await navigator.clipboard.writeText(text)
+            return true
+        }
+    }catch(e){ /* fall through to legacy */ }
+    try{
+        let ta = document.createElement("textarea")
+        ta.value = text
+        ta.setAttribute("readonly","")
+        ta.style.position = "fixed"
+        ta.style.top = "-1000px"
+        ta.style.opacity = "0"
+        document.body.appendChild(ta)
+        ta.select()
+        let ok = document.execCommand("copy")
+        document.body.removeChild(ta)
+        return ok
+    }catch(e){ return false }
+}
+
+// URL of the ABT Overtime Submission JotForm the user fills from these blocks.
+const OVERTIME_FORM_URL = "https://form.jotform.com/240808251184050"
+
+// Per-user details prepended to the copy menu so the whole form is one paste
+// pass. These are entered per device in Settings and stored in localStorage
+// (key "abtOvertimeProfile") — never hardcoded, since each app user is different.
+const FORM_PROFILE_DEFAULT = {
+    firstName: "",
+    lastName: "",
+    email: "",
+    position: ""
+}
+
+function getFormProfile(){
+    try{
+        let saved = JSON.parse(localStorage.getItem("abtOvertimeProfile") || "null")
+        if(saved && typeof saved === "object") return {...FORM_PROFILE_DEFAULT, ...saved}
+    }catch(e){ /* fall back to defaults */ }
+    return FORM_PROFILE_DEFAULT
+}
+
+function loadFormProfile(){
+    let p = getFormProfile()
+    let set = (id,val)=>{ let el = document.getElementById(id); if(el) el.value = val || "" }
+    set("otFormFirstName", p.firstName)
+    set("otFormLastName", p.lastName)
+    set("otFormEmail", p.email)
+    set("otFormPosition", p.position)
+}
+
+function saveFormProfile(){
+    let get = id => (document.getElementById(id)?.value || "").trim()
+    let profile = {
+        firstName: get("otFormFirstName"),
+        lastName:  get("otFormLastName"),
+        email:     get("otFormEmail"),
+        position:  get("otFormPosition")
+    }
+    try{ localStorage.setItem("abtOvertimeProfile", JSON.stringify(profile)) }catch(e){}
+}
+
+// One entry per pasteable field, so a block can be filled into the overtime
+// JotForm one field at a time. The form's per-event fields (Date of Work,
+// Schedule, Comments) are listed first and labelled to match the form; the rest
+// are extra values that may be useful. Only fields with a value are included.
+function blockCopyFields(block){
+    let timeRange = formatTime(block.start)+" - "+formatTime(block.start + block.dur)
+    let dateMDY = ""
+    let dayName = ""
+    // Week-view blocks carry `day` but not `dateKey` (see getSchedule), so fall
+    // back to the selected week's date for that weekday.
+    let d = null
+    if(block.dateKey){
+        d = parseDateKey(block.dateKey)
+    }else if(block.day){
+        let idx = DAY_ORDER.indexOf(block.day)
+        let ws = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : startOfPlannerWeek(new Date())
+        if(idx >= 0 && ws && !isNaN(ws.getTime())) d = addDays(ws, idx)
+    }
+    if(d && !isNaN(d.getTime())){
+        dateMDY  = d.toLocaleDateString("en-US")
+        dayName  = d.toLocaleDateString("en-US",{weekday:"long"})
+    }
+    let comments = block.title || "Block"
+    if(block.location) comments += " ("+block.location+")"
+
+    let profile = getFormProfile()
+    let fields = []
+    if(profile.firstName) fields.push({label:"First Name", value: profile.firstName})
+    if(profile.lastName)  fields.push({label:"Last Name",  value: profile.lastName})
+    if(profile.email)     fields.push({label:"Email",      value: profile.email})
+    if(profile.position)  fields.push({label:"Position",   value: profile.position})
+    if(dateMDY) fields.push({label:"Date of Work", value: dateMDY})
+    fields.push({label:"Schedule", value: timeRange})
+    fields.push({label:"Comments", value: comments})
+    fields.push({label:"Title", value: block.title || "Block"})
+    if(dayName) fields.push({label:"Day", value: dayName})
+    fields.push({label:"Start", value: formatTime(block.start)})
+    fields.push({label:"End", value: formatTime(block.start + block.dur)})
+    fields.push({label:"Hours", value: String(+block.dur.toFixed(2))})
+    if(block.location) fields.push({label:"Location", value: block.location})
+    if(block.description) fields.push({label:"Notes", value: block.description})
+    let ot = calculateBlockOvertime(block)
+    if(ot > 0) fields.push({label:"OT hours", value: String(+ot.toFixed(2))})
+    let dbl = calculateBlockDoubleOvertime(block)
+    if(dbl > 0) fields.push({label:"Double OT hours", value: String(+dbl.toFixed(2))})
+    let pay = calculateBlockPay(block)
+    if(pay > 0) fields.push({label:"OT pay", value: formatCurrencyAmount(pay)})
+    return fields
+}
+
+let blockCopyMenuEl = null
+
+function closeBlockCopyMenu(){
+    if(!blockCopyMenuEl) return
+    blockCopyMenuEl.remove()
+    blockCopyMenuEl = null
+    document.removeEventListener("pointerdown", _blockCopyMenuOutside, true)
+    document.removeEventListener("keydown", _blockCopyMenuKey, true)
+    window.removeEventListener("resize", closeBlockCopyMenu)
+    document.getElementById("timeline-container")?.removeEventListener("scroll", closeBlockCopyMenu)
+}
+
+function _blockCopyMenuOutside(e){
+    if(blockCopyMenuEl && !blockCopyMenuEl.contains(e.target)) closeBlockCopyMenu()
+}
+
+function _blockCopyMenuKey(e){
+    if(e.key === "Escape") closeBlockCopyMenu()
+}
+
+function _flagFieldCopied(btn, ok){
+    let status = btn.querySelector(".block-copy-status")
+    if(!status){
+        status = document.createElement("span")
+        status.className = "block-copy-status"
+        btn.appendChild(status)
+    }
+    status.textContent = ok ? "✓" : "Ctrl+C"
+    setSaveStatus(ok ? "Copied to clipboard" : "Couldn't copy — clipboard blocked")
+    clearTimeout(btn._copyTimer)
+    btn._copyTimer = setTimeout(()=>{ if(status) status.textContent = "" }, 1500)
+}
+
+function openBlockCopyMenu(block, anchorBtn){
+    closeBlockCopyMenu()
+
+    let menu = document.createElement("div")
+    menu.className = "block-copy-menu"
+    menu.setAttribute("role","menu")
+
+    let heading = document.createElement("div")
+    heading.className = "block-copy-menu-title"
+    heading.textContent = "Copy a field"
+    menu.appendChild(heading)
+
+    let allBtn = document.createElement("button")
+    allBtn.type = "button"
+    allBtn.className = "block-copy-menu-item block-copy-menu-all"
+    let allLabel = document.createElement("span")
+    allLabel.className = "block-copy-field"
+    allLabel.textContent = "Everything"
+    allBtn.appendChild(allLabel)
+    allBtn.addEventListener("click", async ()=>{
+        let {text,html} = eventClipboardPayload(block)
+        _flagFieldCopied(allBtn, await writeRichClipboard(text,html))
+    })
+    menu.appendChild(allBtn)
+
+    blockCopyFields(block).forEach(f=>{
+        let item = document.createElement("button")
+        item.type = "button"
+        item.className = "block-copy-menu-item"
+        let lab = document.createElement("span")
+        lab.className = "block-copy-field"
+        lab.textContent = f.label
+        let val = document.createElement("span")
+        val.className = "block-copy-value"
+        val.textContent = f.value
+        item.appendChild(lab)
+        item.appendChild(val)
+        item.addEventListener("click", async ()=>{
+            _flagFieldCopied(item, await copyPlainText(f.value))
+        })
+        menu.appendChild(item)
+    })
+
+    let formLink = document.createElement("a")
+    formLink.className = "block-copy-menu-link"
+    formLink.href = OVERTIME_FORM_URL
+    formLink.target = "_blank"
+    formLink.rel = "noopener"
+    formLink.textContent = "Open overtime form ↗"
+    menu.appendChild(formLink)
+
+    document.body.appendChild(menu)
+
+    let rect = (anchorBtn || document.body).getBoundingClientRect()
+    let mw = menu.offsetWidth
+    let mh = menu.offsetHeight
+    let left = Math.min(rect.left, window.innerWidth - mw - 8)
+    let top = rect.bottom + 6
+    if(top + mh > window.innerHeight - 8) top = Math.max(8, rect.top - mh - 6)
+    menu.style.left = Math.max(8, left) + "px"
+    menu.style.top = Math.max(8, top) + "px"
+
+    blockCopyMenuEl = menu
+    setTimeout(()=>{
+        document.addEventListener("pointerdown", _blockCopyMenuOutside, true)
+        document.addEventListener("keydown", _blockCopyMenuKey, true)
+        window.addEventListener("resize", closeBlockCopyMenu)
+        document.getElementById("timeline-container")?.addEventListener("scroll", closeBlockCopyMenu)
+    }, 0)
 }
 
 function formatTime(value){
@@ -4248,8 +4552,14 @@ async function gcalIcsPull(silent = false, range = false){
         rangeStart = new Date(anchorDate.getFullYear() - 1, 0, 1)
         rangeEnd   = new Date(anchorDate.getFullYear() + 2, 0, 1)
     }else if(rangeMode === "month"){
+        // Span every month the visible week touches, not just the month of the
+        // week's Monday. Otherwise a week straddling a boundary (e.g. Jun 29–Jul 5)
+        // — or any sync run on the 1st of a month — pulls the previous month and
+        // silently drops the days the user is actually looking at, since the
+        // server filters events to [start, end). See analyzer/_parse_ics window.
+        let weekEndDate = addDays(anchorDate, 6)
         rangeStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1)
-        rangeEnd   = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 1)
+        rangeEnd   = new Date(weekEndDate.getFullYear(), weekEndDate.getMonth() + 1, 1)
     }else{
         rangeStart = anchorDate
         rangeEnd   = addDays(anchorDate, 7)
@@ -7723,6 +8033,61 @@ function getWeekPdfExportBlocks(){
         })
 }
 
+function csvEscape(value){
+    let s = String(value == null ? "" : value)
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+}
+
+// One row per block, with computed OT — spreadsheet-friendly for the overtime form.
+function blocksToCsv(blocks){
+    let rows = [["Date","Day","Start","End","Hours","Title","Location","Description","OT Hours","Double OT Hours","OT Pay"]]
+    blocks.forEach(b=>{
+        let date = b.date instanceof Date ? b.date : (b.dateKey ? parseDateKey(b.dateKey) : null)
+        let hasDate = date && !isNaN(date.getTime())
+        let ot = calculateBlockOvertime(b)
+        let dbl = calculateBlockDoubleOvertime(b)
+        rows.push([
+            hasDate ? date.toLocaleDateString("en-US") : (b.dateKey || ""),
+            hasDate ? date.toLocaleDateString("en-US",{weekday:"long"}) : (DAY_LABELS[b.day] || b.day || ""),
+            formatTime(b.start),
+            formatTime(b.start + b.dur),
+            +Number(b.dur).toFixed(2),
+            b.title || "Block",
+            b.location || "",
+            b.description || "",
+            +ot.toFixed(2),
+            +dbl.toFixed(2),
+            formatCurrencyAmount(calculateBlockPay(b))
+        ])
+    })
+    return rows.map(row => row.map(csvEscape).join(",")).join("\r\n")
+}
+
+function downloadCsv(text, filename){
+    // Prepend a BOM so Excel opens the UTF-8 file with correct characters.
+    let blob = new Blob(["﻿" + text], {type:"text/csv;charset=utf-8"})
+    let url = URL.createObjectURL(blob)
+    let a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(()=>URL.revokeObjectURL(url), 1000)
+}
+
+function exportCSV(){
+    saveDay()
+    let month = plannerView === "month"
+    let blocks = month ? visibleAgendaBlocks() : getWeekPdfExportBlocks()
+    if(!blocks || !blocks.length){
+        alert("No scheduled blocks to export to CSV.")
+        return
+    }
+    downloadCsv(blocksToCsv(blocks), "abt-overtime-" + (month ? "month" : "week") + ".csv")
+    setSaveStatus("Exported " + blocks.length + " row" + (blocks.length === 1 ? "" : "s") + " to CSV")
+}
+
 function collectOtExportBlocksFromDateEntries(entries){
     return (entries || [])
         .sort((a,b)=>String(a[0]).localeCompare(String(b[0])))
@@ -8847,4 +9212,5 @@ initWorkspaceResizers()
 initFloatingPaneDrag()
 ensurePaneResizeGrips()
 initGCal()
+loadFormProfile()
 setTimeout(maybeNudgeBackup, 2500)

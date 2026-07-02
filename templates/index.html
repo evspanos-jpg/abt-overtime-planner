@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=3ea52d5c85">
+    <link rel="stylesheet" href="static/style.css?v=f2ebef32d4">
     <link rel="stylesheet" href="static/planner-ui.css?v=87a0b1d8b7">
 
     <!-- ✅ LIBRARIES -->
@@ -614,6 +614,32 @@
                     <div class="ot-rules-list ot-inspector-blocks" id="otInspectorBlockList"></div>
                 </section>
 
+                <section class="settings-card settings-card-wide" id="settingsOvertimeFormSection">
+                    <h4>Overtime Form Details</h4>
+                    <p class="settings-card-subtitle">Your details for the ABT overtime form — used by each block's <strong>Copy</strong> button so you can fill the form field by field. Saved on this device only.</p>
+                    <label class="settings-field">
+                        <span>First name</span>
+                        <input type="text" id="otFormFirstName" autocomplete="given-name" oninput="saveFormProfile()">
+                    </label>
+                    <label class="settings-field">
+                        <span>Last name</span>
+                        <input type="text" id="otFormLastName" autocomplete="family-name" oninput="saveFormProfile()">
+                    </label>
+                    <label class="settings-field">
+                        <span>Email</span>
+                        <input type="email" id="otFormEmail" autocomplete="email" spellcheck="false" oninput="saveFormProfile()">
+                    </label>
+                    <label class="settings-field">
+                        <span>Position</span>
+                        <select id="otFormPosition" onchange="saveFormProfile()">
+                            <option value="">Select…</option>
+                            <option value="Dancer">Dancer</option>
+                            <option value="Pianist">Pianist</option>
+                            <option value="Director of Repertoire">Director of Repertoire</option>
+                        </select>
+                    </label>
+                </section>
+
                 <section class="settings-card settings-card-wide" id="settingsGcalSection">
                     <h4>Calendar Sync</h4>
                     <p class="settings-card-subtitle">Set up Google, Outlook, or iCloud here once — then use Sync from the menu.</p>
@@ -788,7 +814,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=c8a48563f4"></script>
+<script src="static/planner-app.js?v=4206601dc7"></script>
 
 </body>
 </html>
