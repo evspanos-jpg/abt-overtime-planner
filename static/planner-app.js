@@ -7810,6 +7810,13 @@ function exportICS(){
                 ? getOtDateRangeExportBlocks()
             : getSelectedWeekExportBlocks()
 
+    // Default (week) scope: if the typed-in week is empty but the month has
+    // events (synced calendars land in monthEvents), export the month instead
+    // so Export Calendar isn't wrongly empty.
+    if(exportBlocks.length===0 && scope!=="month" && scope!=="selected-month-ot" && scope!=="ot-date-range"){
+        exportBlocks = getMonthPdfExportBlocks()
+    }
+
     if(exportBlocks.length===0){
         alert(
             scope==="selected-month-ot"
@@ -8076,6 +8083,17 @@ function getMonthPdfExportBlocks(anchor){
         })
 }
 
+// Blocks that Export PDF/CSV should use: the selected week, or the whole month
+// when in month view or when the week has no typed-in blocks (synced events
+// live in monthEvents). Shared so PDF and CSV never disagree. Returns {blocks, month}.
+function chooseExportBlocks(){
+    let weekBlocks = getWeekPdfExportBlocks()
+    let month = plannerView === "month" || weekBlocks.length === 0
+    let blocks = month ? getMonthPdfExportBlocks() : weekBlocks
+    if(month && !blocks.length && plannerView !== "month"){ month = false; blocks = weekBlocks }
+    return {blocks, month}
+}
+
 function csvEscape(value){
     let s = String(value == null ? "" : value)
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
@@ -8121,9 +8139,8 @@ function downloadCsv(text, filename){
 
 function exportCSV(){
     saveDay()
-    let month = plannerView === "month"
-    let blocks = month ? visibleAgendaBlocks() : getWeekPdfExportBlocks()
-    if(!blocks || !blocks.length){
+    let {blocks, month} = chooseExportBlocks()
+    if(!blocks.length){
         alert("No scheduled blocks to export to CSV.")
         return
     }
@@ -8358,15 +8375,7 @@ function exportPDF(){
     // selected week has no typed-in blocks while the month has events (e.g. a
     // synced calendar lands in monthEvents), export the whole month so the PDF
     // is never wrongly empty.
-    let weekBlocks = getWeekPdfExportBlocks()
-    let useMonth = plannerView === "month" || weekBlocks.length === 0
-    let exportBlocks = useMonth ? getMonthPdfExportBlocks() : weekBlocks
-    if(useMonth && !exportBlocks.length && weekBlocks.length === 0 && plannerView !== "month"){
-        // Month is also empty — keep the week's "no blocks" message.
-        useMonth = false
-        exportBlocks = weekBlocks
-    }
-
+    let {blocks: exportBlocks, month: useMonth} = chooseExportBlocks()
     let totals = calculatePdfOtTotals(exportBlocks)
     const { jsPDF } = window.jspdf
     let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
