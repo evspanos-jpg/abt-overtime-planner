@@ -2239,9 +2239,8 @@ body.selecting-blocks * {
 
 .month-event strong,
 .month-event span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .month-event strong {
@@ -12213,10 +12212,7 @@ body.mode-phone .month-event strong {
     font-size: 11px;
     line-height: 1.16;
     white-space: normal;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    overflow-wrap: anywhere;
 }
 
 body.mode-phone .month-event span {

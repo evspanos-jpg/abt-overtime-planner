@@ -8083,6 +8083,19 @@ function getMonthPdfExportBlocks(anchor){
         })
 }
 
+// Overtime-day blocks for the anchor month, using the same OT-day collection as
+// the week OT export (keeps full days that incur OT so daily totals compute
+// correctly), so Export PDF (OT only) is consistent whether week or month.
+function getMonthOtExportBlocks(){
+    let grouped = new Map()
+    getMonthPdfExportBlocks().forEach(block=>{
+        let key = block.dateKey || dateKey(block.date)
+        if(!grouped.has(key)) grouped.set(key, [])
+        grouped.get(key).push({...block})
+    })
+    return collectOtExportBlocksFromDateEntries(Array.from(grouped.entries()))
+}
+
 // Blocks that Export PDF/CSV should use: the selected week, or the whole month
 // when in month view or when the week has no typed-in blocks (synced events
 // live in monthEvents). Shared so PDF and CSV never disagree. Returns {blocks, month}.
@@ -8403,10 +8416,27 @@ function exportPDF(){
 
 function exportWeekOtPDF(){
     saveDay()
-    let exportBlocks = getSelectedWeekOtExportBlocks()
+    let weekOt = getSelectedWeekOtExportBlocks()
+    // If the selected week has no OT (common when events are synced into the
+    // month rather than typed into the week), fall back to the month's OT days.
+    let useMonth = weekOt.length === 0
+    let exportBlocks = useMonth ? getMonthOtExportBlocks() : weekOt
+    if(useMonth && !exportBlocks.length){ useMonth = false; exportBlocks = weekOt }
+
     let totals = calculatePdfOtTotals(exportBlocks)
     const { jsPDF } = window.jspdf
     let doc = new jsPDF({orientation:"landscape",unit:"mm",format:"letter"})
+
+    if(useMonth){
+        renderAgendaPdfBlocks(doc,exportBlocks,{
+            title:"ABT Overtime Planner - "+monthName(monthAnchorDate)+" OT",
+            summary:"Month: "+monthName(monthAnchorDate)+" | OT pay: "+formatCurrencyAmount(totals.pay)+" | OT hours: "+totals.overtimeHours+" | Double OT: "+totals.doubleHours+"\n"+effectiveOvertimeRulesSummaryText(),
+            filename:"planner-month-ot.pdf",
+            emptyMessage:"No overtime events were found this month."
+        })
+        return
+    }
+
     let weekLabel = selectedWeekStartKey
         ? weekRangeLabel(parseDateKey(selectedWeekStartKey))
         : "Current week"
