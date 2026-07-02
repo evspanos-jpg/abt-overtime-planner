@@ -1243,7 +1243,20 @@ function isImportRelevantEvent(title, location, description){
     let matchesDefault = ABT_IMPORT_PATTERNS.some(pattern=>pattern.test(haystack))
     let matchesCustom = customImportPatterns.some(pattern=>pattern.test(haystack))
 
-    return matchesDefault || matchesCustom
+    return matchesDefault || matchesCustom || matchesProfileName(haystack)
+}
+
+// Also import any event that names the current user (from their overtime-form
+// profile) — e.g. a call sheet listing "Spanos" — so events that aren't titled
+// with a ballet name still sync. Per-device via the profile in localStorage.
+function matchesProfileName(haystack){
+    let profile = getFormProfile()
+    let names = [profile.lastName, profile.firstName]
+        .map(name => String(name || "").trim())
+        .filter(name => name.length >= 3)
+    if(!names.length) return false
+    let lower = haystack.toLowerCase()
+    return names.some(name => lower.includes(name.toLowerCase()))
 }
 
 function openImportFilterEditor(){
