@@ -3933,6 +3933,21 @@ function renderBlock(block){
     el.appendChild(label)
 }
 
+// Resolve a block's calendar date: from its own dateKey, else the selected
+// week's date for the block's weekday (week-view blocks carry `day`, not dateKey).
+function blockDate(block){
+    if(block.dateKey){
+        let d = parseDateKey(block.dateKey)
+        if(d && !isNaN(d.getTime())) return d
+    }
+    if(block.day){
+        let idx = DAY_ORDER.indexOf(block.day)
+        let ws = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : startOfPlannerWeek(new Date())
+        if(idx >= 0 && ws && !isNaN(ws.getTime())) return addDays(ws, idx)
+    }
+    return null
+}
+
 // Build the clipboard payload for a single block, matching what the block shows.
 // Returns both plain text (for plain fields) and HTML (for rich paste into
 // email / Word / Slack).
@@ -3940,12 +3955,8 @@ function eventClipboardPayload(block){
     let timeRange = formatTime(block.start)+" - "+formatTime(block.start+block.dur)
     let pay = calculateBlockPay(block)
     let dateLabel = ""
-    if(block.dateKey){
-        let d = parseDateKey(block.dateKey)
-        if(d && !isNaN(d.getTime())){
-            dateLabel = d.toLocaleDateString([], {weekday:"long", month:"long", day:"numeric", year:"numeric"})
-        }
-    }
+    let d = blockDate(block)
+    if(d) dateLabel = d.toLocaleDateString([], {weekday:"long", month:"long", day:"numeric", year:"numeric"})
     let ot = calculateBlockOvertime(block)
     let dbl = calculateBlockDoubleOvertime(block)
 
@@ -4077,17 +4088,8 @@ function blockCopyFields(block){
     let timeRange = formatTime(block.start)+" - "+formatTime(block.start + block.dur)
     let dateMDY = ""
     let dayName = ""
-    // Week-view blocks carry `day` but not `dateKey` (see getSchedule), so fall
-    // back to the selected week's date for that weekday.
-    let d = null
-    if(block.dateKey){
-        d = parseDateKey(block.dateKey)
-    }else if(block.day){
-        let idx = DAY_ORDER.indexOf(block.day)
-        let ws = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : startOfPlannerWeek(new Date())
-        if(idx >= 0 && ws && !isNaN(ws.getTime())) d = addDays(ws, idx)
-    }
-    if(d && !isNaN(d.getTime())){
+    let d = blockDate(block)
+    if(d){
         dateMDY  = d.toLocaleDateString("en-US")
         dayName  = d.toLocaleDateString("en-US",{weekday:"long"})
     }
