@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=6cb770e723">
+    <link rel="stylesheet" href="static/style.css?v=7b97630042">
     <link rel="stylesheet" href="static/planner-ui.css?v=87a0b1d8b7">
 
     <!-- ✅ LIBRARIES -->
@@ -671,24 +671,6 @@
                         </details>
                     </div>
 
-                    <div id="gcalConnectedPanel" class="is-hidden gcal-oauth-row">
-                        <p class="gcal-account" id="gcalEmail"></p>
-                        <p class="gcal-hint">Sign in with the same Google account on each device, then tap <strong>Sync now</strong> to keep them all in step. (Two-way sync is Google-only.)</p>
-                        <p class="gcal-hint" id="gcalLastSync">Not synced yet on this device</p>
-                        <div class="gcal-actions">
-                            <button type="button" class="primary" onclick="gcalSyncNow()">Sync now (two-way)</button>
-                            <button type="button" class="secondary" onclick="gcalPull()">Pull only</button>
-                            <button type="button" class="secondary" onclick="gcalPushAll()">Push only</button>
-                            <button type="button" class="secondary" onclick="gcalDisconnect()">Sign out from Google</button>
-                        </div>
-                    </div>
-                    <div id="gcalDisconnectedPanel" class="is-hidden gcal-oauth-row">
-                        <p class="gcal-hint">Connect Google Calendar to sync your planner across devices (two-way push &amp; pull).</p>
-                        <div class="gcal-actions">
-                            <button type="button" class="primary" onclick="gcalConnect()">Connect Google Calendar</button>
-                        </div>
-                    </div>
-
                     <p class="gcal-sync-result is-hidden" id="gcalSyncResult" aria-live="polite"></p>
                     <p class="settings-card-subtitle"><a href="/privacy" target="_blank" rel="noopener">Privacy policy</a> — how your calendar data is handled.</p>
                 </section>
@@ -814,7 +796,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=d918e05690"></script>
+<script src="static/planner-app.js?v=358ca36bda"></script>
 
 </body>
 </html>

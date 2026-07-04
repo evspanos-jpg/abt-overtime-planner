@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import json
 import mimetypes
 import os
 import secrets
@@ -10,19 +9,14 @@ from urllib.parse import urlparse
 
 import requests as http_requests
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request, session, url_for
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 
 from analyzer import DAILY_NO_OVERTIME_LIMIT, simulate_schedule
 
 app = Flask(__name__, static_folder=None)
 
-# SECRET_KEY signs the session cookie, which holds the Google OAuth token. With a
-# known/guessable key those sessions can be forged, so a real value must be set
-# in production.
+# SECRET_KEY signs the session cookie, which backs the optional APP_PASSWORD
+# login. With a known/guessable key that session can be forged (bypassing the
+# gate), so a real value must be set in production.
 _FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes"}
 _SECRET_KEY = os.environ.get("SECRET_KEY")
 if not _SECRET_KEY:
@@ -31,14 +25,13 @@ if not _SECRET_KEY:
         _SECRET_KEY = "dev-secret-key-change-me"
     else:
         # No key configured in production: mint a strong random one so the session
-        # can't be forged with a publicly-known key. Sessions won't survive a
-        # restart (users just reconnect Google) — preferable to a forgeable auth
-        # gate. Set SECRET_KEY to persist logins/OAuth across restarts.
+        # can't be forged with a publicly-known key. Logins won't survive a
+        # restart — preferable to a forgeable auth gate. Set SECRET_KEY to persist.
         _SECRET_KEY = secrets.token_hex(32)
         app.logger.critical(
-            "SECRET_KEY is not set: generated a random ephemeral key. Logins and "
-            "the Google OAuth session will reset on every restart. Set the "
-            "SECRET_KEY environment variable to a long random value to persist them."
+            "SECRET_KEY is not set: generated a random ephemeral key. Any "
+            "APP_PASSWORD login will reset on every restart. Set the SECRET_KEY "
+            "environment variable to a long random value to persist it."
         )
 app.secret_key = _SECRET_KEY
 app.permanent_session_lifetime = timedelta(days=365)
@@ -52,13 +45,6 @@ app.config.update(
 STATIC_DIR = Path(app.root_path) / "static"
 
 PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
-
-GCAL_SCOPES = [
-    "openid",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/calendar.readonly",
-    "https://www.googleapis.com/auth/calendar.events",
-]
 
 
 # ---------------------------------------------------------------------------
@@ -97,94 +83,6 @@ def safe_static_response(filename, mimetype=None):
     response.set_etag(hashlib.sha256(data).hexdigest())
     response.cache_control.no_cache = True
     return response.make_conditional(request)
-
-
-# ---------------------------------------------------------------------------
-# Google Calendar helpers
-# ---------------------------------------------------------------------------
-
-def _gcal_client_config():
-    """OAuth client config from client_secret.json or env vars; None if unset.
-
-    The OAuth client secret must NOT be hard-coded in source (it would be public
-    in the repo). Provide GCAL_CLIENT_ID + GCAL_CLIENT_SECRET as environment
-    variables (or drop a gitignored client_secret.json next to app.py for local
-    dev). When neither is present, Google OAuth sync is simply reported as "not
-    configured" — the iCal-URL sync path still works without credentials.
-    """
-    secret_path = Path(app.root_path) / "client_secret.json"
-    if secret_path.exists():
-        try:
-            return json.loads(secret_path.read_text())
-        except Exception:
-            pass
-    client_id = os.environ.get("GCAL_CLIENT_ID")
-    client_secret = os.environ.get("GCAL_CLIENT_SECRET")
-    if not client_id or not client_secret:
-        return None
-    redirect_uri = os.environ.get(
-        "GCAL_REDIRECT_URI",
-        "https://abt-overtime-planner.onrender.com/gcal/callback",
-    )
-    return {
-        "web": {
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [redirect_uri],
-        }
-    }
-
-
-def _gcal_redirect_uri():
-    config = _gcal_client_config()
-    if config:
-        uris = config["web"].get("redirect_uris", [])
-        if uris:
-            return uris[0]
-    return os.environ.get(
-        "GCAL_REDIRECT_URI",
-        "https://abt-overtime-planner.onrender.com/gcal/callback",
-    )
-
-
-def _gcal_credentials():
-    """Return refreshed Credentials or None if not connected."""
-    data = session.get("gcal_credentials")
-    if not data or not data.get("refresh_token"):
-        return None
-    config = _gcal_client_config()
-    if not config:
-        return None
-    web = config["web"]
-    creds = Credentials(
-        token=data.get("token"),
-        refresh_token=data["refresh_token"],
-        token_uri=web["token_uri"],
-        client_id=web["client_id"],
-        client_secret=web["client_secret"],
-        scopes=GCAL_SCOPES,
-    )
-    if data.get("expiry"):
-        from datetime import datetime
-        try:
-            creds.expiry = datetime.fromisoformat(data["expiry"])
-        except (ValueError, TypeError):
-            pass
-    if creds.expired and creds.refresh_token:
-        try:
-            creds.refresh(Request())
-            session["gcal_credentials"] = {
-                **data,
-                "token": creds.token,
-                "expiry": creds.expiry.isoformat() if creds.expiry else None,
-            }
-        except Exception as exc:
-            app.logger.warning("GCal token refresh failed: %s", exc)
-            session.pop("gcal_credentials", None)
-            return None
-    return creds
 
 
 # ---------------------------------------------------------------------------
@@ -247,8 +145,7 @@ def index():
 
 @app.route("/privacy")
 def privacy():
-    # Public (no login gate) so the Google OAuth consent screen and users can
-    # always reach it.
+    # Public (no login gate) so users can always reach it.
     return render_template("privacy.html")
 
 
@@ -291,102 +188,7 @@ def simulate():
 
 
 # ---------------------------------------------------------------------------
-# Google Calendar OAuth
-# ---------------------------------------------------------------------------
-
-@app.route("/gcal/connect")
-def gcal_connect():
-    if not is_logged_in():
-        abort(403)
-    config = _gcal_client_config()
-    if not config:
-        return redirect(url_for("index") + "?gcal_error=not_configured")
-    flow = Flow.from_client_config(config, scopes=GCAL_SCOPES, redirect_uri=_gcal_redirect_uri())
-    auth_url, state = flow.authorization_url(
-        access_type="offline",
-        include_granted_scopes="true",
-        prompt="consent",
-    )
-    session["gcal_state"] = state
-    return redirect(auth_url)
-
-
-@app.route("/gcal/callback")
-def gcal_callback():
-    if not is_logged_in():
-        return redirect(url_for("index"))
-    state = session.pop("gcal_state", None)
-    config = _gcal_client_config()
-    if not config or not state:
-        return redirect(url_for("index"))
-    try:
-        flow = Flow.from_client_config(
-            config,
-            scopes=GCAL_SCOPES,
-            state=state,
-            redirect_uri=_gcal_redirect_uri(),
-        )
-        # Render terminates TLS at the edge; the callback URL may arrive as http
-        callback_url = request.url.replace("http://", "https://", 1)
-        flow.fetch_token(authorization_response=callback_url)
-        creds = flow.credentials
-        # Fetch user email via userinfo endpoint
-        email = ""
-        try:
-            resp = http_requests.get(
-                "https://www.googleapis.com/oauth2/v3/userinfo",
-                headers={"Authorization": f"Bearer {creds.token}"},
-                timeout=5,
-            )
-            if resp.ok:
-                email = resp.json().get("email", "")
-        except Exception:
-            pass
-        session["gcal_credentials"] = {
-            "token": creds.token,
-            "refresh_token": creds.refresh_token,
-            "expiry": creds.expiry.isoformat() if creds.expiry else None,
-            "email": email,
-        }
-        session.permanent = True
-    except Exception as exc:
-        app.logger.error("GCal callback error: %s", exc)
-    return redirect(url_for("index"))
-
-
-@app.route("/gcal/status")
-def gcal_status():
-    if not is_logged_in():
-        return {"error": "Unauthorized"}, 403
-    if not _gcal_client_config():
-        return jsonify({"connected": False, "configured": False})
-    data = session.get("gcal_credentials")
-    if not data or not data.get("refresh_token"):
-        return jsonify({"connected": False, "configured": True})
-    return jsonify({"connected": True, "configured": True, "email": data.get("email", "")})
-
-
-@app.route("/gcal/disconnect", methods=["POST"])
-def gcal_disconnect():
-    if not is_logged_in():
-        return {"error": "Unauthorized"}, 403
-    data = session.pop("gcal_credentials", None)
-    # Revoke the token at Google so the app loses access immediately
-    token = (data or {}).get("refresh_token") or (data or {}).get("token")
-    if token:
-        try:
-            http_requests.post(
-                "https://oauth2.googleapis.com/revoke",
-                params={"token": token},
-                timeout=5,
-            )
-        except Exception:
-            pass  # revocation is best-effort; session is already cleared
-    return jsonify({"ok": True})
-
-
-# ---------------------------------------------------------------------------
-# Google Calendar sync
+# Calendar sync (iCal URL — fetched and parsed server-side)
 # ---------------------------------------------------------------------------
 
 def _parse_ics(ics_text, win_start="", win_end=""):
@@ -504,83 +306,6 @@ def gcal_ics_pull():
     except Exception as exc:
         app.logger.error("ICS pull error: %s", exc)
         return {"error": "Could not fetch iCal URL"}, 502
-
-
-@app.route("/gcal/pull")
-def gcal_pull():
-    if not is_logged_in():
-        return {"error": "Unauthorized"}, 403
-    creds = _gcal_credentials()
-    if not creds:
-        return jsonify({"error": "not_connected"}), 401
-    time_min = request.args.get("start")
-    time_max = request.args.get("end")
-    if not time_min or not time_max:
-        return {"error": "start and end are required"}, 400
-    try:
-        service = build("calendar", "v3", credentials=creds)
-        result = service.events().list(
-            calendarId="primary",
-            timeMin=time_min,
-            timeMax=time_max,
-            singleEvents=True,
-            orderBy="startTime",
-            maxResults=500,
-        ).execute()
-        return jsonify({"events": result.get("items", [])})
-    except HttpError as exc:
-        app.logger.error("GCal pull error: %s", exc)
-        return {"error": str(exc)}, exc.resp.status
-
-
-@app.route("/gcal/push", methods=["POST"])
-def gcal_push():
-    if not is_logged_in():
-        return {"error": "Unauthorized"}, 403
-    creds = _gcal_credentials()
-    if not creds:
-        return jsonify({"error": "not_connected"}), 401
-    data = request.json or {}
-    event_body = data.get("event")
-    event_id = data.get("event_id")
-    if not event_body:
-        return {"error": "event is required"}, 400
-    try:
-        service = build("calendar", "v3", credentials=creds)
-        if event_id:
-            result = service.events().patch(
-                calendarId="primary", eventId=event_id, body=event_body
-            ).execute()
-        else:
-            result = service.events().insert(
-                calendarId="primary", body=event_body
-            ).execute()
-        return jsonify({"id": result["id"]})
-    except HttpError as exc:
-        app.logger.error("GCal push error: %s", exc)
-        return {"error": str(exc)}, exc.resp.status
-
-
-@app.route("/gcal/delete", methods=["POST"])
-def gcal_delete():
-    if not is_logged_in():
-        return {"error": "Unauthorized"}, 403
-    creds = _gcal_credentials()
-    if not creds:
-        return jsonify({"error": "not_connected"}), 401
-    data = request.json or {}
-    event_id = data.get("event_id")
-    if not event_id:
-        return {"error": "event_id is required"}, 400
-    try:
-        service = build("calendar", "v3", credentials=creds)
-        service.events().delete(calendarId="primary", eventId=event_id).execute()
-        return jsonify({"ok": True})
-    except HttpError as exc:
-        if exc.resp.status == 410:  # already deleted
-            return jsonify({"ok": True})
-        app.logger.error("GCal delete error: %s", exc)
-        return {"error": str(exc)}, exc.resp.status
 
 
 # ---------------------------------------------------------------------------

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This App Does
 
-**ABT Overtime Planner** is a web-based scheduling tool for American Ballet Theatre to plan weekly rehearsal calls and estimate overtime compensation. Key capabilities: interactive timeline planner (week/day/3-day/workweek/month views), real-time OT pay calculation with union-rule tiers, Google Calendar sync (OAuth and iCal URL), local file import/export, PDF export, and PWA offline support.
+**ABT Overtime Planner** is a web-based scheduling tool for American Ballet Theatre to plan weekly rehearsal calls and estimate overtime compensation. Key capabilities: interactive timeline planner (week/day/3-day/workweek/month views), real-time OT pay calculation with union-rule tiers, calendar sync via public iCal/ICS URL (Google, Outlook, iCloud), local file import/export, PDF/CSV export, and PWA offline support.
 
 ## Commands
 
@@ -40,12 +40,10 @@ No linting is configured. No build step — frontend is plain HTML/CSS/JS served
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `SECRET_KEY` | Flask session signing (holds the Google OAuth token — **must be set in production**; falls back to an insecure constant + logs a CRITICAL warning if unset and not in debug) | insecure dev constant |
+| `SECRET_KEY` | Flask session signing (backs the optional `APP_PASSWORD` login — **should be set in production**; if unset, a random ephemeral key is generated per boot, so logins reset on restart) | random per-boot key (dev constant in debug) |
 | `APP_PASSWORD` | Optional login gate | (none = open) |
 | `PORT` | Server port | 5000 |
 | `FLASK_DEBUG` | Enable debug mode | off |
-| `GCAL_CLIENT_ID` / `GCAL_CLIENT_SECRET` | Google OAuth (required for OAuth calendar sync; if unset, OAuth is "not configured" and only the iCal-URL path works). Or place a gitignored `client_secret.json` next to `app.py` for local dev. | (none) |
-| `GCAL_REDIRECT_URI` | OAuth callback URL | Render production URL |
 | `WEB_CONCURRENCY` | Gunicorn workers | 2 |
 
 ## Architecture
@@ -55,8 +53,7 @@ No linting is configured. No build step — frontend is plain HTML/CSS/JS served
 Flask serves the SPA and exposes a small REST API:
 
 - `POST /simulate` — core overtime calculation. Accepts schedule blocks, runs `analyzer.py:simulate_schedule()` against rules from `static/overtime-rules.json`, returns `{pay, type, hours}`.
-- `GET /gcal/pull`, `POST /gcal/push`, `POST /gcal/delete` — Google Calendar sync using OAuth token stored in Flask session.
-- `POST /gcal/ics-pull` — OAuth-free path: fetches a public iCal URL server-side, parses ICS, returns events.
+- `GET /gcal/ics-pull` — calendar sync: fetches a public iCal/ICS URL server-side (host allow-list: Google/Outlook/iCloud), parses the ICS, returns events. This is the only calendar path (Google OAuth was removed).
 - `GET|POST /login`, `GET /logout` — optional password gate.
 
 `overtime_rules.py` loads `static/overtime-rules.json` with `@lru_cache`. `analyzer.py` implements the calculation algorithm (continuous span rules, daily tier thresholds, exceptions).
@@ -73,9 +70,8 @@ Client-side overtime rules live in `static/overtime-rules.js` as a fallback (use
 ### Data Flow
 
 1. User edits a time block → `planner-app.js` POSTs to `/simulate` → `analyzer.py` returns OT calculation → earnings summary updates.
-2. Calendar OAuth: user connects → Google consent → token in session → pull/push via `/gcal/*`.
-3. Calendar iCal: user pastes public URL → `/gcal/ics-pull` fetches + parses → events merged into local state.
-4. State is auto-saved to `localStorage`; exportable as `.abt-planner.json`.
+2. Calendar iCal: user pastes a public iCal URL (with an opt-in auto-sync toggle) → `/gcal/ics-pull` fetches + parses → matching events merged into local state.
+3. State is auto-saved to `localStorage`; exportable as `.abt-planner.json`.
 
 ### Templates
 

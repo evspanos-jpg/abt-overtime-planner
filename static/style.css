@@ -11784,12 +11784,6 @@ button.mobile-period-title:active {
     margin-bottom: 14px;
 }
 
-.gcal-oauth-row {
-    padding-top: 10px;
-    border-top: 1px solid var(--border-color, rgba(128,128,128,.2));
-    margin-top: 4px;
-}
-
 .gcal-hint {
     font-size: 13px;
     color: var(--text-dim);

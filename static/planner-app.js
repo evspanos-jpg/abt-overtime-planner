@@ -3221,15 +3221,10 @@ function googleCalendarMenuEntries(){
         entries.push({label:"Sync This Month", handler:gcalIcsPullMonth, iconClass:"icon-cloud-download"})
         entries.push({label:"Sync Full Calendar", handler:gcalIcsPullAll, iconClass:"icon-cloud-download"})
     }
-    if(gcalConnected){
-        entries.push({label:"Sync now (2-way)", handler:gcalSyncNow, iconClass:"icon-cloud-upload"})
-        entries.push({label:"Pull from Google", handler:gcalPull, iconClass:"icon-cloud-download"})
-        entries.push({label:"Push to Google", handler:gcalPushAll, iconClass:"icon-cloud-upload"})
-    }
     // Always end with a clear link to the single setup location (Settings), so
     // it reads as "sync here, configure there" rather than a duplicate setup.
     entries.push({
-        label: hasIcsUrl || gcalConnected ? "Settings…" : "Set up in Settings…",
+        label: hasIcsUrl ? "Settings…" : "Set up in Settings…",
         handler:()=>{
             openSettings()
             setTimeout(()=>document.getElementById("settingsGcalSection")?.scrollIntoView({behavior:"smooth", block:"start"}), 120)
@@ -4430,23 +4425,8 @@ timeline.addEventListener("dblclick", e=>{
 // Google Calendar two-way sync
 // ---------------------------------------------------------------------------
 
-let gcalConnected = false
-
-async function initGCal(){
+function initGCal(){
     gcalLoadIcsUrl()
-    try{
-        let resp = await fetch("/gcal/status")
-        if(!resp.ok) return
-        let data = await resp.json()
-        gcalConnected = data.connected || false
-        _gcalUpdateUI(data)
-        if(new URLSearchParams(location.search).get("gcal_error") === "not_configured"){
-            _gcalShowResult("Google Calendar credentials are not yet configured on the server.", true)
-            history.replaceState(null,"",location.pathname)
-        }
-    }catch(e){
-        // Running as file:// or server not available — hide gcal UI silently
-    }
     if(gcalIcsHasUrl()){
         if(gcalIcsAutoSyncEnabled()){
             startGcalIcsAutoSync()
@@ -4708,41 +4688,12 @@ async function gcalIcsPullMonth(){
     await gcalIcsPull(false, true)
 }
 
-function _gcalUpdateUI(data){
-    let connectedPanel = document.getElementById("gcalConnectedPanel")
-    let disconnectedPanel = document.getElementById("gcalDisconnectedPanel")
-    let emailEl = document.getElementById("gcalEmail")
-    if(data && data.connected){
-        connectedPanel?.classList.remove("is-hidden")
-        disconnectedPanel?.classList.add("is-hidden")
-        if(emailEl) emailEl.textContent = data.email || ""
-        updateGcalLastSyncLabel()
-    }else{
-        connectedPanel?.classList.add("is-hidden")
-        disconnectedPanel?.classList.remove("is-hidden")
-        if(emailEl) emailEl.textContent = ""
-    }
-}
-
 function _gcalShowResult(text, isError){
     let el = document.getElementById("gcalSyncResult")
     if(!el) return
     el.textContent = text
     el.classList.remove("is-hidden","gcal-result-error")
     if(isError) el.classList.add("gcal-result-error")
-}
-
-function gcalConnect(){
-    window.location.href = "/gcal/connect"
-}
-
-async function gcalDisconnect(){
-    try{
-        await fetch("/gcal/disconnect",{method:"POST"})
-    }catch(e){ /* ignore */ }
-    gcalConnected = false
-    _gcalUpdateUI({connected:false})
-    setSaveStatus("Disconnected from Google Calendar")
 }
 
 // Collect every gcalId already stored in weekData and monthEvents
@@ -4772,197 +4723,6 @@ function _gcalExistingSignatures(weekStart){
         ;(dayEvents || []).forEach(block => signatures.add(dKey + "|" + plannerBlockSignature(block)))
     })
     return signatures
-}
-
-// Pull Google Calendar events for the current planner week and add matching blocks
-async function gcalPull(){
-    if(!gcalConnected){
-        alert("Connect Google Calendar first in Settings.")
-        return
-    }
-    let weekStart = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : startOfPlannerWeek(new Date())
-    let weekEnd = addDays(weekStart,7)
-    let startISO = weekStart.toISOString()
-    let endISO = weekEnd.toISOString()
-
-    setSaveStatus("Syncing from Google Calendar…")
-    let resp
-    try{
-        resp = await fetch(`/gcal/pull?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`)
-    }catch(e){
-        setSaveStatus("Google Calendar pull failed")
-        _gcalShowResult("Network error — could not reach server.", true)
-        return
-    }
-    if(resp.status === 401){
-        gcalConnected = false
-        _gcalUpdateUI({connected:false})
-        _gcalShowResult("Session expired — reconnect Google Calendar.", true)
-        return
-    }
-    if(!resp.ok){
-        _gcalShowResult("Google Calendar returned an error.", true)
-        return
-    }
-
-    let data = await resp.json()
-    let events = data.events || []
-    let existingIds = _gcalExistingIds()
-    let existingSignatures = _gcalExistingSignatures(weekStart)
-    let added = 0
-
-    for(let event of events){
-        if(!event.start?.dateTime) continue  // skip all-day events
-        if(!isImportRelevantEvent(event.summary || "", event.location || "", event.description || "")) continue
-        if(event.id && existingIds.has(event.id)) continue
-
-        let startDate = new Date(event.start.dateTime)
-        let endDate = new Date(event.end?.dateTime || event.start.dateTime)
-        let dayIndex = (startDate.getDay() + 6) % 7  // 0=Mon…6=Sun
-        let day = DAY_ORDER[dayIndex]
-
-        // Confirm the event falls within this planner week
-        if(dateKey(addDays(weekStart, dayIndex)) !== dateKey(startDate)) continue
-
-        let startHour = startDate.getHours() + startDate.getMinutes() / 60
-        let durHours = Math.max(SNAP, (endDate - startDate) / 3600000)
-        let block = {
-            start: startHour,
-            dur: durHours,
-            title: event.summary || "Block",
-            location: event.location || "",
-            description: event.description || "",
-            gcalId: event.id
-        }
-
-        // Same date + time + duration + title means it is the same event even
-        // if the calendar reissued its id, so never add it twice.
-        let signature = dateKey(startDate) + "|" + plannerBlockSignature(block)
-        if(existingSignatures.has(signature)) continue
-
-        if(!weekData[day]) weekData[day] = []
-        weekData[day].push(block)
-        if(event.id) existingIds.add(event.id)
-        existingSignatures.add(signature)
-        added++
-    }
-
-    if(added > 0){
-        buildTimeline()
-        renderWeek()
-        savePlannerState()
-        setSaveStatus(`Pulled ${added} event${added === 1 ? "" : "s"} from Google Calendar`)
-        _gcalShowResult(`Added ${added} new block${added === 1 ? "" : "s"}.`)
-    }else{
-        setSaveStatus("Google Calendar — no new ABT events found")
-        _gcalShowResult("No new matching events in this week.")
-    }
-}
-
-// Convert a planner block + date to a Google Calendar event body
-function _gcalEventBody(block, date){
-    let tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-    let ds = dateKey(date)
-    function hhmm(decimal){
-        let h = Math.floor(decimal)
-        let m = Math.round((decimal % 1) * 60)
-        if(m === 60){ h++; m = 0 }
-        return String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") + ":00"
-    }
-    let endDecimal = (block.start || 0) + (block.dur || 0)
-    return {
-        summary: block.title || "Block",
-        location: block.location || "",
-        description: block.description || "",
-        start: { dateTime: `${ds}T${hhmm(block.start || 0)}`, timeZone: tz },
-        end:   { dateTime: `${ds}T${hhmm(endDecimal)}`,        timeZone: tz }
-    }
-}
-
-// Push a single block; returns the GCal event id
-async function gcalPushBlock(block, date){
-    let body = { event: _gcalEventBody(block, date) }
-    if(block.gcalId) body.event_id = block.gcalId
-    let resp = await fetch("/gcal/push",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(body)
-    })
-    if(!resp.ok) throw new Error("push failed " + resp.status)
-    let result = await resp.json()
-    return result.id
-}
-
-// Push all blocks in the current planner week to Google Calendar
-async function gcalPushAll(){
-    if(!gcalConnected){
-        alert("Connect Google Calendar first in Settings.")
-        return
-    }
-    let weekStart = selectedWeekStartKey ? parseDateKey(selectedWeekStartKey) : startOfPlannerWeek(new Date())
-    let created = 0, updated = 0, errors = 0
-
-    setSaveStatus("Pushing to Google Calendar…")
-    for(let [i, day] of DAY_ORDER.entries()){
-        let date = addDays(weekStart, i)
-        for(let block of (weekData[day] || [])){
-            try{
-                let newId = await gcalPushBlock(block, date)
-                if(block.gcalId) updated++
-                else{ block.gcalId = newId; created++ }
-            }catch(e){
-                console.warn("GCal push failed:", e)
-                errors++
-            }
-        }
-    }
-
-    savePlannerState()
-    let parts = []
-    if(created) parts.push(`${created} created`)
-    if(updated) parts.push(`${updated} updated`)
-    if(errors)  parts.push(`${errors} failed`)
-    let summary = parts.length ? parts.join(", ") : "nothing to push"
-    setSaveStatus("Google Calendar: " + summary)
-    _gcalShowResult(summary + ".", errors > 0)
-}
-
-const GCAL_LAST_SYNC_KEY = "gcalLastSync"
-
-// One-tap cross-device sync: push this week's blocks up to Google, then pull
-// anything new (e.g. added on another device) back down. Run on each device to
-// keep them aligned. OAuth-only (the iCal URL path is read-only).
-async function gcalSyncNow(){
-    if(!gcalConnected){
-        _gcalShowResult("Connect Google Calendar in Settings first — then Sync now keeps every device in step.", true)
-        openSettings()
-        setTimeout(()=>document.getElementById("settingsGcalSection")?.scrollIntoView({behavior:"smooth", block:"start"}), 120)
-        return
-    }
-    setSaveStatus("Syncing with Google Calendar…")
-    try{
-        await gcalPushAll()
-        if(!gcalConnected) return  // push detected an expired session
-        await gcalPull()
-        let now = new Date()
-        try{ localStorage.setItem(GCAL_LAST_SYNC_KEY, now.toISOString()) }catch(e){}
-        updateGcalLastSyncLabel()
-        setSaveStatus("Google Calendar sync complete")
-        _gcalShowResult("Two-way sync complete at " + now.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + ".")
-    }catch(e){
-        console.warn("Google Calendar sync failed:", e)
-        setSaveStatus("Google Calendar sync hit an error")
-        _gcalShowResult("Sync could not finish — check your connection and try again.", true)
-    }
-}
-
-function updateGcalLastSyncLabel(){
-    let el = document.getElementById("gcalLastSync")
-    if(!el) return
-    let iso = localStorage.getItem(GCAL_LAST_SYNC_KEY)
-    el.textContent = iso
-        ? "Last synced " + new Date(iso).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})
-        : "Not synced yet on this device"
 }
 
 // Phone: swipe the mobile calendar bar left/right to navigate periods
