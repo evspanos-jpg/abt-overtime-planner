@@ -1240,6 +1240,18 @@ function getCustomImportKeywordsFromInput(){
         })
 }
 
+// Escape untrusted text before it goes into an innerHTML string. Event
+// titles/locations and custom-rule names come from calendars and imported files,
+// so they must never be interpolated into HTML raw (XSS).
+function escapeHtml(value){
+    return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+}
+
 function isImportRelevantEvent(title, location, description){
     let haystack = [title, location, description].filter(Boolean).join(" ")
     let matchesDefault = ABT_IMPORT_PATTERNS.some(pattern=>pattern.test(haystack))
@@ -2899,7 +2911,7 @@ function syncOvertimeRulesSettings(){
                 let item = document.createElement("div")
                 item.className = "ot-rule-item"
                 let isCustom = currentCustom.continuous_span_exceptions.some(custom=>custom.name === rule.name)
-                item.innerHTML = "<strong>" + (rule.name || "rule") + "</strong><span>" +
+                item.innerHTML = "<strong>" + escapeHtml(rule.name || "rule") + "</strong><span>" +
                     formatHoursCompact(rule.previous_duration) + " + " +
                     formatHoursCompact(rule.gap) + " break + " +
                     formatHoursCompact(rule.duration) + " => +" +
@@ -2929,7 +2941,7 @@ function syncOvertimeRulesSettings(){
             cases.forEach(ruleCase=>{
                 let item = document.createElement("div")
                 item.className = "ot-rule-item"
-                item.innerHTML = "<strong>" + ruleCase.label + "</strong><span>" +
+                item.innerHTML = "<strong>" + escapeHtml(ruleCase.label) + "</strong><span>" +
                     (ruleCase.durations || []).map(formatHoursCompact).join(" + ") +
                     (Number(ruleCase.gap || 0) > 0 ? " with " + formatHoursCompact(ruleCase.gap) + " breaks" : "") +
                     " => " + formatHoursCompact(ruleCase.expected_hours) + " OT</span>"
@@ -3049,7 +3061,7 @@ function syncOvertimeDayInspector(){
             summary.blocks.forEach(block=>{
                 let item = document.createElement("div")
                 item.className = "ot-rule-item"
-                item.innerHTML = "<strong>" + (block.title || "Untitled") + "</strong><span>" +
+                item.innerHTML = "<strong>" + escapeHtml(block.title || "Untitled") + "</strong><span>" +
                     formatTime(block.start) + " - " + formatTime(block.start + block.dur) +
                     " | worked " + formatHoursCompact(block.dur) +
                     " | billable " + formatHoursCompact(block.billableDur) +

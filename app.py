@@ -1,7 +1,9 @@
 import hashlib
+import hmac
 import json
 import mimetypes
 import os
+import secrets
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlparse
@@ -20,20 +22,33 @@ app = Flask(__name__, static_folder=None)
 
 # SECRET_KEY signs the session cookie, which holds the Google OAuth token. With a
 # known/guessable key those sessions can be forged, so a real value must be set
-# in production. We keep a dev fallback for local use but log loudly (gunicorn
-# surfaces this at startup) when it would be used outside debug.
+# in production.
 _FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes"}
 _SECRET_KEY = os.environ.get("SECRET_KEY")
 if not _SECRET_KEY:
-    _SECRET_KEY = "dev-secret-key-change-me"
-    if not _FLASK_DEBUG:
+    if _FLASK_DEBUG:
+        # Stable key for local dev so sessions survive reloads.
+        _SECRET_KEY = "dev-secret-key-change-me"
+    else:
+        # No key configured in production: mint a strong random one so the session
+        # can't be forged with a publicly-known key. Sessions won't survive a
+        # restart (users just reconnect Google) — preferable to a forgeable auth
+        # gate. Set SECRET_KEY to persist logins/OAuth across restarts.
+        _SECRET_KEY = secrets.token_hex(32)
         app.logger.critical(
-            "SECRET_KEY is not set: using an INSECURE default. Session cookies "
-            "(including the Google Calendar OAuth token) can be forged. Set the "
-            "SECRET_KEY environment variable to a long random value in production."
+            "SECRET_KEY is not set: generated a random ephemeral key. Logins and "
+            "the Google OAuth session will reset on every restart. Set the "
+            "SECRET_KEY environment variable to a long random value to persist them."
         )
 app.secret_key = _SECRET_KEY
 app.permanent_session_lifetime = timedelta(days=365)
+# Session-cookie hardening + a request-body cap (defence-in-depth).
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=not _FLASK_DEBUG,  # HTTPS-only in prod; off for local http dev
+    MAX_CONTENT_LENGTH=2 * 1024 * 1024,      # 2 MB cap on request bodies
+)
 STATIC_DIR = Path(app.root_path) / "static"
 
 PASSWORD = os.environ.get("APP_PASSWORD", "").strip()
@@ -177,7 +192,13 @@ def _gcal_credentials():
 # ---------------------------------------------------------------------------
 
 @app.after_request
-def disable_html_caching(response):
+def set_security_and_cache_headers(response):
+    # Defence-in-depth headers on every response. No CSP is set: the UI relies on
+    # inline event handlers, so a script-src policy would break it without a
+    # refactor — the XSS sinks are fixed at the source instead.
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     if response.mimetype in {
         "text/html",
         "application/javascript",
@@ -200,7 +221,7 @@ def login():
     if not password_required():
         return redirect(url_for("index"))
     if request.method == "POST":
-        if request.form.get("password") == PASSWORD:
+        if hmac.compare_digest(request.form.get("password", ""), PASSWORD):
             session["logged_in"] = True
             return redirect(url_for("index"))
         return render_template("login.html", error="Wrong password")
