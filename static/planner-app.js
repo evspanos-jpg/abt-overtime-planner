@@ -4643,6 +4643,7 @@ async function gcalIcsPull(silent = false, range = false){
 
     if(added > 0){
         buildTimeline()
+        renderWeek()
         savePlannerState()
         if(!silent) setSaveStatus(`Pulled ${added} event${added === 1 ? "" : "s"} from Google Calendar`)
         _gcalShowResult(`Added ${added} new block${added === 1 ? "" : "s"}.`)
@@ -4803,6 +4804,7 @@ async function gcalPull(){
 
     if(added > 0){
         buildTimeline()
+        renderWeek()
         savePlannerState()
         setSaveStatus(`Pulled ${added} event${added === 1 ? "" : "s"} from Google Calendar`)
         _gcalShowResult(`Added ${added} new block${added === 1 ? "" : "s"}.`)
