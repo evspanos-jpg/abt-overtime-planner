@@ -15,7 +15,7 @@
     <link rel="manifest" href="static/manifest.webmanifest">
     <link rel="icon" href="static/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-    <link rel="stylesheet" href="static/style.css?v=ca5cc1718b">
+    <link rel="stylesheet" href="static/style.css?v=6cb770e723">
     <link rel="stylesheet" href="static/planner-ui.css?v=87a0b1d8b7">
 
     <!-- ✅ LIBRARIES -->
@@ -649,7 +649,7 @@
                             <span>iCal / ICS URL</span>
                             <input type="url" id="gcalIcsUrl" autocomplete="off" spellcheck="false"
                                    placeholder="Paste a Google, Outlook, or iCloud iCal URL (webcal:// is OK)"
-                                   oninput="gcalSaveIcsUrl()">
+                                   oninput="gcalSaveIcsUrl()" onchange="gcalSaveIcsUrl()" onblur="gcalSaveIcsUrl()">
                         </label>
                         <div class="gcal-ics-actions">
                             <button type="button" class="primary" id="gcalIcsPullButton" onclick="gcalIcsPull()" disabled>Sync week</button>
@@ -814,7 +814,7 @@
 
 </div>
 
-<script src="static/planner-app.js?v=3722ab1d98"></script>
+<script src="static/planner-app.js?v=e1a1f1b85e"></script>
 
 </body>
 </html>

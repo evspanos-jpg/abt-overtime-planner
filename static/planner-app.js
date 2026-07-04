@@ -4446,12 +4446,25 @@ let gcalIcsAutoSyncTimer = null
 let gcalIcsAutoSyncing = false
 let gcalIcsLastAutoSyncAt = 0
 
+// The live URL: prefer what's in the field, fall back to the saved value. Being
+// field-first means the Sync buttons enable the moment a URL is present even if
+// the localStorage write was blocked (e.g. iOS Safari Private Browsing throws on
+// setItem), which was leaving the controls greyed out after a paste.
+function _gcalIcsUrlValue(){
+    let typed = ""
+    try{ typed = (document.getElementById("gcalIcsUrl")?.value || "").trim() }catch(e){}
+    if(typed) return typed
+    try{ return (localStorage.getItem(GCAL_ICS_URL_KEY) || "").trim() }catch(e){ return "" }
+}
+
 function gcalIcsHasUrl(){
-    return Boolean(localStorage.getItem(GCAL_ICS_URL_KEY))
+    return Boolean(_gcalIcsUrlValue())
 }
 
 function gcalIcsAutoSyncEnabled(){
-    return localStorage.getItem(GCAL_ICS_AUTO_SYNC_KEY) === "1" && gcalIcsHasUrl()
+    let on = false
+    try{ on = localStorage.getItem(GCAL_ICS_AUTO_SYNC_KEY) === "1" }catch(e){}
+    return on && gcalIcsHasUrl()
 }
 
 function _gcalSetIcsControlsDisabled(){
@@ -4463,7 +4476,9 @@ function _gcalSetIcsControlsDisabled(){
     let toggle = document.getElementById("gcalIcsAutoSyncInput")
     if(toggle){
         toggle.disabled = !hasUrl
-        toggle.checked = hasUrl && localStorage.getItem(GCAL_ICS_AUTO_SYNC_KEY) === "1"
+        let autoOn = false
+        try{ autoOn = localStorage.getItem(GCAL_ICS_AUTO_SYNC_KEY) === "1" }catch(e){}
+        toggle.checked = hasUrl && autoOn
     }
 }
 
@@ -4477,8 +4492,12 @@ function gcalLoadIcsUrl(){
 
 function gcalSaveIcsUrl(){
     let url = (document.getElementById("gcalIcsUrl")?.value || "").trim()
-    if(url) localStorage.setItem(GCAL_ICS_URL_KEY, url)
-    else localStorage.removeItem(GCAL_ICS_URL_KEY)
+    // Persist best-effort; the controls below key off the live field value, so a
+    // blocked write (iOS Private Browsing) still enables Sync for this session.
+    try{
+        if(url) localStorage.setItem(GCAL_ICS_URL_KEY, url)
+        else localStorage.removeItem(GCAL_ICS_URL_KEY)
+    }catch(e){ /* storage unavailable — field value still drives the controls */ }
     _gcalSetIcsControlsDisabled()
     // Clearing the URL turns auto-sync off so a stale timer can't keep firing.
     if(!url) stopGcalIcsAutoSync()
@@ -4487,7 +4506,7 @@ function gcalSaveIcsUrl(){
 }
 
 function gcalToggleIcsAutoSync(enabled){
-    localStorage.setItem(GCAL_ICS_AUTO_SYNC_KEY, enabled ? "1" : "")
+    try{ localStorage.setItem(GCAL_ICS_AUTO_SYNC_KEY, enabled ? "1" : "") }catch(e){}
     if(enabled && gcalIcsHasUrl()){
         startGcalIcsAutoSync()
         gcalIcsAutoSyncTick("enabled")   // sync immediately on enable

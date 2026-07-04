@@ -1740,6 +1740,26 @@ input[type="file"] {
     left: 6px;
 }
 
+/* Keep the per-block Copy/Edit affordances compact and pinned to the corners so
+   they don't cover the event's text or swallow taps meant for the block itself
+   (they were up to 42px tall on touch, taking over small blocks). */
+.event-edit-button {
+    min-height: 22px !important;
+    min-width: 0 !important;
+    padding: 0 7px !important;
+    font-size: 10px !important;
+    top: 4px !important;
+    border-radius: 5px !important;
+}
+
+.event-edit-button:not(.event-copy-button) {
+    right: 4px !important;
+}
+
+.event-copy-button {
+    left: 4px !important;
+}
+
 /* Field-by-field copy popover (for pasting a block into a form one field at a
    time). Themed via variables so it reads in both light and dark mode. */
 .block-copy-menu {
