@@ -11819,13 +11819,6 @@ button.mobile-period-title:active {
     color: var(--text);
 }
 
-.gcal-account {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin: 0 0 10px;
-}
-
-.gcal-actions,
 .gcal-ics-actions {
     display: flex;
     flex-wrap: wrap;

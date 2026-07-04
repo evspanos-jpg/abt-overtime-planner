@@ -4422,7 +4422,7 @@ timeline.addEventListener("dblclick", e=>{
 })
 
 // ---------------------------------------------------------------------------
-// Google Calendar two-way sync
+// Calendar sync (iCal / ICS URL)
 // ---------------------------------------------------------------------------
 
 function initGCal(){
@@ -5718,8 +5718,7 @@ async function openProjectFile(fileOverride=null){
 
 // Provider-agnostic "back up a copy": opens the OS share sheet (so you can pick
 // Save to Files -> OneDrive/iCloud, Google Drive, Mail, etc.) and falls back to
-// a plain download. No OAuth, so it works on every device including
-// Advanced-Protection Google accounts.
+// a plain download. Works on every device with no sign-in.
 async function backupProjectCopy(){
     let fileName = normalizeProjectFileName(currentProjectName)
     let text = projectJsonText()
