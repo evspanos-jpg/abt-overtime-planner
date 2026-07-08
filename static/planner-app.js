@@ -1397,13 +1397,15 @@ function blockQuickCopy(){
     hideBlockQuickMenu()
 }
 
+const TOUCH_DRAG_HOLD_MS = 450
+
 function attachBlockPointerControls(el){
     el.addEventListener("pointerdown", e=>{
         if(e.button !== 0) return
 
         e.preventDefault()
         if(el.setPointerCapture){
-            el.setPointerCapture(e.pointerId)
+            try{ el.setPointerCapture(e.pointerId) }catch(_){}
         }
         draggedBlock = el
         currentDay = el.dataset.day || currentDay
@@ -1431,37 +1433,61 @@ function attachBlockPointerControls(el){
         let minHeight = Math.max(40,hoursToPixels(SNAP))
         let undoRecorded = false
         let pointerMoved = false
+        let cancelled = false
 
-        // Long-press: 420ms hold on touch/pen opens quick-action menu
-        let longPressTimer = null
-        let longPressActivated = false
-        if(isDirectPointer(e) && mode === "drag"){
-            longPressTimer = setTimeout(()=>{
-                longPressTimer = null
-                longPressActivated = true
-                el.classList.remove("is-moving")
-                document.body.classList.remove("dragging-block")
-                showBlockQuickMenu(e.clientX, e.clientY, el)
-            }, 420)
+        // On touch/pen, a body drag must be "picked up" with a short hold first,
+        // so an incidental swipe can't nudge the event. Mouse and edge-resize
+        // stay immediate.
+        let needsHold = isDirectPointer(e) && mode === "drag"
+        let dragArmed = !needsHold
+        let holdTimer = null
+
+        function armDrag(){
+            holdTimer = null
+            dragArmed = true
+            el.classList.add("is-moving")
+            document.body.classList.add("dragging-block")
+            navigator.vibrate?.(12)
         }
 
-        el.classList.add("is-moving")
-        document.body.classList.add("dragging-block")
+        if(needsHold){
+            holdTimer = setTimeout(armDrag, TOUCH_DRAG_HOLD_MS)
+        }else{
+            el.classList.add("is-moving")
+            document.body.classList.add("dragging-block")
+        }
+
+        function cleanup(){
+            if(holdTimer){ clearTimeout(holdTimer); holdTimer = null }
+            if(el.hasPointerCapture && el.hasPointerCapture(e.pointerId)){
+                try{ el.releasePointerCapture(e.pointerId) }catch(_){}
+            }
+            el.classList.remove("is-moving")
+            document.body.classList.remove("dragging-block")
+            clearDayDropTargets()
+            document.removeEventListener("pointermove",onPointerMove)
+            document.removeEventListener("pointerup",onPointerUp)
+            document.removeEventListener("pointercancel",onPointerCancel)
+        }
 
         function onPointerMove(moveEvent){
             moveEvent.preventDefault()
-
+            let dx = moveEvent.clientX - startClientX
             let dy = moveEvent.clientY - startClientY
-            let y = startY
-            let h = startHeight
 
-            // Cancel long-press if the finger moves
-            if(longPressTimer && (Math.abs(moveEvent.clientX - startClientX) > 6 || Math.abs(dy) > 6)){
-                clearTimeout(longPressTimer)
-                longPressTimer = null
+            if(!dragArmed){
+                // Moved before the hold armed the drag -> treat as a swipe, not a
+                // drag: drop the hold and leave the event where it is.
+                if(Math.abs(dx) > 10 || Math.abs(dy) > 10){
+                    cancelled = true
+                    draggedBlock = null
+                    cleanup()
+                }
+                return
             }
 
-            if(longPressActivated) return
+            let y = startY
+            let h = startHeight
 
             if(!undoRecorded && Math.abs(dy) > pointerMoveThreshold(e)){
                 pushUndoState()
@@ -1496,27 +1522,30 @@ function attachBlockPointerControls(el){
             update({persist:false})
         }
 
+        function onPointerCancel(){
+            cancelled = true
+            draggedBlock = null
+            cleanup()
+        }
+
         function onPointerUp(upEvent){
-            clearTimeout(longPressTimer)
-            longPressTimer = null
+            let wasArmed = dragArmed
+            let didMove = pointerMoved
+            cleanup()
 
-            if(el.hasPointerCapture && el.hasPointerCapture(upEvent.pointerId)){
-                el.releasePointerCapture(upEvent.pointerId)
+            if(cancelled){
+                draggedBlock = null
+                return
             }
-            el.classList.remove("is-moving")
-            document.body.classList.remove("dragging-block")
-            document.removeEventListener("pointermove",onPointerMove)
-            document.removeEventListener("pointerup",onPointerUp)
-            document.removeEventListener("pointercancel",onPointerUp)
 
-            // Don't treat finger-lift as a tap when long-press opened the menu
-            if(longPressActivated){
+            // Held to arm the drag but never moved -> quick-actions menu.
+            if(needsHold && wasArmed && !didMove){
+                showBlockQuickMenu(startClientX, startClientY, el)
                 draggedBlock = null
                 return
             }
 
             let dayButton = getDayButtonAtPoint(upEvent.clientX,upEvent.clientY)
-            clearDayDropTargets()
 
             if(dayButton && dayButton.dataset.day !== currentDay){
                 moveBlockToDay(el,dayButton.dataset.day)
@@ -1545,7 +1574,7 @@ function attachBlockPointerControls(el){
 
         document.addEventListener("pointermove",onPointerMove)
         document.addEventListener("pointerup",onPointerUp)
-        document.addEventListener("pointercancel",onPointerUp)
+        document.addEventListener("pointercancel",onPointerCancel)
     })
 }
 
