@@ -1420,7 +1420,10 @@ function attachBlockPointerControls(el){
         }
 
         let rect = el.getBoundingClientRect()
-        let edgeSize = blockResizeEdgeSize(e)
+        // Cap the resize edge zone so a short block keeps a draggable middle — on
+        // a phone the 28px touch zones would otherwise cover the whole block, so
+        // every press read as a resize (no drag, no long-press menu).
+        let edgeSize = Math.min(blockResizeEdgeSize(e), Math.max(8, rect.height / 3))
         let mode = "drag"
 
         if(e.clientY - rect.top <= edgeSize) mode = "resize-top"
@@ -1435,10 +1438,10 @@ function attachBlockPointerControls(el){
         let pointerMoved = false
         let cancelled = false
 
-        // On touch/pen, a body drag must be "picked up" with a short hold first,
-        // so an incidental swipe can't nudge the event. Mouse and edge-resize
-        // stay immediate.
-        let needsHold = isDirectPointer(e) && mode === "drag"
+        // On touch/pen, a press must be "picked up" with a short hold before it
+        // moves or resizes, so an incidental swipe can't nudge the event. The hold
+        // also surfaces the quick-actions menu. Mouse stays immediate.
+        let needsHold = isDirectPointer(e)
         let dragArmed = !needsHold
         let holdTimer = null
 
@@ -1447,7 +1450,9 @@ function attachBlockPointerControls(el){
             dragArmed = true
             el.classList.add("is-moving")
             document.body.classList.add("dragging-block")
-            navigator.vibrate?.(12)
+            // Long-press surfaces the quick actions (Delete/Edit/Copy) and buzzes.
+            // Dragging dismisses it; releasing without dragging leaves it open.
+            showBlockQuickMenu(startClientX, startClientY, el)
         }
 
         if(needsHold){
@@ -1494,6 +1499,7 @@ function attachBlockPointerControls(el){
                 undoRecorded = true
                 pointerMoved = true
                 el.dataset.skipClickSelect = "1"
+                hideBlockQuickMenu()   // a real drag dismisses the long-press menu
             }
 
             if(mode === "drag"){
@@ -1538,9 +1544,9 @@ function attachBlockPointerControls(el){
                 return
             }
 
-            // Held to arm the drag but never moved -> quick-actions menu.
+            // Held to arm but never dragged -> the quick-actions menu is already
+            // open (shown on arm); leave it up for Delete/Edit/Copy.
             if(needsHold && wasArmed && !didMove){
-                showBlockQuickMenu(startClientX, startClientY, el)
                 draggedBlock = null
                 return
             }
