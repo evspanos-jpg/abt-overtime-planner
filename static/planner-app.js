@@ -1420,14 +1420,16 @@ function attachBlockPointerControls(el){
         }
 
         let rect = el.getBoundingClientRect()
-        // Cap the resize edge zone so a short block keeps a draggable middle — on
-        // a phone the 28px touch zones would otherwise cover the whole block, so
-        // every press read as a resize (no drag, no long-press menu).
-        let edgeSize = Math.min(blockResizeEdgeSize(e), Math.max(8, rect.height / 3))
         let mode = "drag"
-
-        if(e.clientY - rect.top <= edgeSize) mode = "resize-top"
-        else if(rect.bottom - e.clientY <= edgeSize) mode = "resize-bottom"
+        // Edge-resize is for precise pointers only. On a touch screen a fingertip
+        // near the edge changed an event's duration far too easily, so touch
+        // always moves the whole block — resize with a mouse/pen, or change the
+        // duration in the editor (tap the event).
+        if(!isTouchPointer(e)){
+            let edgeSize = blockResizeEdgeSize(e)
+            if(e.clientY - rect.top <= edgeSize) mode = "resize-top"
+            else if(rect.bottom - e.clientY <= edgeSize) mode = "resize-bottom"
+        }
 
         let startClientX = e.clientX
         let startClientY = e.clientY

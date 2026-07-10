@@ -1710,6 +1710,12 @@ input[type="file"] {
     bottom: 5px;
 }
 
+/* Phones can't edge-resize (a fingertip changed duration by accident), so hide
+   the resize grips there — duration is edited in the block editor instead. */
+body.mode-phone .resize-handle {
+    display: none;
+}
+
 .event-edit-button {
     position: absolute;
     top: 6px;
